@@ -1,6 +1,8 @@
 package com.showconfigs.showdist.measure
 
+import android.content.Context
 import android.graphics.Canvas
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
@@ -9,43 +11,81 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.core.content.res.ResourcesCompat
+import com.showconfigs.showdist.R
 import com.showconfigs.showdist.ui.Palette
 
 private const val POINT_RADIUS_DP = 6f
 private const val LINE_WIDTH_DP = 1.3f
+private const val DASH_DP = 6f
 private const val SHADOW_OFFSET_Y_DP = 1.2f
 private const val SHADOW_SIGMA_DP = 1.4f
 private const val SHADOW_COLOR = 0xB312354E.toInt()
 
+private const val LABEL_TEXT_SP = 12.5f
+private const val LABEL_PAD_H_DP = 8f
+private const val LABEL_PAD_V_DP = 4f
+private const val LABEL_EDGE_DP = 8f
+private const val LABEL_BORDER_DP = 1f
+private const val LABEL_SCRIM = 0x80000000.toInt()
+
 /**
- * The transparent canvas over the camera feed (SPEC.md §3): segment lines, point dots,
- * then the reticle at the centre. Reads [tracker] only inside the draw lambda, so it redraws
- * once per new camera image (spinSeconds changes every image) and never recomposes.
+ * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): segment
+ * lines, the dashed live line, point dots, the reticle, then labels. Reads [tracker] only
+ * inside the draw lambda, so it redraws once per new camera image (spinSeconds changes
+ * every image) and never recomposes.
  */
 @Composable
 fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
-    val density = LocalDensity.current.density
-    val points = remember(density) { PointsPainter(density) }
-    val reticle = remember(density) { ReticlePainter(density) }
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val points = remember(density.density) { PointsPainter(density.density) }
+    val reticle = remember(density.density) { ReticlePainter(density.density) }
+    val labels = remember(density.density, density.fontScale) {
+        LabelPainter(context, density.density, density.fontScale)
+    }
 
     Canvas(modifier) {
         val hit = tracker.hasHit
         val spin = tracker.spinSeconds
         val count = tracker.pointCount
+        val w = size.width
+        val h = size.height
         drawIntoCanvas { canvas ->
             val c = canvas.nativeCanvas
-            points.draw(c, size.width, size.height, count, tracker.screenXY, tracker.visible)
-            reticle.draw(c, size.width / 2f, size.height / 2f, hit, spin)
+            points.drawSegments(c, w, h, count, tracker)
+            if (tracker.liveVisible) points.drawLiveLine(c, w, h, count, tracker)
+            points.drawDots(c, w, h, count, tracker)
+            reticle.draw(c, w / 2f, h / 2f, hit, spin)
+
+            // One label per drawn segment, plus the live label.
+            for (i in 1 until count) {
+                if (!tracker.visible[i - 1] || !tracker.visible[i] || !tracker.segmentMidInFront[i]) continue
+                labels.draw(
+                    c, w, h,
+                    tracker.segmentMidXY[i * 2], tracker.segmentMidXY[i * 2 + 1],
+                    tracker.segmentText[i], tracker.segmentTextLength[i], live = false,
+                )
+            }
+            if (tracker.liveVisible && tracker.liveMidInFront) {
+                labels.draw(
+                    c, w, h,
+                    tracker.liveMidXY[0], tracker.liveMidXY[1],
+                    tracker.liveText, tracker.liveTextLength, live = true,
+                )
+            }
         }
     }
 }
 
-/** Placed points and segment lines (SPEC.md §3.2). All paints are created once per density. */
+/** Placed points, segment lines and the live line (SPEC.md §3.2). Paints are created once. */
 private class PointsPainter(private val density: Float) {
     private val peachRed = Palette.PeachRed.toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
     private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
+    private val dash = DashPathEffect(floatArrayOf(DASH_DP * density, DASH_DP * density), 0f)
 
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -57,6 +97,11 @@ private class PointsPainter(private val density: Float) {
         color = SHADOW_COLOR
         maskFilter = shadowBlur
     }
+    private val liveLine = Paint(line).apply {
+        color = Palette.SeaGreen.toArgb()
+        pathEffect = dash
+    }
+    private val liveLineShadow = Paint(lineShadow).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = peachRed
@@ -66,16 +111,14 @@ private class PointsPainter(private val density: Float) {
         maskFilter = shadowBlur
     }
 
-    fun draw(c: Canvas, w: Float, h: Float, count: Int, xy: FloatArray, visible: BooleanArray) {
-        val dy = SHADOW_OFFSET_Y_DP * density
-        val r = POINT_RADIUS_DP * density
-
-        // Segments are drawn only when both endpoints are visible; shadow copy first.
+    /** Segments are drawn only when both endpoints are visible; shadow copy first. */
+    fun drawSegments(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
+        val xy = t.screenXY
         for (pass in 0..1) {
             val paint = if (pass == 0) lineShadow else line
-            val offset = if (pass == 0) dy else 0f
+            val offset = if (pass == 0) SHADOW_OFFSET_Y_DP * density else 0f
             for (i in 1 until count) {
-                if (!visible[i - 1] || !visible[i]) continue
+                if (!t.visible[i - 1] || !t.visible[i]) continue
                 c.drawLine(
                     xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h + offset,
                     xy[i * 2] * w, xy[i * 2 + 1] * h + offset,
@@ -83,13 +126,83 @@ private class PointsPainter(private val density: Float) {
                 )
             }
         }
+    }
+
+    /** Last point to the reticle hit's projected position (not the screen centre). */
+    fun drawLiveLine(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
+        val last = count - 1
+        if (last < 0) return
+        val x0 = t.screenXY[last * 2] * w
+        val y0 = t.screenXY[last * 2 + 1] * h
+        val x1 = t.hitXY[0] * w
+        val y1 = t.hitXY[1] * h
+        val dy = SHADOW_OFFSET_Y_DP * density
+        c.drawLine(x0, y0 + dy, x1, y1 + dy, liveLineShadow)
+        c.drawLine(x0, y0, x1, y1, liveLine)
+    }
+
+    fun drawDots(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
+        val xy = t.screenXY
+        val r = POINT_RADIUS_DP * density
         for (pass in 0..1) {
             val paint = if (pass == 0) dotShadow else dot
-            val offset = if (pass == 0) dy else 0f
+            val offset = if (pass == 0) SHADOW_OFFSET_Y_DP * density else 0f
             for (i in 0 until count) {
-                if (!visible[i]) continue
+                if (!t.visible[i]) continue
                 c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h + offset, r, paint)
             }
         }
     }
+}
+
+/**
+ * Distance label pills (SPEC.md §3.3): JetBrains Mono 12.5 sp, tabular figures and slashed
+ * zero, on labelScrim. Weight 500 renders with the bundled Regular face (SPEC.md §6.1).
+ * Text is drawn straight from the tracker's char buffers, so nothing is allocated.
+ */
+private class LabelPainter(context: Context, private val density: Float, fontScale: Float) {
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_regular)
+        textSize = LABEL_TEXT_SP * density * fontScale
+        color = Palette.White.toArgb()
+        fontFeatureSettings = "'tnum', 'zero'"
+    }
+    private val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = LABEL_SCRIM
+    }
+    private val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = LABEL_BORDER_DP * density
+        color = Palette.SeaGreen.copy(alpha = 0.8f).toArgb()
+    }
+    private val metrics = text.fontMetrics
+    private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
+
+    /** [nx], [ny] are the normalised midpoint; hidden if it's off-canvas. */
+    fun draw(c: Canvas, w: Float, h: Float, nx: Float, ny: Float, chars: CharArray, length: Int, live: Boolean) {
+        if (length == 0 || nx < 0f || nx > 1f || ny < 0f || ny > 1f) return
+        val pillWidth = text.measureText(chars, 0, length) + 2 * LABEL_PAD_H_DP * density
+        val edge = LABEL_EDGE_DP * density
+        // Clamp the centre so the whole pill stays at least 8 dp inside the canvas.
+        val cx = clamp(nx * w, edge + pillWidth / 2f, w - edge - pillWidth / 2f)
+        val cy = clamp(ny * h, edge + pillHeight / 2f, h - edge - pillHeight / 2f)
+        val left = cx - pillWidth / 2f
+        val top = cy - pillHeight / 2f
+        val radius = pillHeight / 2f
+
+        c.drawRoundRect(left, top, left + pillWidth, top + pillHeight, radius, radius, scrim)
+        if (live) {
+            val inset = border.strokeWidth / 2f
+            c.drawRoundRect(
+                left + inset, top + inset, left + pillWidth - inset, top + pillHeight - inset,
+                radius - inset, radius - inset, border,
+            )
+        }
+        val baseline = cy - (metrics.ascent + metrics.descent) / 2f
+        c.drawText(chars, 0, length, left + LABEL_PAD_H_DP * density, baseline, text)
+    }
+
+    /** Like coerceIn, but keeps [lo] when the range is inverted (pill wider than the canvas). */
+    private fun clamp(v: Float, lo: Float, hi: Float) = if (hi < lo) lo else v.coerceIn(lo, hi)
 }

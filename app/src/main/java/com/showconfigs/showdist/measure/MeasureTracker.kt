@@ -31,11 +31,13 @@ private const val FAR_M = 100f
  * but only does work when ARCore delivers a new camera image. Everything runs on the main
  * thread: SceneView's frame callback, the UI actions and the overlay's draw.
  *
- * Per-point data lives in preallocated arrays. The overlay reads the snapshot state below
- * only inside its draw lambda, so new frames trigger a redraw, never a recomposition.
+ * Per-point and per-label data lives in preallocated arrays, and label text is rewritten
+ * only when its displayed value changes, so a frame allocates nothing beyond what ARCore's
+ * own API returns. The overlay reads the snapshot state below only inside its draw lambda,
+ * so new frames trigger a redraw, never a recomposition.
  */
 class MeasureTracker {
-    /** True when the screen-centre hit test found a usable surface. */
+    /** True when the screen-centre hit test found a usable surface in front of the camera. */
     var hasHit by mutableStateOf(false)
         private set
 
@@ -50,26 +52,56 @@ class MeasureTracker {
     var totalMetres by mutableDoubleStateOf(0.0)
         private set
 
-    /** Units used to decide when [totalMetres] needs updating. Fixed until the unit toggle exists. */
+    /** Unit system for all distances. Fixed to Imperial until the unit toggle exists. */
     var units = UnitSystem.Imperial
+        set(value) {
+            if (field == value) return
+            field = value
+            // Keys are unit-specific; force every label and the total to reformat.
+            totalKey = Long.MIN_VALUE
+            segmentKey.fill(Long.MIN_VALUE)
+            liveKey = Long.MIN_VALUE
+        }
 
-    /** Normalised (0..1, top-left origin) screen position of each point: x at 2i, y at 2i+1. */
+    // Screen positions below are normalised (0..1, top-left origin): x at 2i, y at 2i+1.
+
+    /** Each point's screen position. */
     val screenXY = FloatArray(MAX_POINTS * 2)
 
     /** Whether each point is drawn this frame (SPEC.md §2.4 "anchor visibility"). */
     val visible = BooleanArray(MAX_POINTS)
+
+    /** Segment i runs from point i−1 to point i; its label sits at its projected world midpoint. */
+    val segmentMidXY = FloatArray(MAX_POINTS * 2)
+    val segmentMidInFront = BooleanArray(MAX_POINTS)
+    val segmentText = Array(MAX_POINTS) { CharArray(DISTANCE_TEXT_CAPACITY) }
+    val segmentTextLength = IntArray(MAX_POINTS)
+
+    /** The dashed live line from the last point to the reticle hit (SPEC.md §3.2). */
+    var liveVisible = false
+        private set
+    val hitXY = FloatArray(2)
+    val liveMidXY = FloatArray(2)
+    var liveMidInFront = false
+        private set
+    val liveText = CharArray(DISTANCE_TEXT_CAPACITY)
+    var liveTextLength = 0
+        private set
 
     /** Anchors ARCore still holds for this session; debug only, so it may allocate. */
     val sessionAnchorCount: Int get() = session?.allAnchors?.size ?: 0
 
     private val anchors = ArrayList<Anchor>(MAX_POINTS)
     private val world = FloatArray(MAX_POINTS * 3)
+    private val hitWorld = FloatArray(3)
     private val viewMatrix = FloatArray(16)
     private val projMatrix = FloatArray(16)
     private val viewProj = FloatArray(16)
+    private val segmentKey = LongArray(MAX_POINTS) { Long.MIN_VALUE }
+    private var liveKey = Long.MIN_VALUE
+    private var totalKey = Long.MIN_VALUE
     private var session: Session? = null
     private var addRequested = false
-    private var totalKey = Long.MIN_VALUE
 
     private var centerX = 0f
     private var centerY = 0f
@@ -111,7 +143,18 @@ class MeasureTracker {
 
         val camera = frame.camera
         val tracking = camera.trackingState == TrackingState.TRACKING
-        val hit = if (tracking) centreSurfaceHit(frame) else null
+        if (tracking) {
+            camera.getProjectionMatrix(projMatrix, 0, NEAR_M, FAR_M)
+            camera.getViewMatrix(viewMatrix, 0)
+            Matrix.multiplyMM(viewProj, 0, projMatrix, 0, viewMatrix, 0)
+        }
+
+        var hit = if (tracking) centreSurfaceHit(frame) else null
+        if (hit != null) {
+            hit.hitPose.getTranslation(hitWorld, 0)
+            // A hit that projects behind the camera counts as no hit (SPEC.md §2.4).
+            if (!project(hitWorld[0], hitWorld[1], hitWorld[2], hitXY, 0)) hit = null
+        }
         hasHit = hit != null
 
         if (addRequested) {
@@ -119,17 +162,10 @@ class MeasureTracker {
             if (hit != null && anchors.size < MAX_POINTS) {
                 // A session (world-space) anchor, not a plane-attached one, so plane
                 // refinement can't drag the point.
-                val pose = hit.hitPose
-                pose.getTranslation(world, anchors.size * 3)
-                anchors.add(session.createAnchor(pose))
+                System.arraycopy(hitWorld, 0, world, anchors.size * 3, 3)
+                anchors.add(session.createAnchor(hit.hitPose))
                 pointCount = anchors.size
             }
-        }
-
-        if (tracking) {
-            camera.getProjectionMatrix(projMatrix, 0, NEAR_M, FAR_M)
-            camera.getViewMatrix(viewMatrix, 0)
-            Matrix.multiplyMM(viewProj, 0, projMatrix, 0, viewMatrix, 0)
         }
 
         var total = 0.0
@@ -138,8 +174,30 @@ class MeasureTracker {
             // Live pose every frame so points follow ARCore's refinements. While an anchor
             // isn't tracking, its last known position is kept.
             if (anchorTracking) anchors[i].pose.getTranslation(world, i * 3)
-            visible[i] = tracking && anchorTracking && project(i)
-            if (i > 0) total += distance(i - 1, i)
+            val o = i * 3
+            visible[i] = tracking && anchorTracking && project(world[o], world[o + 1], world[o + 2], screenXY, i * 2)
+            if (i > 0) {
+                val d = distance(world, o - 3, world, o)
+                total += d
+                segmentMidInFront[i] = tracking && projectMidpoint(world, o - 3, world, o, segmentMidXY, i * 2)
+                val key = DistanceFormat.displayKey(d, units)
+                if (key != segmentKey[i]) {
+                    segmentKey[i] = key
+                    segmentTextLength[i] = DistanceFormat.formatInto(d, units, segmentText[i])
+                }
+            }
+        }
+
+        val last = anchors.lastIndex
+        liveVisible = hit != null && last >= 0 && visible[last]
+        if (liveVisible) {
+            val d = distance(world, last * 3, hitWorld, 0)
+            liveMidInFront = projectMidpoint(world, last * 3, hitWorld, 0, liveMidXY, 0)
+            val key = DistanceFormat.displayKey(d, units)
+            if (key != liveKey) {
+                liveKey = key
+                liveTextLength = DistanceFormat.formatInto(d, units, liveText)
+            }
         }
 
         val key = DistanceFormat.displayKey(total, units)
@@ -162,8 +220,6 @@ class MeasureTracker {
     /**
      * First qualifying hit from the screen centre, or null. ARCore's hitTest allocates its
      * result list and poses; that's inherent to the API. Index loop avoids an extra iterator.
-     * A hit from the screen centre is always in front of the camera, so the §2.4
-     * behind-camera check can't fail here.
      */
     private fun centreSurfaceHit(frame: Frame): HitResult? {
         if (centerX == 0f || centerY == 0f) return null
@@ -181,25 +237,35 @@ class MeasureTracker {
         return null
     }
 
-    /** Projects point [i] into [screenXY]; false if it's behind the camera (SPEC.md §2.4). */
-    private fun project(i: Int): Boolean {
-        val x = world[i * 3]
-        val y = world[i * 3 + 1]
-        val z = world[i * 3 + 2]
+    /**
+     * Projects a world point into [out] at [at] (SPEC.md §2.4). Returns false, leaving [out]
+     * untouched, if it's behind the camera.
+     */
+    private fun project(x: Float, y: Float, z: Float, out: FloatArray, at: Int): Boolean {
         val m = viewProj // column-major
         val w = m[3] * x + m[7] * y + m[11] * z + m[15]
         if (w <= 1e-4f) return false
         val cx = m[0] * x + m[4] * y + m[8] * z + m[12]
         val cy = m[1] * x + m[5] * y + m[9] * z + m[13]
-        screenXY[i * 2] = cx / w * 0.5f + 0.5f
-        screenXY[i * 2 + 1] = 1f - (cy / w * 0.5f + 0.5f)
+        out[at] = cx / w * 0.5f + 0.5f
+        out[at + 1] = 1f - (cy / w * 0.5f + 0.5f)
         return true
     }
 
-    private fun distance(a: Int, b: Int): Double {
-        val dx = (world[a * 3] - world[b * 3]).toDouble()
-        val dy = (world[a * 3 + 1] - world[b * 3 + 1]).toDouble()
-        val dz = (world[a * 3 + 2] - world[b * 3 + 2]).toDouble()
+    /** Projects the world midpoint of two points (not the midpoint of their projections). */
+    private fun projectMidpoint(a: FloatArray, ai: Int, b: FloatArray, bi: Int, out: FloatArray, at: Int) =
+        project(
+            (a[ai] + b[bi]) * 0.5f,
+            (a[ai + 1] + b[bi + 1]) * 0.5f,
+            (a[ai + 2] + b[bi + 2]) * 0.5f,
+            out,
+            at,
+        )
+
+    private fun distance(a: FloatArray, ai: Int, b: FloatArray, bi: Int): Double {
+        val dx = (a[ai] - b[bi]).toDouble()
+        val dy = (a[ai + 1] - b[bi + 1]).toDouble()
+        val dz = (a[ai + 2] - b[bi + 2]).toDouble()
         return sqrt(dx * dx + dy * dy + dz * dz)
     }
 }
