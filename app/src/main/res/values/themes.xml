@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- lightMauve: the launch screen, and the window behind Compose while it starts,
+         so nothing flashes white (SPEC.md §1.3). -->
+    <color name="launch_background">#9A72AA</color>
+
+    <!-- The window theme only; everything on screen is drawn by ShowdistTheme in Compose. -->
+    <style name="Theme.Showdist" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/launch_background</item>
+    </style>
+</resources>

@@ -88,9 +88,6 @@ class MeasureTracker {
     var liveTextLength = 0
         private set
 
-    /** Anchors ARCore still holds for this session; debug only, so it may allocate. */
-    val sessionAnchorCount: Int get() = session?.allAnchors?.size ?: 0
-
     private val anchors = ArrayList<Anchor>(MAX_POINTS)
     private val world = FloatArray(MAX_POINTS * 3)
     private val hitWorld = FloatArray(3)
@@ -100,7 +97,6 @@ class MeasureTracker {
     private val segmentKey = LongArray(MAX_POINTS) { Long.MIN_VALUE }
     private var liveKey = Long.MIN_VALUE
     private var totalKey = Long.MIN_VALUE
-    private var session: Session? = null
     private var addRequested = false
 
     private var centerX = 0f
@@ -135,7 +131,6 @@ class MeasureTracker {
         val timestamp = frame.timestamp
         if (timestamp == 0L || timestamp == lastImageTimestamp) return
         lastImageTimestamp = timestamp
-        this.session = session
 
         // Modulo in Long/Double keeps Float precision stable however long the screen is open.
         val periodNanos = (RETICLE_PERIOD_S * 1_000_000_000L).toLong()
@@ -214,7 +209,6 @@ class MeasureTracker {
     fun release() {
         anchors.clear()
         pointCount = 0
-        session = null
     }
 
     /**

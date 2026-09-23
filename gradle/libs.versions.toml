@@ -4,6 +4,7 @@ kotlin = "2.4.20"
 composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 sceneview = "4.39.0"
+leakcanary = "2.14"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -12,6 +13,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 sceneview-ar = { group = "io.github.sceneview", name = "arsceneview", version.ref = "sceneview" }
+leakcanary = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

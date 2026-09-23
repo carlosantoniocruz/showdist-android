@@ -5,3 +5,8 @@ local.properties
 .idea/
 *.iml
 captures/
+
+# Release signing: never commit the keystore or its passwords.
+keystore.properties
+*.jks
+*.keystore

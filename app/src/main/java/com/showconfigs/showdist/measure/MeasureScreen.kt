@@ -183,7 +183,6 @@ private fun MeasureArea(units: UnitSystem, onSessionFailed: (Exception) -> Unit)
                     Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, top = 16.dp, end = 12.dp),
                 )
             }
-            DebugOverlay(tracker, Modifier.align(Alignment.BottomStart).padding(8.dp))
         }
         ControlBar(
             canPlace = tracker.hasHit,
