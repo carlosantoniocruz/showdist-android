@@ -566,11 +566,11 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 
 ### 4.2 Visuals
 
-- **Background:** the scaffold is **warmGray (#A1A39A)**. The app bar is the standard darkTyrianBlue bar titled "LEVELER", with the Zero and Reset actions on the right.
+- **Background:** the scaffold is **darkTyrianBlue**, matching the main menu. The app bar is the standard darkTyrianBlue bar titled "LEVELER", with the Zero and Reset actions on the right. *(The Flutter app used warmGray; changed in the native rebuild at the developer's request.)*
 - **Body** (inside the safe area):
-  1. Instruction "HOLD FLAT AGAINST THE SURFACE" in the Caption style at 11 sp with letter-spacing 2, in **darkTyrianBlue**, padding L32 T20 R32.
+  1. Instruction "HOLD FLAT AGAINST THE SURFACE" in the Caption style at 11 sp with letter-spacing 2, in **warmGray**, padding L32 T20 R32.
   2. The **vial** fills the remaining space and is centred.
-  3. The **readout**: `|displayed|` to one decimal place followed by "°", e.g. `0.4°`. It is 40 sp, weight 200, darkTyrianBlue, tabular figures, with 40 dp bottom padding. It shows no sign.
+  3. The **readout**: `|displayed|` to one decimal place followed by "°", e.g. `0.4°`. It is 40 sp, weight 200, white, tabular figures, with 40 dp bottom padding. It shows no sign.
 - **Vial**, a stadium-shaped rounded bar:
   - Thickness 84 dp.
   - Length = the long dimension of the available space minus 2 × 28 dp.
@@ -594,14 +594,14 @@ The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's
 
 | Token | Hex (ARGB as in code) | Used for |
 |---|---|---|
-| **darkTyrianBlue** | `#12354E` (`0xFF12354E`) | Main background of every screen except the Leveler body. All app bars, dialogs, bottom sheets and popup menus. The Measure control bar fill. The app-icon ring. The Leveler's vial outline, centre marks (when not level), bubble outline, instruction and readout. |
+| **darkTyrianBlue** | `#12354E` (`0xFF12354E`) | Main background of every screen, including the Leveler body. All app bars, dialogs, bottom sheets and popup menus. The Measure control bar fill. The app-icon ring. The Leveler's vial outline, centre marks (when not level) and bubble outline. |
 | **olympicBlue** | `#5A82B3` | Leveler tool card on the main menu (border at alpha 0.45, arrow icon). Selected radio icon in Settings. |
 | **lightMauve** | `#9A72AA` | SHOWDIST wordmark. License detail heading. Licenses loading spinner. Developer email on About. History selection (row tint at alpha 0.12, thumbnail, check icon). Launch screen / splash background. App-icon background. |
 | **darkCitrine** | `#8B835B` | Main-menu ruler ticks and baseline. The 1.5 dp top rule of the Measure control bar. |
 | **peachRed** | `#F15A30` | Actions and placed things: Measure card (border at alpha 0.9, fill at alpha 0.10, arrow), History link rule (alpha 0.6), capture button (alpha 0.4 when disabled), placed point dots, segment lines, "Delete selected" icon, confirm button in the memory dialog, Problem-view circle (alpha 0.85). The Material colour scheme is seeded from it and uses it as the primary colour. |
 | **seaGreen** ("seafoam") | `#00B49B` | Live/tracking elements: reticle dots, dashed live line, live-label border (alpha 0.8). The Leveler vial liquid. The app-icon dots. |
-| **warmGray** | `#A1A39A` | Leveler background. Muted/secondary text: descriptions, captions, subtitles, "N saved", empty states, dialog bodies, cancel buttons. Chevrons and the gear icon. Unselected radio icons. |
-| **white** | `#FFFFFF` | Body text, titles, live numbers, running total, label text, reticle centre dot, Leveler bubble and "level" marks, charge arc, bar icons (alpha 0.9 enabled / 0.3 disabled), dividers (alpha 0.08), outlined-button borders (alpha 0.3). |
+| **warmGray** | `#A1A39A` | Muted/secondary text, including the Leveler instruction: descriptions, captions, subtitles, "N saved", empty states, dialog bodies, cancel buttons. Chevrons and the gear icon. Unselected radio icons. |
+| **white** | `#FFFFFF` | Body text, titles, live numbers, running total, label text, reticle centre dot, Leveler bubble, readout and "level" marks, charge arc, bar icons (alpha 0.9 enabled / 0.3 disabled), dividers (alpha 0.08), outlined-button borders (alpha 0.3). |
 
 **Scrims and shadows** (derived colours, not palette tokens):
 

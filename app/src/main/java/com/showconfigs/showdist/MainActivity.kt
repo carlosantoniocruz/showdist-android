@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.toMutableStateList
+import com.showconfigs.showdist.leveler.LevelerScreen
 import com.showconfigs.showdist.measure.MeasureScreen
 import com.showconfigs.showdist.menu.MainMenu
 import com.showconfigs.showdist.ui.PlaceholderScreen
@@ -50,7 +51,7 @@ private fun ShowdistApp() {
             onSettings = { push(Screen.Settings) },
         )
         Screen.Measure -> MeasureScreen()
-        Screen.Leveler -> PlaceholderScreen("LEVELER", "The leveler arrives in Stage 6.", ::pop)
+        Screen.Leveler -> LevelerScreen(onBack = ::pop)
         Screen.History -> PlaceholderScreen("HISTORY", "History arrives with saving.", ::pop)
         Screen.Settings -> PlaceholderScreen("SETTINGS", "Settings arrive in Stage 7.", ::pop)
     }
