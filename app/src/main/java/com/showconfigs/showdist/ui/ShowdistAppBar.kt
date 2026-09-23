@@ -1,6 +1,10 @@
 package com.showconfigs.showdist.ui
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +36,7 @@ fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowSc
             }
         },
         actions = actions,
+        windowInsets = AppBarInsets,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Palette.DarkTyrianBlue,
             scrolledContainerColor = Palette.DarkTyrianBlue,
@@ -41,6 +46,13 @@ fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowSc
         ),
     )
 }
+
+/**
+ * App bars avoid the display cutout as well as the (hidden, immersive) system bars, so a
+ * punch-hole camera never sits over a title or action.
+ */
+val AppBarInsets: WindowInsets
+    @Composable get() = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
 
 /** An app-bar action icon with a tooltip on long press, in [tint] (white by default), at 0.3 alpha when disabled. */
 @OptIn(ExperimentalMaterial3Api::class)

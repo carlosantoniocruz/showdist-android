@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.measure.DistanceFormat
 import com.showconfigs.showdist.measure.UnitSystem
 import com.showconfigs.showdist.ui.AppBarAction
+import com.showconfigs.showdist.ui.AppBarInsets
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
@@ -237,6 +238,7 @@ private fun SelectionBar(
     TopAppBar(
         title = { Text("$count selected", style = BaseText.copy(fontSize = 16.sp, fontWeight = FontWeight.Normal)) },
         navigationIcon = { AppBarAction(ShowdistIcons.Close, "Cancel selection", onClick = onCancel) },
+        windowInsets = AppBarInsets,
         actions = {
             AppBarAction(ShowdistIcons.SelectAll, "Select all", onClick = onSelectAll)
             ShareMenuButton(enabled = count > 0, onShare = onShare, onCopy = onCopy)

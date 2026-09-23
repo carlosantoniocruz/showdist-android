@@ -1,6 +1,7 @@
 package com.showconfigs.showdist
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -18,6 +19,9 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.showconfigs.showdist.history.HistoryScreen
 import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.leveler.LevelerScreen
@@ -35,7 +39,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RecordingStore.init(this)
+        // Screen kept on while the app is in the foreground (SPEC.md §0); the flag only
+        // applies while this window is visible.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        hideSystemBars()
         setContent { ShowdistTheme { ShowdistApp() } }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Dialogs, the share sheet and permission prompts can bring the bars back.
+        if (hasFocus) hideSystemBars()
+    }
+
+    /** Immersive sticky (SPEC.md §0): bars hidden; an edge swipe shows them briefly. */
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
     }
 }
 
