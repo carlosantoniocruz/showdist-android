@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -123,7 +127,7 @@ fun MeasureScreen() {
     Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> ArCameraArea(onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -136,36 +140,74 @@ fun MeasureScreen() {
 }
 
 /**
- * The camera area: ARSceneView with the reticle drawn as a Compose overlay at its centre.
- * Leaving composition destroys the session, discarding ARCore's map (SPEC.md §2.1).
+ * The AR layout (SPEC.md §2.2): the camera area fills everything above the control bar,
+ * so nothing measured is hidden behind it. Leaving composition destroys the session,
+ * discarding ARCore's map and its anchors (SPEC.md §2.1).
  */
 @Composable
-private fun ArCameraArea(onSessionFailed: (Exception) -> Unit) {
-    val tracker = remember { ReticleTracker() }
+private fun MeasureArea(onSessionFailed: (Exception) -> Unit) {
+    val tracker = remember { MeasureTracker() }
+    DisposableEffect(tracker) { onDispose { tracker.release() } }
 
-    Box(Modifier.fillMaxSize().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
-        ARSceneView(
-            modifier = Modifier.fillMaxSize(),
-            planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL,
-            // ARSession downgrades this to DISABLED on devices without depth support.
-            depthMode = Config.DepthMode.AUTOMATIC,
-            updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE,
-            focusMode = Config.FocusMode.AUTO,
-            sessionConfiguration = { _, config ->
-                config.lightEstimationMode = Config.LightEstimationMode.DISABLED
-            },
-            // The spec draws no plane visualisation, only the camera feed and the overlay.
-            planeRenderer = false,
-            onSessionUpdated = { _, frame -> tracker.onFrame(frame) },
-            onSessionFailed = onSessionFailed,
-            // Permission and ARCore availability are handled before this composes;
-            // suppress SceneView's own overlays so only the spec's Problem view is shown.
-            cameraPermissionOverlay = {},
-            arCoreAvailabilityOverlay = {},
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
+            ARSceneView(
+                modifier = Modifier.fillMaxSize(),
+                planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL,
+                // ARSession downgrades this to DISABLED on devices without depth support.
+                depthMode = Config.DepthMode.AUTOMATIC,
+                updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE,
+                focusMode = Config.FocusMode.AUTO,
+                sessionConfiguration = { _, config ->
+                    config.lightEstimationMode = Config.LightEstimationMode.DISABLED
+                },
+                // The spec draws no plane visualisation, only the camera feed and the overlay.
+                planeRenderer = false,
+                onSessionUpdated = { session, frame -> tracker.onFrame(session, frame) },
+                onSessionFailed = onSessionFailed,
+                // Permission and ARCore availability are handled before this composes;
+                // suppress SceneView's own overlays so only the spec's Problem view is shown.
+                cameraPermissionOverlay = {},
+                arCoreAvailabilityOverlay = {},
+            )
+            MeasureOverlay(tracker, Modifier.fillMaxSize())
+            if (tracker.pointCount >= 2) {
+                RunningTotal(
+                    tracker.totalMetres,
+                    tracker.units,
+                    Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, top = 16.dp, end = 12.dp),
+                )
+            }
+            DebugOverlay(tracker, Modifier.align(Alignment.BottomStart).padding(8.dp))
+        }
+        ControlBar(
+            canPlace = tracker.hasHit,
+            hasPoints = tracker.pointCount > 0,
+            onPlace = tracker::requestAdd,
+            onUndo = tracker::undo,
+            onClear = tracker::clear,
         )
-        Reticle(tracker, Modifier.fillMaxSize())
     }
 }
+
+/** Running total pill (SPEC.md §2.2): labelScrim, 14 dp corners, 34 sp weight 200. */
+@Composable
+private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier) {
+    BasicText(
+        text = DistanceFormat.format(metres, units),
+        modifier = modifier
+            .background(LabelScrim, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        style = TextStyle(
+            color = Palette.White,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.ExtraLight,
+            fontFeatureSettings = "tnum",
+        ),
+    )
+}
+
+private val LabelScrim = Color(0x80000000)
 
 private fun problemFor(e: Exception): StartState.Problem = when (e) {
     is UnavailableUserDeclinedInstallationException -> StartState.Problem(
