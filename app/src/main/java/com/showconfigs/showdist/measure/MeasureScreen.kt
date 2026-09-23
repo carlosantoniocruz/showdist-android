@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,9 @@ import com.google.ar.core.exceptions.UnavailableApkTooOldException
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
+import com.showconfigs.showdist.ui.BaseText
+import com.showconfigs.showdist.ui.CaptionText
+import com.showconfigs.showdist.ui.FEATURES_TABULAR
 import com.showconfigs.showdist.ui.Palette
 import io.github.sceneview.ar.ARSceneView
 
@@ -198,11 +200,11 @@ private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier =
         modifier = modifier
             .background(LabelScrim, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        style = TextStyle(
+        style = BaseText.copy(
             color = Palette.White,
             fontSize = 34.sp,
             fontWeight = FontWeight.ExtraLight,
-            fontFeatureSettings = "tnum",
+            fontFeatureSettings = FEATURES_TABULAR,
         ),
     )
 }
@@ -252,20 +254,10 @@ private fun Activity.openAppSettings() {
     )
 }
 
-/** Caption style (SPEC.md §6.3). JetBrains Mono arrives in Stage 5. */
+/** Caption style (SPEC.md §6.3). */
 @Composable
 private fun Caption(text: String, modifier: Modifier = Modifier) {
-    BasicText(
-        text = text,
-        modifier = modifier,
-        style = TextStyle(
-            color = Palette.WarmGray,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 3.sp,
-            textAlign = TextAlign.Center,
-        ),
-    )
+    BasicText(text = text, modifier = modifier, style = CaptionText)
 }
 
 /** Problem view (SPEC.md §2.1). */
@@ -280,7 +272,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         BasicText(
             text = problem.title,
-            style = TextStyle(
+            style = BaseText.copy(
                 color = Palette.White,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Light,
@@ -290,7 +282,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         BasicText(
             text = problem.body,
-            style = TextStyle(
+            style = BaseText.copy(
                 color = Palette.WarmGray,
                 fontSize = 14.sp,
                 lineHeight = 1.4.em,
@@ -314,6 +306,6 @@ private fun OutlinedTextButton(label: String, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 10.dp),
     ) {
-        BasicText(label, style = TextStyle(color = Palette.White, fontSize = 14.sp, fontWeight = FontWeight.Medium))
+        BasicText(label, style = BaseText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium))
     }
 }
