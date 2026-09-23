@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
@@ -44,7 +45,10 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 
 /**
  * The Measure control bar (SPEC.md §2.6): History, Undo, the main button, Clear and the
- * M/FT unit toggle, in five equal columns. [charge] (0..1) is read only while drawing the main button's save arc.
+ * M/FT unit toggle, in five equal columns. The four small controls sit in fixed 60×60
+ * slots that turn by [rotation] degrees to stay upright (SPEC.md §2.9); the bar itself and
+ * the main button never rotate. [rotation] and [charge] are read only in the draw/layer phase, so
+ * neither recomposes the bar.
  */
 @Composable
 fun ControlBar(
@@ -53,6 +57,7 @@ fun ControlBar(
     savedCount: Int,
     units: UnitSystem,
     charge: () -> Float,
+    rotation: () -> Float,
     onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
     onPlace: () -> Unit,
@@ -66,11 +71,15 @@ fun ControlBar(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BarColumn { HistoryButton(savedCount, onHistory) }
-            BarColumn { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onUndo) }
+            BarColumn { RotatingSlot(rotation) { HistoryButton(savedCount, onHistory) } }
+            BarColumn {
+                RotatingSlot(rotation) { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onUndo) }
+            }
             BarColumn { MainButton(canPlace, charge, onPlace) }
-            BarColumn { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClear) }
-            BarColumn { UnitToggle(units, onUnits) }
+            BarColumn {
+                RotatingSlot(rotation) { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClear) }
+            }
+            BarColumn { RotatingSlot(rotation) { UnitToggle(units, onUnits) } }
         }
     }
 }
@@ -102,10 +111,19 @@ private fun BarIconButton(icon: ImageVector, label: String, enabled: Boolean, on
     }
 }
 
-/** "M" and "FT" in a fixed 60×60 slot; the active one is bold white, the other dimmed. */
+/** A fixed 60×60 slot turned about its centre by [rotation] degrees clockwise. */
+@Composable
+private fun RotatingSlot(rotation: () -> Float, content: @Composable () -> Unit) {
+    Box(
+        Modifier.size(60.dp).graphicsLayer { rotationZ = rotation() }.wrapContentSize(unbounded = true),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+/** "M" and "FT"; the active one is bold white, the other dimmed. */
 @Composable
 private fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit) {
-    Row(Modifier.size(60.dp).wrapContentSize(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         UnitLabel("M", units == UnitSystem.Metric) { onUnits(UnitSystem.Metric) }
         UnitLabel("FT", units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
     }

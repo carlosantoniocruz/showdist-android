@@ -182,6 +182,7 @@ private fun MeasureArea(
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
     val sessionLifecycle = rememberCappedLifecycle(capped = covered)
+    val barRotation = rememberBarRotation(sessionLifecycle)
     var saved by remember { mutableStateOf<Recording?>(null) }
     val holdToSave = rememberHoldToSave(tracker) { saved = it }
 
@@ -230,6 +231,7 @@ private fun MeasureArea(
             savedCount = RecordingStore.recordings.size,
             units = units,
             charge = holdToSave::charge,
+            rotation = { barRotation.value },
             onUnits = onUnits,
             onHistory = onHistory,
             onPlace = tracker::requestAdd,
