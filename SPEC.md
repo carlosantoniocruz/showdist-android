@@ -116,15 +116,15 @@ Tapping an option sets the unit system immediately and persists it (§2.6).
 
 A scrolling list with padding L24 T32 R24 B24:
 
-1. "Version 1.0.0", centred, 14 sp, warmGray. The version string is hard-coded and must be kept in sync with the build version.
+1. "Version 1.0.0", centred, 14 sp, warmGray. The native build reads the version from the installed package, so it always matches the build.
 2. 20 dp gap.
-3. "An augmented-reality tape measure for Android, built with Flutter and ARCore." Centred, 14 sp, warmGray, line height 1.5. *(For the Kotlin rebuild, this sentence should be updated; see §13.)*
+3. "An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore." Centred, 14 sp, warmGray, line height 1.5. *(Updated for the native rebuild; the Flutter build said "built with Flutter and ARCore".)*
 4. 28 dp gap, then a divider (1 dp, white at alpha 0.08), then a 20 dp gap.
 5. "DEVELOPER" in the Caption style, warmGray.
 6. 12 dp gap.
 7. `sh.run.configs@gmail.com` as **selectable** text (long-press to copy), 15 sp, **lightMauve**. This is left-aligned.
 8. 28 dp gap, then a divider.
-9. List row (no side padding): title "View licenses" (white), subtitle "Flutter, ARCore, and JetBrains Mono (OFL-1.1)" (12 sp, warmGray), and a warmGray chevron. It opens Licenses.
+9. List row (no side padding): title "View licenses" (white), subtitle "ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)" (12 sp, warmGray), and a warmGray chevron. It opens Licenses.
 10. 24 dp gap.
 11. "**Created with AI assistance**", centred, 12 sp, warmGray, *italic*.
 
@@ -665,10 +665,10 @@ The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's
 ### 7.1 About text (verbatim)
 
 - `Version 1.0.0`
-- `An augmented-reality tape measure for Android, built with Flutter and ARCore.`
+- `An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore.`
 - `DEVELOPER`
 - `sh.run.configs@gmail.com`
-- `View licenses`, with subtitle `Flutter, ARCore, and JetBrains Mono (OFL-1.1)`
+- `View licenses`, with subtitle `ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)`
 - `Created with AI assistance` (italic)
 
 ### 7.2 Third-party components

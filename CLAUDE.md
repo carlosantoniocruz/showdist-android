@@ -15,6 +15,7 @@
 
 - Build: `./gradlew assembleDebug`. Versions live in `gradle/libs.versions.toml`.
 - SceneView 4.39 requires compileSdk 37, so compileSdk and targetSdk are 37.
-- JetBrains Mono's four faces are in `app/src/main/res/font/`. `assets/fonts/JetBrainsMono/OFL.txt` still needs shipping and showing in Licenses (Stage 7).
+- JetBrains Mono's four faces are in `app/src/main/res/font/`; license texts (OFL, Apache 2.0, MIT) are in `app/src/main/res/raw/`.
+- The Licenses list in `settings/Licenses.kt` is curated by hand. When a dependency changes, check `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and update it.
 - `android/app/src/main/res/` holds reference copies of the old Flutter app's icon and launch resources (SPEC.md §8.2), not part of the build. Move them into `app/src/main/res/` in Stage 8.
 - Icons are Material Symbols drawn from path data in `ui/Icons.kt`; no icon library.

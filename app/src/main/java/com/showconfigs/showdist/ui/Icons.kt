@@ -90,6 +90,18 @@ object ShowdistIcons {
             " 0-.43-.27-.83-.69-.95C7.83 18.07 6 15.72 6 13z",
     )
 
+    val RadioButtonChecked = icon(
+        "RadioButtonChecked",
+        "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0-5C6.48 2 2 6.48 2 12s4.48 10 10 10" +
+            " 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z",
+    )
+
+    val RadioButtonUnchecked = icon(
+        "RadioButtonUnchecked",
+        "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8" +
+            "s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z",
+    )
+
     private fun icon(name: String, pathData: String): ImageVector =
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)
             .addPath(addPathNodes(pathData), fill = SolidColor(Color.Black))

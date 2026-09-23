@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,7 +79,7 @@ private enum class ProblemAction(val label: String) {
 }
 
 @Composable
-fun MeasureScreen() {
+fun MeasureScreen(units: UnitSystem) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
     // The ARCore install prompt is shown only on the first attempt (SPEC.md §2.1).
@@ -129,7 +130,7 @@ fun MeasureScreen() {
     Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -147,8 +148,10 @@ fun MeasureScreen() {
  * discarding ARCore's map and its anchors (SPEC.md §2.1).
  */
 @Composable
-private fun MeasureArea(onSessionFailed: (Exception) -> Unit) {
+private fun MeasureArea(units: UnitSystem, onSessionFailed: (Exception) -> Unit) {
     val tracker = remember { MeasureTracker() }
+    // Labels and the total reformat on the next camera frame after a change.
+    SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
 
     Column(Modifier.fillMaxSize()) {
@@ -176,7 +179,7 @@ private fun MeasureArea(onSessionFailed: (Exception) -> Unit) {
             if (tracker.pointCount >= 2) {
                 RunningTotal(
                     tracker.totalMetres,
-                    tracker.units,
+                    units,
                     Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, top = 16.dp, end = 12.dp),
                 )
             }
