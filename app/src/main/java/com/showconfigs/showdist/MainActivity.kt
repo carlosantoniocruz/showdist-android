@@ -79,6 +79,7 @@ private fun ShowdistApp() {
                 MeasureScreen(
                     units = unitSettings.units,
                     covered = top.screen != Screen.Measure,
+                    onUnits = unitSettings::select,
                     onHistory = { push(Screen.History) },
                 )
             }

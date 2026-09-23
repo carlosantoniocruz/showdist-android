@@ -14,6 +14,7 @@ import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.core.Point
 import com.google.ar.core.Session
+import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
 import kotlin.math.sqrt
 
@@ -25,6 +26,21 @@ const val MAX_POINTS = 24
 
 private const val NEAR_M = 0.05f
 private const val FAR_M = 100f
+
+/** The hint line's text (SPEC.md §2.3). */
+enum class Hint(val text: String) {
+    Starting("Starting camera…"),
+    TooDark("Too dark. Find some light"),
+    SlowDown("Slow down"),
+    NeedTexture("Point at a textured surface"),
+    CameraUnavailable("Camera unavailable"),
+    TrackingLost("Tracking lost. Move slowly"),
+    Scan("Move slowly to scan surfaces"),
+    Aim("Aim at a surface"),
+    PlaceFirst("Tap to place a point"),
+    PlaceNext("Place the next point"),
+    AddOrSave("Tap to add · hold anywhere to save"),
+}
 
 /**
  * Per-frame measuring state (SPEC.md §2.4, §2.5). [onFrame] is called on every render frame
@@ -46,6 +62,10 @@ class MeasureTracker {
         private set
 
     var pointCount by mutableIntStateOf(0)
+        private set
+
+    /** Only changes when the hint's text would, so it recomposes rarely. */
+    var hint by mutableStateOf(Hint.Starting)
         private set
 
     /** Sum of all segments. Only updated when the displayed value would change. */
@@ -98,6 +118,8 @@ class MeasureTracker {
     private var liveKey = Long.MIN_VALUE
     private var totalKey = Long.MIN_VALUE
     private var addRequested = false
+    private var imageCount = 0
+    private var planeCount = 0
 
     private var centerX = 0f
     private var centerY = 0f
@@ -205,6 +227,37 @@ class MeasureTracker {
             totalKey = key
             totalMetres = total
         }
+
+        // The plane count only feeds the hint, so it's recounted every 10th image (~3 Hz).
+        if (imageCount++ % 10 == 0) planeCount = countPlanes(session)
+        hint = hintFor(camera.trackingState, camera.trackingFailureReason, hit != null, anchors.size)
+    }
+
+    /** SPEC.md §2.3, in table order. */
+    private fun hintFor(state: TrackingState, reason: TrackingFailureReason, hasHit: Boolean, points: Int): Hint =
+        when {
+            state == TrackingState.STOPPED -> Hint.Starting
+            state != TrackingState.TRACKING -> when (reason) {
+                TrackingFailureReason.INSUFFICIENT_LIGHT -> Hint.TooDark
+                TrackingFailureReason.EXCESSIVE_MOTION -> Hint.SlowDown
+                TrackingFailureReason.INSUFFICIENT_FEATURES -> Hint.NeedTexture
+                TrackingFailureReason.CAMERA_UNAVAILABLE -> Hint.CameraUnavailable
+                else -> Hint.TrackingLost
+            }
+            planeCount == 0 && !hasHit -> Hint.Scan
+            !hasHit && points < 2 -> Hint.Aim
+            points == 0 -> Hint.PlaceFirst
+            points == 1 -> Hint.PlaceNext
+            else -> Hint.AddOrSave
+        }
+
+    /** Planes that are tracking and not merged into another plane. */
+    private fun countPlanes(session: Session): Int {
+        var n = 0
+        for (plane in session.getAllTrackables(Plane::class.java)) {
+            if (plane.trackingState == TrackingState.TRACKING && plane.subsumedBy == null) n++
+        }
+        return n
     }
 
     /**

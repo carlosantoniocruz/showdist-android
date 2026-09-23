@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,16 +43,17 @@ import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 
 /**
- * The Measure control bar (SPEC.md §2.6): five equal columns. The M/FT toggle (5) isn't
- * built yet; its column is left empty so the layout is final.
- * [charge] (0..1) is read only while drawing the main button's save arc.
+ * The Measure control bar (SPEC.md §2.6): History, Undo, the main button, Clear and the
+ * M/FT unit toggle, in five equal columns. [charge] (0..1) is read only while drawing the main button's save arc.
  */
 @Composable
 fun ControlBar(
     canPlace: Boolean,
     hasPoints: Boolean,
     savedCount: Int,
+    units: UnitSystem,
     charge: () -> Float,
+    onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
     onPlace: () -> Unit,
     onUndo: () -> Unit,
@@ -67,7 +70,7 @@ fun ControlBar(
             BarColumn { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onUndo) }
             BarColumn { MainButton(canPlace, charge, onPlace) }
             BarColumn { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClear) }
-            BarColumn {}
+            BarColumn { UnitToggle(units, onUnits) }
         }
     }
 }
@@ -97,6 +100,33 @@ private fun BarIconButton(icon: ImageVector, label: String, enabled: Boolean, on
             modifier = Modifier.size(24.dp).alpha(if (enabled) 0.9f else 0.3f),
         )
     }
+}
+
+/** "M" and "FT" in a fixed 60×60 slot; the active one is bold white, the other dimmed. */
+@Composable
+private fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit) {
+    Row(Modifier.size(60.dp).wrapContentSize(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+        UnitLabel("M", units == UnitSystem.Metric) { onUnits(UnitSystem.Metric) }
+        UnitLabel("FT", units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
+    }
+}
+
+@Composable
+private fun UnitLabel(label: String, active: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .semantics { selected = active }
+            .padding(horizontal = 7.dp, vertical = 16.dp),
+        style = BaseText.copy(
+            color = if (active) Palette.White else Palette.White.copy(alpha = 0.5f),
+            fontSize = 12.sp,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+            letterSpacing = 1.5.sp,
+        ),
+    )
 }
 
 /** History, with a count badge (white, 11 sp, bold) at the top-right once anything is saved. */

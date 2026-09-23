@@ -9,6 +9,17 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -23,7 +34,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -86,7 +96,12 @@ private enum class ProblemAction(val label: String) {
  * in place, so points survive and tracking resumes on return (SPEC.md §2.1).
  */
 @Composable
-fun MeasureScreen(units: UnitSystem, covered: Boolean, onHistory: () -> Unit) {
+fun MeasureScreen(
+    units: UnitSystem,
+    covered: Boolean,
+    onUnits: (UnitSystem) -> Unit,
+    onHistory: () -> Unit,
+) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
     // The ARCore install prompt is shown only on the first attempt (SPEC.md §2.1).
@@ -137,7 +152,7 @@ fun MeasureScreen(units: UnitSystem, covered: Boolean, onHistory: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, covered, onHistory, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, covered, onUnits, onHistory, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -158,6 +173,7 @@ fun MeasureScreen(units: UnitSystem, covered: Boolean, onHistory: () -> Unit) {
 private fun MeasureArea(
     units: UnitSystem,
     covered: Boolean,
+    onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
     onSessionFailed: (Exception) -> Unit,
 ) {
@@ -191,20 +207,30 @@ private fun MeasureArea(
                 arCoreAvailabilityOverlay = {},
                 lifecycle = sessionLifecycle,
             )
+            // Layers (SPEC.md §2.2): camera, top scrim, overlay canvas, top info column.
+            TopScrim(Modifier.fillMaxSize())
             MeasureOverlay(tracker, Modifier.fillMaxSize())
-            if (tracker.pointCount >= 2) {
-                RunningTotal(
-                    tracker.totalMetres,
-                    units,
-                    Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(start = 12.dp, top = 16.dp, end = 12.dp),
-                )
+            Column(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .padding(start = 12.dp, top = 16.dp, end = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                HintLine(tracker.hint)
+                if (tracker.pointCount >= 2) {
+                    Spacer(Modifier.height(6.dp))
+                    RunningTotal(tracker.totalMetres, units)
+                }
             }
         }
         ControlBar(
             canPlace = tracker.hasHit,
             hasPoints = tracker.pointCount > 0,
             savedCount = RecordingStore.recordings.size,
+            units = units,
             charge = holdToSave::charge,
+            onUnits = onUnits,
             onHistory = onHistory,
             onPlace = tracker::requestAdd,
             onUndo = tracker::undo,
@@ -213,6 +239,37 @@ private fun MeasureArea(
     }
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
+}
+
+/** darkTyrianBlue at 0.6 fading to transparent over the top 22% (SPEC.md §2.2). */
+@Composable
+private fun TopScrim(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        drawRect(
+            Brush.verticalGradient(
+                0f to Color(0x9912354E),
+                0.22f to Color(0x0012354E),
+            ),
+        )
+    }
+}
+
+/** The hint line (SPEC.md §2.3): 13 sp white at 0.85 with a soft shadow, cross-fading on change. */
+@Composable
+private fun HintLine(hint: Hint) {
+    val shadowBlur = with(LocalDensity.current) { 6.dp.toPx() }
+    Crossfade(hint, animationSpec = tween(250), label = "hint") { h ->
+        Text(
+            h.text,
+            textAlign = TextAlign.Center,
+            style = BaseText.copy(
+                color = Palette.White.copy(alpha = 0.85f),
+                fontSize = 13.sp,
+                letterSpacing = 0.3.sp,
+                shadow = Shadow(Color(0xAA12354E), blurRadius = shadowBlur),
+            ),
+        )
+    }
 }
 
 /** Running total pill (SPEC.md §2.2): labelScrim, 14 dp corners, 34 sp weight 200. */
