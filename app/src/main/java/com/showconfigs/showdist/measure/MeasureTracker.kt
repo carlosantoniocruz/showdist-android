@@ -127,6 +127,11 @@ class MeasureTracker {
         pointCount = 0
     }
 
+    /** Current world positions of every point, in metres, for saving a recording. */
+    fun snapshotPoints(): List<DoubleArray> = List(anchors.size) { i ->
+        doubleArrayOf(world[i * 3].toDouble(), world[i * 3 + 1].toDouble(), world[i * 3 + 2].toDouble())
+    }
+
     fun onFrame(session: Session, frame: Frame) {
         val timestamp = frame.timestamp
         if (timestamp == 0L || timestamp == lastImageTimestamp) return

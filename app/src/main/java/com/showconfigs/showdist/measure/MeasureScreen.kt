@@ -53,6 +53,9 @@ import com.google.ar.core.exceptions.UnavailableApkTooOldException
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
+import com.showconfigs.showdist.history.MeasurementSheet
+import com.showconfigs.showdist.history.Recording
+import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.CaptionText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
@@ -78,8 +81,12 @@ private enum class ProblemAction(val label: String) {
     TryAgain("Try again"),
 }
 
+/**
+ * The Measure screen. While [covered] (History is open on top), the AR session is paused
+ * in place, so points survive and tracking resumes on return (SPEC.md §2.1).
+ */
 @Composable
-fun MeasureScreen(units: UnitSystem) {
+fun MeasureScreen(units: UnitSystem, covered: Boolean, onHistory: () -> Unit) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
     // The ARCore install prompt is shown only on the first attempt (SPEC.md §2.1).
@@ -130,7 +137,7 @@ fun MeasureScreen(units: UnitSystem) {
     Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, covered, onHistory, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -148,13 +155,21 @@ fun MeasureScreen(units: UnitSystem) {
  * discarding ARCore's map and its anchors (SPEC.md §2.1).
  */
 @Composable
-private fun MeasureArea(units: UnitSystem, onSessionFailed: (Exception) -> Unit) {
+private fun MeasureArea(
+    units: UnitSystem,
+    covered: Boolean,
+    onHistory: () -> Unit,
+    onSessionFailed: (Exception) -> Unit,
+) {
     val tracker = remember { MeasureTracker() }
     // Labels and the total reformat on the next camera frame after a change.
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
+    val sessionLifecycle = rememberCappedLifecycle(capped = covered)
+    var saved by remember { mutableStateOf<Recording?>(null) }
+    val holdToSave = rememberHoldToSave(tracker) { saved = it }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().then(holdToSave.modifier)) {
         Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
@@ -174,6 +189,7 @@ private fun MeasureArea(units: UnitSystem, onSessionFailed: (Exception) -> Unit)
                 // suppress SceneView's own overlays so only the spec's Problem view is shown.
                 cameraPermissionOverlay = {},
                 arCoreAvailabilityOverlay = {},
+                lifecycle = sessionLifecycle,
             )
             MeasureOverlay(tracker, Modifier.fillMaxSize())
             if (tracker.pointCount >= 2) {
@@ -187,11 +203,16 @@ private fun MeasureArea(units: UnitSystem, onSessionFailed: (Exception) -> Unit)
         ControlBar(
             canPlace = tracker.hasHit,
             hasPoints = tracker.pointCount > 0,
+            savedCount = RecordingStore.recordings.size,
+            charge = holdToSave::charge,
+            onHistory = onHistory,
             onPlace = tracker::requestAdd,
             onUndo = tracker::undo,
             onClear = tracker::clear,
         )
     }
+
+    saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
 }
 
 /** Running total pill (SPEC.md §2.2): labelScrim, 14 dp corners, 34 sp weight 200. */

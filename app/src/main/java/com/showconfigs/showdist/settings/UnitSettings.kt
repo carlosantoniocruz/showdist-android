@@ -8,7 +8,10 @@ import androidx.core.content.edit
 import com.showconfigs.showdist.measure.UnitSystem
 
 private const val PREFS = "showdist"
-private const val KEY_UNITS = "units"
+private const val KEY_UNITS = "showdist.unit_system"
+
+/** The key used before it matched SPEC.md §2.7; still read so an earlier choice is kept. */
+private const val OLD_KEY_UNITS = "units"
 
 /**
  * The persisted unit system (SPEC.md §2.5): Imperial by default, shared by Settings and
@@ -18,13 +21,21 @@ class UnitSettings(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     var units by mutableStateOf(
-        if (prefs.getString(KEY_UNITS, null) == "metric") UnitSystem.Metric else UnitSystem.Imperial,
+        // Missing or unknown values mean Imperial.
+        if ((prefs.getString(KEY_UNITS, null) ?: prefs.getString(OLD_KEY_UNITS, null)) == "metric") {
+            UnitSystem.Metric
+        } else {
+            UnitSystem.Imperial
+        },
     )
         private set
 
     fun select(value: UnitSystem) {
         if (value == units) return
         units = value
-        prefs.edit { putString(KEY_UNITS, if (value == UnitSystem.Metric) "metric" else "imperial") }
+        prefs.edit {
+            putString(KEY_UNITS, if (value == UnitSystem.Metric) "metric" else "imperial")
+            remove(OLD_KEY_UNITS)
+        }
     }
 }
