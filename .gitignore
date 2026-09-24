@@ -7,6 +7,6 @@ local.properties
 captures/
 
 # Release signing: never commit the keystore or its passwords.
-keystore.properties
+keystore.properties*
 *.jks
 *.keystore
