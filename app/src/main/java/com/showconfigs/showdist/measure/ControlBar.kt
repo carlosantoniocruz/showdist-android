@@ -65,8 +65,8 @@ fun ControlBar(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().background(Palette.DarkTyrianBlue)) {
-        Box(Modifier.fillMaxWidth().height(1.5.dp).background(Palette.DarkCitrine))
+    Column(modifier.fillMaxWidth().background(Palette.Ink)) {
+        Box(Modifier.fillMaxWidth().height(1.5.dp).background(Palette.Citrine))
         Row(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -163,14 +163,14 @@ private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
 }
 
 /**
- * The 96 dp main button: 46 dp ring (1.5 dp stroke) and a 14 dp centre dot in peachRed,
+ * The 96 dp main button: 46 dp ring (1.5 dp stroke) and a 14 dp centre dot in peach,
  * at 0.4 alpha when there's no reticle hit. While a save charges, a white arc sweeps
  * clockwise from 12 o'clock over the ring.
  */
 @Composable
 private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Unit) {
     val view = LocalView.current
-    val accent = if (enabled) Palette.PeachRed else Palette.PeachRed.copy(alpha = 0.4f)
+    val accent = if (enabled) Palette.Peach else Palette.Peach.copy(alpha = 0.4f)
     Canvas(
         Modifier
             .size(96.dp)

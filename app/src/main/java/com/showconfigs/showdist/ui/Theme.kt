@@ -36,7 +36,7 @@ val BaseText = TextStyle(fontFamily = JetBrainsMono, fontFeatureSettings = FEATU
 
 /** Caption style (SPEC.md §6.3). App-bar titles override the colour to white. */
 val CaptionText = BaseText.copy(
-    color = Palette.WarmGray,
+    color = Palette.WarmGrey,
     fontSize = 12.sp,
     fontWeight = FontWeight.SemiBold,
     letterSpacing = 3.sp,
@@ -45,30 +45,46 @@ val CaptionText = BaseText.copy(
 
 /**
  * One fixed dark scheme (SPEC.md §0, §5): it ignores the system light/dark setting.
- * peachRed is the primary; every surface, sheet, dialog and menu is darkTyrianBlue with no tint.
+ * peach is the primary; screens and app bars are ink, and dialogs, sheets and menus are
+ * inkSurface, with no tint. Every role is set so no Material baseline colour can appear.
  */
 private val ShowdistColors = darkColorScheme(
-    primary = Palette.PeachRed,
+    primary = Palette.Peach,
     onPrimary = Palette.White,
+    primaryContainer = Palette.InkSurface,
+    onPrimaryContainer = Palette.White,
+    inversePrimary = Palette.Peach,
     secondary = Palette.OlympicBlue,
     onSecondary = Palette.White,
-    tertiary = Palette.SeaGreen,
+    secondaryContainer = Palette.InkSurface,
+    onSecondaryContainer = Palette.White,
+    tertiary = Palette.SeafoamMuted,
     onTertiary = Palette.White,
-    background = Palette.DarkTyrianBlue,
+    tertiaryContainer = Palette.InkSurface,
+    onTertiaryContainer = Palette.White,
+    background = Palette.Ink,
     onBackground = Palette.White,
-    surface = Palette.DarkTyrianBlue,
+    surface = Palette.Ink,
     onSurface = Palette.White,
-    surfaceVariant = Palette.DarkTyrianBlue,
-    onSurfaceVariant = Palette.WarmGray,
+    surfaceVariant = Palette.InkSurface,
+    onSurfaceVariant = Palette.WarmGrey,
     surfaceTint = Color.Transparent,
-    surfaceContainerLowest = Palette.DarkTyrianBlue,
-    surfaceContainerLow = Palette.DarkTyrianBlue,
-    surfaceContainer = Palette.DarkTyrianBlue,
-    surfaceContainerHigh = Palette.DarkTyrianBlue,
-    surfaceContainerHighest = Palette.DarkTyrianBlue,
-    outline = Palette.WarmGray,
-    error = Palette.PeachRed,
+    inverseSurface = Palette.White,
+    inverseOnSurface = Palette.Ink,
+    surfaceBright = Palette.InkSurface,
+    surfaceDim = Palette.Ink,
+    surfaceContainerLowest = Palette.Ink,
+    surfaceContainerLow = Palette.InkSurface,
+    surfaceContainer = Palette.InkSurface,
+    surfaceContainerHigh = Palette.InkSurface,
+    surfaceContainerHighest = Palette.InkSurface,
+    outline = Palette.WarmGrey,
+    outlineVariant = Palette.White.copy(alpha = 0.08f),
+    scrim = Palette.Scrim,
+    error = Palette.Peach,
     onError = Palette.White,
+    errorContainer = Palette.InkSurface,
+    onErrorContainer = Palette.White,
 )
 
 /** Material 3's type scale, set in JetBrains Mono with slashed zero (SPEC.md §6.1). */

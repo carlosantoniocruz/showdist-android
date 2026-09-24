@@ -47,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -149,7 +148,7 @@ fun MeasureScreen(
         if ((state as? StartState.Problem)?.retryOnResume == true) start()
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue)) {
+    Box(Modifier.fillMaxSize().background(Palette.Ink)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
             StartState.Ready -> MeasureArea(units, covered, onUnits, onHistory, onSessionFailed = { state = problemFor(it) })
@@ -243,14 +242,14 @@ private fun MeasureArea(
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
 }
 
-/** darkTyrianBlue at 0.6 fading to transparent over the top 22% (SPEC.md §2.2). */
+/** ink at 0.6 fading to transparent over the top 22% (SPEC.md §2.2). */
 @Composable
 private fun TopScrim(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         drawRect(
             Brush.verticalGradient(
-                0f to Color(0x9912354E),
-                0.22f to Color(0x0012354E),
+                0f to Palette.Ink.copy(alpha = 0.6f),
+                0.22f to Palette.Ink.copy(alpha = 0f),
             ),
         )
     }
@@ -268,19 +267,19 @@ private fun HintLine(hint: Hint) {
                 color = Palette.White.copy(alpha = 0.85f),
                 fontSize = 13.sp,
                 letterSpacing = 0.3.sp,
-                shadow = Shadow(Color(0xAA12354E), blurRadius = shadowBlur),
+                shadow = Shadow(Palette.Ink.copy(alpha = 0.67f), blurRadius = shadowBlur),
             ),
         )
     }
 }
 
-/** Running total pill (SPEC.md §2.2): labelScrim, 14 dp corners, 34 sp weight 200. */
+/** Running total pill (SPEC.md §2.2): Palette.Scrim, 14 dp corners, 34 sp weight 200. */
 @Composable
 private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier) {
     BasicText(
         text = DistanceFormat.format(metres, units),
         modifier = modifier
-            .background(LabelScrim, RoundedCornerShape(14.dp))
+            .background(Palette.Scrim, RoundedCornerShape(14.dp))
             .padding(horizontal = 16.dp, vertical = 4.dp),
         style = BaseText.copy(
             color = Palette.White,
@@ -290,8 +289,6 @@ private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier =
         ),
     )
 }
-
-private val LabelScrim = Color(0x80000000)
 
 private fun problemFor(e: Exception): StartState.Problem = when (e) {
     is UnavailableUserDeclinedInstallationException -> StartState.Problem(
@@ -350,7 +347,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Canvas(Modifier.size(40.dp)) { drawCircle(Palette.PeachRed.copy(alpha = 0.85f)) }
+        Canvas(Modifier.size(40.dp)) { drawCircle(Palette.Peach.copy(alpha = 0.85f)) }
         Spacer(Modifier.height(24.dp))
         BasicText(
             text = problem.title,
@@ -365,7 +362,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         BasicText(
             text = problem.body,
             style = BaseText.copy(
-                color = Palette.WarmGray,
+                color = Palette.WarmGrey,
                 fontSize = 14.sp,
                 lineHeight = 1.4.em,
                 textAlign = TextAlign.Center,

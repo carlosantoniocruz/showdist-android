@@ -4,12 +4,16 @@ import androidx.compose.ui.graphics.Color
 
 /** Fixed app palette (SPEC.md §5). */
 object Palette {
-    val DarkTyrianBlue = Color(0xFF12354E)
+    val Ink = Color(0xFF14343F)
+    val InkSurface = Color(0xFF1F3E48)
     val OlympicBlue = Color(0xFF5A82B3)
-    val LightMauve = Color(0xFF9A72AA)
-    val DarkCitrine = Color(0xFF8B835B)
-    val PeachRed = Color(0xFFF15A30)
-    val SeaGreen = Color(0xFF00B49B)
-    val WarmGray = Color(0xFFA1A39A)
+    val Citrine = Color(0xFF8B835B)
+    val Peach = Color(0xFFF15A30)
+    val Seafoam = Color(0xFF1FB89A)
+    val SeafoamMuted = Color(0xFF5E9A8E)
+    val WarmGrey = Color(0xFFB5AEA3)
     val White = Color(0xFFFFFFFF)
+
+    /** Behind distance labels and the running total. */
+    val Scrim = Color(0x80000000)
 }

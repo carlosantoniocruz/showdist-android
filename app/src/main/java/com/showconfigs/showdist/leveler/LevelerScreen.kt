@@ -72,7 +72,7 @@ fun LevelerScreen(onBack: () -> Unit) {
                 }
             }
         },
-        containerColor = Palette.DarkTyrianBlue,
+        containerColor = Palette.Ink,
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(

@@ -22,14 +22,12 @@ private const val LINE_WIDTH_DP = 1.3f
 private const val DASH_DP = 6f
 private const val SHADOW_OFFSET_Y_DP = 1.2f
 private const val SHADOW_SIGMA_DP = 1.4f
-private const val SHADOW_COLOR = 0xB312354E.toInt()
 
 private const val LABEL_TEXT_SP = 12.5f
 private const val LABEL_PAD_H_DP = 8f
 private const val LABEL_PAD_V_DP = 4f
 private const val LABEL_EDGE_DP = 8f
 private const val LABEL_BORDER_DP = 1f
-private const val LABEL_SCRIM = 0x80000000.toInt()
 
 /**
  * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): segment
@@ -82,7 +80,8 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
 
 /** Placed points, segment lines and the live line (SPEC.md §3.2). Paints are created once. */
 private class PointsPainter(private val density: Float) {
-    private val peachRed = Palette.PeachRed.toArgb()
+    private val peach = Palette.Peach.toArgb()
+    private val shadowColor = Palette.Ink.copy(alpha = 0.7f).toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
     private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
     private val dash = DashPathEffect(floatArrayOf(DASH_DP * density, DASH_DP * density), 0f)
@@ -91,23 +90,23 @@ private class PointsPainter(private val density: Float) {
         style = Paint.Style.STROKE
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
-        color = peachRed
+        color = peach
     }
     private val lineShadow = Paint(line).apply {
-        color = SHADOW_COLOR
+        color = shadowColor
         maskFilter = shadowBlur
     }
     private val liveLine = Paint(line).apply {
-        color = Palette.SeaGreen.toArgb()
+        color = Palette.SeafoamMuted.toArgb()
         pathEffect = dash
     }
     private val liveLineShadow = Paint(lineShadow).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = peachRed
+        color = peach
     }
     private val dotShadow = Paint(dot).apply {
-        color = SHADOW_COLOR
+        color = shadowColor
         maskFilter = shadowBlur
     }
 
@@ -157,7 +156,7 @@ private class PointsPainter(private val density: Float) {
 
 /**
  * Distance label pills (SPEC.md §3.3): JetBrains Mono 12.5 sp, tabular figures and slashed
- * zero, on labelScrim. Weight 500 renders with the bundled Regular face (SPEC.md §6.1).
+ * zero, on Palette.Scrim. Weight 500 renders with the bundled Regular face (SPEC.md §6.1).
  * Text is drawn straight from the tracker's char buffers, so nothing is allocated.
  */
 private class LabelPainter(context: Context, private val density: Float, fontScale: Float) {
@@ -169,13 +168,14 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
     }
     private val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = LABEL_SCRIM
+        color = Palette.Scrim.toArgb()
     }
     private val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = LABEL_BORDER_DP * density
-        color = Palette.SeaGreen.copy(alpha = 0.8f).toArgb()
     }
+    private val peach = Palette.Peach.toArgb()
+    private val seafoamMuted = Palette.SeafoamMuted.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 
@@ -192,13 +192,13 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         val radius = pillHeight / 2f
 
         c.drawRoundRect(left, top, left + pillWidth, top + pillHeight, radius, radius, scrim)
-        if (live) {
-            val inset = border.strokeWidth / 2f
-            c.drawRoundRect(
-                left + inset, top + inset, left + pillWidth - inset, top + pillHeight - inset,
-                radius - inset, radius - inset, border,
-            )
-        }
+        // Peach outlines a placed segment's label, muted seafoam the live one.
+        border.color = if (live) seafoamMuted else peach
+        val inset = border.strokeWidth / 2f
+        c.drawRoundRect(
+            left + inset, top + inset, left + pillWidth - inset, top + pillHeight - inset,
+            radius - inset, radius - inset, border,
+        )
         val baseline = cy - (metrics.ascent + metrics.descent) / 2f
         c.drawText(chars, 0, length, left + LABEL_PAD_H_DP * density, baseline, text)
     }

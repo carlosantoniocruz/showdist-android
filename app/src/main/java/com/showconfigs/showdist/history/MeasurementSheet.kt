@@ -100,7 +100,7 @@ fun MeasurementSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Palette.DarkTyrianBlue,
+        containerColor = Palette.InkSurface,
     ) {
         Column(
             Modifier
@@ -115,11 +115,11 @@ fun MeasurementSheet(
                 style = BaseText.copy(fontSize = 44.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
             )
             Spacer(Modifier.height(4.dp))
-            Text(recording.countsLine(), style = BaseText.copy(color = Palette.WarmGray, fontSize = 13.sp))
+            Text(recording.countsLine(), style = BaseText.copy(color = Palette.WarmGrey, fontSize = 13.sp))
             Spacer(Modifier.height(18.dp))
             recording.segments.forEachIndexed { i, length ->
                 Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", Modifier.width(32.dp), style = BaseText.copy(color = Palette.WarmGray, fontSize = 13.sp))
+                    Text("${i + 1}", Modifier.width(32.dp), style = BaseText.copy(color = Palette.WarmGrey, fontSize = 13.sp))
                     Text(
                         DistanceFormat.format(length, units),
                         style = BaseText.copy(fontSize = 15.sp, fontFeatureSettings = FEATURES_TABULAR),
@@ -137,7 +137,7 @@ fun MeasurementSheet(
                 IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.White)
             }
             TextButton(onClick = { closeThen {} }, modifier = Modifier.fillMaxWidth()) {
-                Text("Done", style = BaseText.copy(color = Palette.WarmGray, fontSize = 14.sp))
+                Text("Done", style = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp))
             }
         }
     }
@@ -154,7 +154,7 @@ private fun IconLabel(icon: ImageVector, label: String, color: androidx.compose.
 
 /**
  * The share-menu button (SPEC.md §2.7): an ios_share icon opening "Share .txt" and
- * "Copy text". White when enabled, warmGray when disabled.
+ * "Copy text". White when enabled, warmGrey when disabled.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,13 +171,13 @@ fun ShareMenuButton(enabled: Boolean, onShare: () -> Unit, onCopy: () -> Unit) {
                 enabled = enabled,
                 colors = IconButtonDefaults.iconButtonColors(
                     contentColor = Palette.White,
-                    disabledContentColor = Palette.WarmGray,
+                    disabledContentColor = Palette.WarmGrey,
                 ),
             ) {
                 Icon(ShowdistIcons.IosShare, contentDescription = "Share or copy", modifier = Modifier.size(22.dp))
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.DarkTyrianBlue) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.InkSurface) {
             MenuItem(ShowdistIcons.IosShare, "Share .txt") { open = false; onShare() }
             MenuItem(ShowdistIcons.ContentCopy, "Copy text") { open = false; onCopy() }
         }

@@ -35,9 +35,9 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
     val version = remember {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     }
-    val muted = BaseText.copy(color = Palette.WarmGray, fontSize = 14.sp, textAlign = TextAlign.Center)
+    val muted = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp, textAlign = TextAlign.Center)
 
-    Scaffold(topBar = { ShowdistAppBar("SHOWDIST", onBack) }, containerColor = Palette.DarkTyrianBlue) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("SHOWDIST", onBack) }, containerColor = Palette.Ink) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
@@ -58,7 +58,7 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
             Text("DEVELOPER", Modifier.fillMaxWidth(), style = CaptionText.copy(textAlign = TextAlign.Start))
             Spacer(Modifier.height(12.dp))
             SelectionContainer {
-                Text(DEVELOPER_EMAIL, style = BaseText.copy(color = Palette.LightMauve, fontSize = 15.sp))
+                Text(DEVELOPER_EMAIL, style = BaseText.copy(color = Palette.Peach, fontSize = 15.sp))
             }
             Spacer(Modifier.height(28.dp))
             SettingsDivider()
@@ -74,7 +74,7 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
                 "Created with AI assistance",
                 Modifier.fillMaxWidth(),
                 style = BaseText.copy(
-                    color = Palette.WarmGray,
+                    color = Palette.WarmGrey,
                     fontSize = 12.sp,
                     fontStyle = FontStyle.Italic,
                     textAlign = TextAlign.Center,

@@ -55,7 +55,7 @@ fun MainMenu(
     onHistory: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    Box(Modifier.fillMaxSize().background(Palette.DarkTyrianBlue).safeDrawingPadding()) {
+    Box(Modifier.fillMaxSize().background(Palette.Ink).safeDrawingPadding()) {
         LandingRuler(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(RulerBandHeight))
 
         Column(Modifier.fillMaxSize().padding(start = 28.dp, end = 28.dp, bottom = RulerBandHeight)) {
@@ -64,7 +64,7 @@ fun MainMenu(
                 text = "SHOWDIST",
                 modifier = Modifier.fillMaxWidth(),
                 style = BaseText.copy(
-                    color = Palette.LightMauve,
+                    color = Palette.Citrine,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 3.sp,
@@ -94,10 +94,10 @@ fun MainMenu(
     }
 }
 
-/** Tool card (SPEC.md §1.4): MEASURE is prominent (peachRed), LEVELER quiet (olympicBlue). */
+/** Tool card (SPEC.md §1.4): MEASURE is prominent (peach), LEVELER quiet (olympicBlue). */
 @Composable
 private fun ToolCard(label: String, description: String, prominent: Boolean, onClick: () -> Unit) {
-    val accent = if (prominent) Palette.PeachRed else Palette.OlympicBlue
+    val accent = if (prominent) Palette.Peach else Palette.OlympicBlue
     val shape = RoundedCornerShape(14.dp)
     val labelSize: TextUnit = if (prominent) 20.sp else 16.sp
     val arrowSize: Dp = if (prominent) 22.dp else 18.dp
@@ -106,7 +106,7 @@ private fun ToolCard(label: String, description: String, prominent: Boolean, onC
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (prominent) accent.copy(alpha = 0.10f) else Color.Transparent)
+            .background(if (prominent) Palette.InkSurface else Color.Transparent)
             .border(BorderStroke(1.dp, accent.copy(alpha = if (prominent) 0.9f else 0.45f)), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = if (prominent) 18.dp else 14.dp),
@@ -121,7 +121,7 @@ private fun ToolCard(label: String, description: String, prominent: Boolean, onC
             Text(
                 text = description,
                 style = BaseText.copy(
-                    color = Palette.WarmGray,
+                    color = Palette.WarmGrey,
                     fontSize = if (prominent) 13.sp else 12.sp,
                     lineHeight = 1.35.em,
                 ),
@@ -136,7 +136,7 @@ private fun ToolCard(label: String, description: String, prominent: Boolean, onC
 @Composable
 private fun HistoryLink(savedCount: Int, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(1.5.dp).height(44.dp).background(Palette.PeachRed.copy(alpha = 0.6f)))
+        Box(Modifier.width(1.5.dp).height(44.dp).background(Palette.Peach.copy(alpha = 0.6f)))
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -145,16 +145,16 @@ private fun HistoryLink(savedCount: Int, onClick: () -> Unit) {
                 .padding(start = 14.dp, top = 12.dp, end = 4.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(ShowdistIcons.History, contentDescription = null, tint = Palette.WarmGray, modifier = Modifier.size(18.dp))
+            Icon(ShowdistIcons.History, contentDescription = null, tint = Palette.WarmGrey, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(10.dp))
             Text("HISTORY", style = BaseText.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp))
             Spacer(Modifier.width(10.dp))
             Text(
                 text = "$savedCount saved",
                 modifier = Modifier.weight(1f),
-                style = BaseText.copy(color = Palette.WarmGray, fontSize = 12.sp),
+                style = BaseText.copy(color = Palette.WarmGrey, fontSize = 12.sp),
             )
-            Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.WarmGray, modifier = Modifier.size(20.dp))
+            Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.WarmGrey, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -170,7 +170,7 @@ private fun SettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             state = rememberTooltipState(),
         ) {
             IconButton(onClick = onClick) {
-                Icon(ShowdistIcons.SettingsOutlined, contentDescription = "Settings", tint = Palette.WarmGray)
+                Icon(ShowdistIcons.SettingsOutlined, contentDescription = "Settings", tint = Palette.WarmGrey)
             }
         }
     }

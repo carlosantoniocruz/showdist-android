@@ -34,7 +34,7 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 /** Settings (SPEC.md §1.5): the unit system, and a link to About. */
 @Composable
 fun SettingsScreen(unitSettings: UnitSettings, onAbout: () -> Unit, onBack: () -> Unit) {
-    Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.DarkTyrianBlue) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Ink) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
         ) {
@@ -62,13 +62,13 @@ private fun UnitOption(label: String, selected: Boolean, onSelect: () -> Unit) {
         Icon(
             if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Palette.OlympicBlue else Palette.WarmGray,
+            tint = if (selected) Palette.OlympicBlue else Palette.WarmGrey,
         )
     }
 }
 
 /**
- * A tappable list row: white 16 sp title, optional warmGray 12 sp subtitle, trailing icon.
+ * A tappable list row: white 16 sp title, optional warmGrey 12 sp subtitle, trailing icon.
  * [horizontalPadding] is 16 dp like a standard list tile; About's licenses row uses 0.
  */
 @Composable
@@ -90,7 +90,7 @@ internal fun SettingsRow(
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = BaseText.copy(fontSize = 16.sp))
-            if (subtitle != null) Text(subtitle, style = BaseText.copy(color = Palette.WarmGray, fontSize = 12.sp))
+            if (subtitle != null) Text(subtitle, style = BaseText.copy(color = Palette.WarmGrey, fontSize = 12.sp))
         }
         Spacer(Modifier.width(16.dp))
         trailing()
@@ -105,5 +105,5 @@ internal fun SettingsDivider(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun Chevron() {
-    Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.WarmGray)
+    Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.WarmGrey)
 }

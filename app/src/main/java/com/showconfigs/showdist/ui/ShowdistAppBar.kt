@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Shared app bar (SPEC.md §1.2): darkTyrianBlue, no elevation or tint, white back arrow,
+ * Shared app bar (SPEC.md §1.2): ink, no elevation or tint, white back arrow,
  * centred title in the Caption style in white.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,8 +38,8 @@ fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowSc
         actions = actions,
         windowInsets = AppBarInsets,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Palette.DarkTyrianBlue,
-            scrolledContainerColor = Palette.DarkTyrianBlue,
+            containerColor = Palette.Ink,
+            scrolledContainerColor = Palette.Ink,
             navigationIconContentColor = Palette.White,
             titleContentColor = Palette.White,
             actionIconContentColor = Palette.White,

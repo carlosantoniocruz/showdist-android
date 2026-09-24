@@ -27,18 +27,18 @@ fun blurForSigma(sigmaPx: Float) =
  * All paints are created once per density.
  */
 class ReticlePainter(private val density: Float) {
-    private val seaGreen = Palette.SeaGreen.toArgb()
+    private val seafoam = Palette.Seafoam.toArgb()
     private val strokeWidth = HOLLOW_STROKE_DP * density
     private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
 
     private val dotFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = seaGreen
+        color = seafoam
     }
     private val dotStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = this@ReticlePainter.strokeWidth
-        color = seaGreen
+        color = seafoam
         alpha = SEARCHING_ALPHA
     }
     private val centre = Paint(Paint.ANTI_ALIAS_FLAG).apply {

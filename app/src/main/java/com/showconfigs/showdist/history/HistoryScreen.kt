@@ -109,13 +109,13 @@ fun HistoryScreen(units: UnitSystem, onBack: () -> Unit) {
                 }
             }
         },
-        containerColor = Palette.DarkTyrianBlue,
+        containerColor = Palette.Ink,
     ) { padding ->
         if (recordings.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save.",
-                    style = BaseText.copy(color = Palette.WarmGray, fontSize = 14.sp, lineHeight = 1.5.em, textAlign = TextAlign.Center),
+                    style = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp, lineHeight = 1.5.em, textAlign = TextAlign.Center),
                 )
             }
             return@Scaffold
@@ -160,12 +160,12 @@ fun HistoryScreen(units: UnitSystem, onBack: () -> Unit) {
     pendingDelete?.let { request ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            containerColor = Palette.DarkTyrianBlue,
+            containerColor = Palette.InkSurface,
             title = { Text(request.title, style = BaseText.copy(fontSize = 18.sp, fontWeight = FontWeight.Normal)) },
-            text = { Text("This can't be undone.", style = BaseText.copy(color = Palette.WarmGray, fontSize = 14.sp)) },
+            text = { Text("This can't be undone.", style = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp)) },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
-                    Text("Cancel", style = BaseText.copy(color = Palette.WarmGray, fontSize = 14.sp))
+                    Text("Cancel", style = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp))
                 }
             },
             confirmButton = {
@@ -193,11 +193,11 @@ private fun HistoryRow(
     onShare: () -> Unit,
     onCopy: () -> Unit,
 ) {
-    val accent = if (isSelected) Palette.LightMauve else Palette.White
+    val accent = if (isSelected) Palette.Peach else Palette.White
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (isSelected) Palette.LightMauve.copy(alpha = 0.12f) else Palette.DarkTyrianBlue)
+            .background(if (isSelected) Palette.Peach.copy(alpha = 0.12f) else Palette.Ink)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .heightIn(min = 72.dp)
             .padding(start = 16.dp, end = 4.dp),
@@ -210,13 +210,13 @@ private fun HistoryRow(
                 DistanceFormat.format(recording.total, units),
                 style = BaseText.copy(fontSize = 20.sp, fontWeight = FontWeight.Light),
             )
-            Text("${recording.points.size} points", style = BaseText.copy(color = Palette.WarmGray, fontSize = 12.sp))
+            Text("${recording.points.size} points", style = BaseText.copy(color = Palette.WarmGrey, fontSize = 12.sp))
         }
         if (selecting) {
             Icon(
                 if (isSelected) ShowdistIcons.CheckCircle else ShowdistIcons.CircleOutlined,
                 contentDescription = if (isSelected) "Selected" else "Not selected",
-                tint = if (isSelected) Palette.LightMauve else Palette.WarmGray,
+                tint = if (isSelected) Palette.Peach else Palette.WarmGrey,
                 modifier = Modifier.padding(end = 12.dp),
             )
         } else {
@@ -246,13 +246,13 @@ private fun SelectionBar(
                 ShowdistIcons.DeleteOutline,
                 "Delete selected",
                 enabled = count > 0,
-                tint = Palette.PeachRed,
+                tint = Palette.Peach,
                 onClick = onDelete,
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Palette.DarkTyrianBlue,
-            scrolledContainerColor = Palette.DarkTyrianBlue,
+            containerColor = Palette.Ink,
+            scrolledContainerColor = Palette.Ink,
             titleContentColor = Palette.White,
         ),
     )
@@ -264,7 +264,7 @@ private fun OverflowMenu(enabled: Boolean, onSelect: () -> Unit, onDeleteAll: ()
     var open by remember { mutableStateOf(false) }
     Box {
         AppBarAction(ShowdistIcons.MoreVert, "More", enabled = enabled) { open = true }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.DarkTyrianBlue) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.InkSurface) {
             DropdownMenuItem(
                 text = { Text("Select", style = BaseText.copy(fontSize = 14.sp)) },
                 onClick = { open = false; onSelect() },

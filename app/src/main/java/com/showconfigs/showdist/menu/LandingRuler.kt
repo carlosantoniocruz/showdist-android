@@ -29,7 +29,7 @@ private const val STEPS_PER_S = 30f
 private const val STEP_DP = PERIOD_DP / (DRIFT_PERIOD_S * STEPS_PER_S)
 
 /**
- * The landing-screen ruler band (SPEC.md §6.4): upward darkCitrine ticks on a baseline,
+ * The landing-screen ruler band (SPEC.md §6.4): upward citrine ticks on a baseline,
  * drifting right one 120 dp period every 12 s. It drifts only while the app is resumed and
  * this screen is shown, and is static when the system's "remove animations" setting is on.
  */
@@ -60,7 +60,7 @@ fun LandingRuler(modifier: Modifier = Modifier) {
         val majorH = 60.dp.toPx()
         val minorW = 2.6.dp.toPx()
         val majorW = 4.dp.toPx()
-        val color = Palette.DarkCitrine
+        val color = Palette.Citrine
 
         drawLine(color, Offset(0f, baselineY), Offset(size.width, baselineY), minorW)
 

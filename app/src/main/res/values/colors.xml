@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The palette colours XML resources need; ui/Palette.kt is the full set (SPEC.md §5). -->
+    <color name="ink">#14343F</color>
+    <color name="citrine">#8B835B</color>
+    <color name="peach">#F15A30</color>
+</resources>
