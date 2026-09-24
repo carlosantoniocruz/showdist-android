@@ -10,13 +10,21 @@ import kotlin.math.sqrt
 private const val TEXT_SEGMENT_LIMIT = 20
 
 /**
- * A saved measurement (SPEC.md §2.7): an ordered polyline of world positions in metres.
- * [id] is the creation time in microseconds since the epoch; [createdAt] is an ISO-8601
- * local timestamp such as `2026-09-23T17:31:05.123456`.
+ * A saved measurement (SPEC.md §2.7): an ordered polyline of world positions in metres,
+ * whose order is the segment order. [id] is the creation time in microseconds since the
+ * epoch; [createdAt] is an ISO-8601 local timestamp such as `2026-09-23T17:31:05.123456`.
+ * [unit] is the unit setting when it was saved (null for recordings saved before v1.1).
+ * [storedTotal] is the total from the file, used only when there are no points to measure.
  */
-class Recording(val id: String, val createdAt: String, val points: List<DoubleArray>) {
+class Recording(
+    val id: String,
+    val createdAt: String,
+    val points: List<DoubleArray>,
+    val unit: UnitSystem? = null,
+    storedTotal: Double? = null,
+) {
     val segments: List<Double> = (1 until points.size).map { i -> distance(points[i - 1], points[i]) }
-    val total: Double = segments.sum()
+    val total: Double = if (points.size >= 2 || storedTotal == null) segments.sum() else storedTotal
 
     /** "YYYY-MM-DD HH:MM", used as each block's heading in bulk text. */
     val headingTime: String get() = createdAt.take(16).replace('T', ' ')
@@ -25,12 +33,12 @@ class Recording(val id: String, val createdAt: String, val points: List<DoubleAr
     val fileTime: String get() = createdAt.take(19).filter { it.isDigit() }.let { "${it.take(8)}-${it.drop(8)}" }
 
     companion object {
-        /** A new recording stamped with the current time. */
-        fun create(points: List<DoubleArray>): Recording {
+        /** A new recording stamped with the current time and the current [unit] setting. */
+        fun create(points: List<DoubleArray>, unit: UnitSystem): Recording {
             val micros = System.currentTimeMillis() * 1000 + (System.nanoTime() / 1000) % 1000
             val base = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date(micros / 1000))
             val createdAt = base + (micros % 1000).toString().padStart(3, '0')
-            return Recording(micros.toString(), createdAt, points)
+            return Recording(micros.toString(), createdAt, points, unit)
         }
     }
 }

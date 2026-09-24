@@ -390,12 +390,16 @@ It is divided into **five equal-width columns**, each control centred in its own
 **Recording** fields:
 - `id`: the creation time in microseconds since the epoch, as a string.
 - `createdAt`: an ISO-8601 local timestamp.
-- `points`: an ordered list of `[x, y, z]` world positions in metres.
+- `points`: an ordered list of `[x, y, z]` world positions in metres, from the point anchors. Their order is the segment order.
+- `unit` (v1.1): `"Imperial"` or `"Metric"`, the unit setting when it was saved. Absent on older recordings.
+- `total` (v1.1): the total length in metres, written on every save.
 
-Derived values: segments (consecutive 3D distances) and total (their sum).
+Derived values: segments (consecutive 3D distances) and total (their sum). The stored `total` is used only for a recording with fewer than 2 points.
+
+**Migration:** files from before v1.1 have no `unit` or `total`; they load as they are (no unit, total from the points) and gain `total` on the next save. A recording with no `points` still loads.
 
 **Store:**
-- A single JSON file, `recordings.json`, in the app's private files directory. It holds an array of `{id, createdAt, points}` objects, **newest first**.
+- A single JSON file, `recordings.json`, in the app's private files directory. It holds an array of `{id, createdAt, points, total, unit?}` objects, **newest first**.
 - Loaded once at app start.
 - **Writes are atomic:** write `recordings.json.tmp` and flush it, then rename it over the original.
 - If the file can't be parsed, rename it to `recordings.json.corrupt` and start empty.
@@ -507,6 +511,29 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 - **Drawn** before the user's own points and labels (§3.2): lines 1.3 dp, dots radius 4.5 dp, with the usual overlay shadows. While aiming or aligning they're **seafoamMuted** and dashed (like the live line); once placed, **citrineLight** and solid, bright enough to read over the camera feed. Each drawn segment gets a label with the recording's saved length and a border to match.
 - **Measuring continues** as normal once placed: taps add the user's own peach points, and hold-to-save saves only those.
 - **Undo** with no user points left steps back: placed → aligning → aiming. **Clear** removes the projection as well. Leaving Measure ends it.
+
+### 2.12 PDF report
+
+"Export PDF" in History's selection mode (§1.9) writes one report of the selection, in list order, and opens the share sheet.
+
+- **Page:** US Letter, 612 × 792 pt, portrait, 54 pt (0.75 in) margins. Drawn with Android's `PdfDocument`, vectors only (lines, circles, text; no bitmaps), one page open at a time. White background.
+- **Colours and type:** segments 1.5 pt peach with round caps; endpoints peach dots (radius 3 pt in the one- and two-cell tiers, else 2.5 pt); text in ink; cell borders 0.5 pt warmGrey. JetBrains Mono, Regular and Bold, embedded.
+- **Header (page 1 only):** "Showdist — Measurement Report" (Bold 16 pt), then "Exported YYYY-MM-DD HH:MM" (10 pt); 48 pt tall.
+- **Footer (every page):** 9 pt on the bottom margin line: "Measured with Showdist v{versionName}" (from `BuildConfig`) on the left, "Page X of Y" on the right. 24 pt is reserved above it.
+- **Tiers** (cells fill the space between header and footer, 12 pt gaps):
+
+  | Selected | Grid | Label size |
+  |---|---|---|
+  | 1 | 1 × 1 | 11 pt |
+  | 2 | 1 column × 2 rows | 10 pt |
+  | 3–6 | 2 columns × ⌈n/2⌉ rows | 9 pt |
+  | 7+ | 3 columns × 4 rows, 12 per page, overflowing onto more pages (same grid) | 9 pt |
+
+- **Cell:** a 0.5 pt border with 12 pt padding. Caption at the bottom (30 pt): "#N · total" (Bold 10 pt), then the date "YYYY-MM-DD HH:MM" (9 pt). N is the position in the selection, from 1.
+- **Diagram:** the points projected onto their best-fit plane (PCA). No plane is stored per measurement, so this is always the fallback. On a steep plane (|normal · up| < 0.7, e.g. a wall) world-up stays up and across is horizontal in the plane; on a flat one (a floor) it's seen from above, its widest direction across. A straight line is drawn horizontal, or vertical if it's steep (|direction · up| > 0.7). The diagram is fitted at one uniform scale into the space above the caption, inset by 2.2 × the label size for labels, and centred. Only the geometry scales.
+- **Labels:** each segment's true 3D length, formatted per §2.5 in the current unit setting, never below 9 pt. Each sits at its segment's midpoint, pushed 4 pt plus half its box along the segment's normal, on the side away from the diagram's centre, on a white box so it never sits on a line, and moved back inside the cell if it would cross its edge.
+- **No points:** a recording with fewer than 2 points is drawn as one horizontal line, 70% of the diagram's width, labelled with its stored total.
+- **Output:** `<cache>/exports/showdist_YYYYMMDD_HHMM.pdf`, shared through the FileProvider with `ACTION_SEND`, type `application/pdf`, subject "Showdist — Measurement Report". No storage permissions. Each export first deletes files in `exports/` older than 24 hours. On failure, a snackbar "Could not export PDF: …".
 
 ---
 

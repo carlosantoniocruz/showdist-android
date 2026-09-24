@@ -58,6 +58,7 @@ private class DeleteRequest(val ids: Set<String>, val title: String, val confirm
 fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: () -> Unit) {
     val recordings = RecordingStore.recordings
     val export = rememberExportActions(units)
+    val exportPdf = rememberPdfExport(units)
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(setOf<String>()) }
     var openId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -82,7 +83,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     count = selected.size,
                     onCancel = ::exitSelection,
                     onSelectAll = { selected = recordings.map { it.id }.toSet() },
-                    onExportPdf = { /* Stage 3 (SPEC.md §2.12) */ },
+                    onExportPdf = { exportPdf(selectedInOrder()) },
                     onShare = { export.share(selectedInOrder()) },
                     onCopy = { export.copy(selectedInOrder()) },
                     onDelete = {

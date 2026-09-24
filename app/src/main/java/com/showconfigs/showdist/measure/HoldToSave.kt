@@ -104,7 +104,7 @@ fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): H
                     charge.animateTo(1f, tween(remaining, easing = LinearEasing))
                     completed = true
                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    val recording = Recording.create(tracker.snapshotPoints())
+                    val recording = Recording.create(tracker.snapshotPoints(), tracker.units)
                     tracker.clear()
                     RecordingStore.add(recording)
                     charge.snapTo(0f)

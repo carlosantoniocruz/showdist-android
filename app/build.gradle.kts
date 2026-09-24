@@ -51,6 +51,8 @@ android {
 
     buildFeatures {
         compose = true
+        // versionName for the PDF footer (SPEC.md §2.12).
+        buildConfig = true
     }
 }
 

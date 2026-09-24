@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.showconfigs.showdist.measure.UnitSystem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -74,7 +75,9 @@ object RecordingStore {
                     JSONObject()
                         .put("id", r.id)
                         .put("createdAt", r.createdAt)
-                        .put("points", JSONArray().apply { r.points.forEach { p -> put(JSONArray(p.toList())) } }),
+                        .put("points", JSONArray().apply { r.points.forEach { p -> put(JSONArray(p.toList())) } })
+                        .put("total", r.total)
+                        .apply { r.unit?.let { put("unit", it.name) } },
                 )
             }
         }.toString()
@@ -97,7 +100,8 @@ object RecordingStore {
             val array = JSONArray(f.readText())
             List(array.length()) { i ->
                 val o = array.getJSONObject(i)
-                val pts = o.getJSONArray("points")
+                // Pre-v1.1 files have no "unit" or "total"; both stay optional.
+                val pts = o.optJSONArray("points") ?: JSONArray()
                 Recording(
                     id = o.getString("id"),
                     createdAt = o.getString("createdAt"),
@@ -105,6 +109,8 @@ object RecordingStore {
                         val p = pts.getJSONArray(j)
                         doubleArrayOf(p.getDouble(0), p.getDouble(1), p.getDouble(2))
                     },
+                    unit = o.optString("unit").let { u -> UnitSystem.entries.firstOrNull { it.name == u } },
+                    storedTotal = if (o.has("total")) o.getDouble("total") else null,
                 )
             }
         } catch (e: Exception) {
