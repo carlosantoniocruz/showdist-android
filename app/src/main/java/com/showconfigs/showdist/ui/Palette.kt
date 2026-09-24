@@ -8,6 +8,9 @@ object Palette {
     val InkSurface = Color(0xFF1F3E48)
     val OlympicBlue = Color(0xFF5A82B3)
     val Citrine = Color(0xFF8B835B)
+
+    /** A light citrine that stays bright over the camera feed: placed projections (§2.11). */
+    val CitrineLight = Color(0xFFE0D49A)
     val Peach = Color(0xFFF15A30)
     val Seafoam = Color(0xFF1FB89A)
     val SeafoamMuted = Color(0xFF5E9A8E)

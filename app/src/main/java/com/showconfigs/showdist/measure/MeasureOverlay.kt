@@ -71,7 +71,7 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
                     c, w, h,
                     tracker.projMidXY[i * 2], tracker.projMidXY[i * 2 + 1],
                     tracker.projText[i], tracker.projTextLength[i],
-                    if (projPlaced) labels.citrine else labels.seafoamMuted,
+                    if (projPlaced) labels.citrineLight else labels.seafoamMuted,
                 )
             }
             for (i in 1 until count) {
@@ -118,12 +118,12 @@ private class PointsPainter(private val density: Float) {
     private val liveLineShadow = Paint(lineShadow).apply { pathEffect = dash }
 
     // A projected recording (SPEC.md §2.11): dashed seafoamMuted while being placed, solid
-    // citrine once placed, with smaller dots than the user's own points.
-    private val projLine = Paint(line).apply { color = Palette.Citrine.toArgb() }
+    // citrineLight once placed, with smaller dots than the user's own points.
+    private val projLine = Paint(line).apply { color = Palette.CitrineLight.toArgb() }
     private val projPreviewLine = Paint(liveLine)
     private val projDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Palette.Citrine.toArgb()
+        color = Palette.CitrineLight.toArgb()
     }
     private val projPreviewDot = Paint(projDot).apply { color = Palette.SeafoamMuted.toArgb() }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -232,10 +232,10 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         strokeWidth = LABEL_BORDER_DP * density
     }
     // Border colours: peach for a placed segment, seafoamMuted for the live label (and a
-    // projection being placed), citrine for a placed projection.
+    // projection being placed), citrineLight for a placed projection.
     val peach = Palette.Peach.toArgb()
     val seafoamMuted = Palette.SeafoamMuted.toArgb()
-    val citrine = Palette.Citrine.toArgb()
+    val citrineLight = Palette.CitrineLight.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 
