@@ -56,7 +56,7 @@ import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 import kotlinx.coroutines.launch
 
-/** Runs Share .txt / Copy text and reports the outcome in the app's snackbar. */
+/** Runs Share / Copy text and reports the outcome in the app's snackbar. */
 class ExportActions(private val run: (List<Recording>, share: Boolean) -> Unit) {
     fun share(recordings: List<Recording>) = run(recordings, true)
     fun copy(recordings: List<Recording>) = run(recordings, false)
@@ -143,7 +143,7 @@ fun MeasurementSheet(
                 onClick = { closeThen { export.share(listOf(recording)) } },
                 modifier = Modifier.fillMaxWidth(),
                 border = BorderStroke(1.dp, Palette.White.copy(alpha = 0.3f)),
-            ) { IconLabel(ShowdistIcons.IosShare, "Share .txt", Palette.White) }
+            ) { IconLabel(ShowdistIcons.IosShare, "Share", Palette.White) }
             Spacer(Modifier.height(4.dp))
             TextButton(onClick = { closeThen { export.copy(listOf(recording)) } }, modifier = Modifier.fillMaxWidth()) {
                 IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.White)
@@ -165,7 +165,7 @@ private fun IconLabel(icon: ImageVector, label: String, color: androidx.compose.
 }
 
 /**
- * The share-menu button (SPEC.md §2.7): an ios_share icon opening "Share .txt" and
+ * The share-menu button (SPEC.md §2.7): an ios_share icon opening "Share" and
  * "Copy text". White when enabled, warmGrey when disabled.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,7 +190,7 @@ fun ShareMenuButton(enabled: Boolean, onShare: () -> Unit, onCopy: () -> Unit) {
             }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.InkSurface) {
-            MenuItem(ShowdistIcons.IosShare, "Share .txt") { open = false; onShare() }
+            MenuItem(ShowdistIcons.IosShare, "Share") { open = false; onShare() }
             MenuItem(ShowdistIcons.ContentCopy, "Copy text") { open = false; onCopy() }
         }
     }

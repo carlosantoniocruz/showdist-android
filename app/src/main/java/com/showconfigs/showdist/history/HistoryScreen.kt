@@ -251,7 +251,8 @@ private fun SelectionBar(
         actions = {
             AppBarAction(ShowdistIcons.SelectAll, "Select all", onClick = onSelectAll)
             AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF", enabled = count > 0, onClick = onExportPdf)
-            ShareMenuButton(enabled = count > 0, onShare = onShare, onCopy = onCopy)
+            AppBarAction(ShowdistIcons.ContentCopy, "Copy", enabled = count > 0, onClick = onCopy)
+            AppBarAction(ShowdistIcons.IosShare, "Share", enabled = count > 0, onClick = onShare)
             AppBarAction(
                 ShowdistIcons.DeleteOutline,
                 "Delete selected",

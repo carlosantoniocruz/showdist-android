@@ -7,8 +7,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.sqrt
 
-private const val TEXT_SEGMENT_LIMIT = 20
-
 /**
  * A saved measurement (SPEC.md §2.7): an ordered polyline of world positions in metres,
  * whose order is the segment order. [id] is the creation time in microseconds since the
@@ -26,11 +24,9 @@ class Recording(
     val segments: List<Double> = (1 until points.size).map { i -> distance(points[i - 1], points[i]) }
     val total: Double = if (points.size >= 2 || storedTotal == null) segments.sum() else storedTotal
 
-    /** "YYYY-MM-DD HH:MM", used as each block's heading in bulk text. */
+    /** "YYYY-MM-DD HH:MM", shown in shared text and the PDF report. */
     val headingTime: String get() = createdAt.take(16).replace('T', ' ')
 
-    /** "YYYYMMDD-HHMMSS", used in export file names. */
-    val fileTime: String get() = createdAt.take(19).filter { it.isDigit() }.let { "${it.take(8)}-${it.drop(8)}" }
 
     companion object {
         /** A new recording stamped with the current time and the current [unit] setting. */
@@ -51,24 +47,17 @@ private fun distance(a: DoubleArray, b: DoubleArray): Double {
 }
 
 /**
- * Single-recording text (SPEC.md §2.7), for the share file and clipboard. With [truncate],
- * segments past 20 are replaced by a "+ N more" line.
+ * Plain text for Copy and Share (SPEC.md §2.7), built in memory and never written to
+ * storage: per recording its number, date, unit, each segment's length and the total, in
+ * the current [units]; recordings are separated by a blank line.
  */
-fun Recording.toText(units: UnitSystem, truncate: Boolean = true): String = buildString {
-    val s = segments.size
-    appendLine("Showdist: ${DistanceFormat.format(total, units)}")
-    append("${points.size} points, $s segments")
-    val shown = if (truncate) minOf(s, TEXT_SEGMENT_LIMIT) else s
-    for (i in 0 until shown) append("\n${i + 1}. ${DistanceFormat.format(segments[i], units)}")
-    if (shown < s) append("\n+ ${s - shown} more in the attached file")
-}
-
-/** Text for several recordings; a single one uses the single format, untruncated. */
-fun List<Recording>.toBulkText(units: UnitSystem): String {
-    if (size == 1) return first().toText(units, truncate = false)
-    return buildString {
-        append("Showdist: $size measurements")
-        for (r in this@toBulkText) append("\n\n${r.headingTime}\n${r.toText(units, truncate = false)}")
+fun List<Recording>.toShareText(units: UnitSystem): String = buildString {
+    this@toShareText.forEachIndexed { i, r ->
+        if (i > 0) append("\n\n")
+        append("#${i + 1} · ${r.headingTime}\n")
+        append("Unit: ${if (units == UnitSystem.Metric) "metric" else "imperial"}\n")
+        r.segments.forEachIndexed { j, length -> append("${j + 1}. ${DistanceFormat.format(length, units)}\n") }
+        append("Total: ${DistanceFormat.format(r.total, units)}")
     }
 }
 

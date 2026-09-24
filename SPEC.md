@@ -180,7 +180,7 @@ Tapping LEVELER on the main menu opens a picker before any leveler.
   - Actions:
     - "Select all" (`select_all_rounded`).
     - "Export PDF" (`picture_as_pdf`), disabled when nothing is selected. It exports the selection as one PDF report (§2.12).
-    - The share menu, disabled when nothing is selected. It exports the selection as one bulk document in list order (newest first).
+    - "Copy" (`content_copy`) and "Share" (`ios_share`), each disabled when nothing is selected. They copy or share the selection as one text in list order (newest first).
     - "Delete selected" (`delete_outline_rounded`, **peach**), disabled when nothing is selected.
   - Tapping or long-pressing a row toggles it.
   - System Back first leaves selection mode and only pops the screen on the next press.
@@ -423,7 +423,7 @@ Derived values: segments (consecutive 3D distances) and total (their sum). The s
   3. 4 dp gap, then "N points · M segments" (13 sp, warmGrey).
   4. 18 dp gap, then one row per segment: a 32 dp-wide index "1", "2"… (13 sp, warmGrey) followed by the length (15 sp, white, tabular figures). Rows have 5 dp vertical padding.
   5. 18 dp gap. From History only (not the "SAVED" sheet), a full-width filled **peach** button "View in AR" (white, 14 sp, weight 700) that projects the recording in Measure (§2.11), then an 8 dp gap.
-  6. An outlined button "Share .txt" with a share icon (white text, border white at alpha 0.3).
+  6. An outlined button "Share" with a share icon (white text, border white at alpha 0.3).
   7. 4 dp gap, then a text button "Copy text" with a copy icon (white).
   8. A text button "Done" (warmGrey) that closes the sheet.
 - Choosing View in AR, Share or Copy closes the sheet first, then performs the action.
@@ -431,35 +431,25 @@ Derived values: segments (consecutive 3D distances) and total (their sum). The s
 **Share menu button** (used on History rows and in selection mode):
 - A popup opened from a `ios_share_rounded` icon (22 dp; white when enabled, warmGrey when disabled). Tooltip "Share or copy". Menu background inkSurface.
 - Items:
-  - "Share .txt" with a share icon.
+  - "Share" with a share icon.
   - "Copy text" with a copy icon.
   - Item icons are 18 dp, white at alpha 0.8, with a 12 dp gap before the label.
 
-**Single-recording text** (used for both the file and the clipboard; segments beyond 20 are truncated):
+**Text** (v1.1; the same data as the PDF, in the current unit setting). Built in memory for each action and never written to storage; PDF is the only file export (§2.12). For one or more recordings, in list order, separated by a blank line:
 ```
-Showdist: {total}
-{P} points, {S} segments
+#1 · YYYY-MM-DD HH:MM
+Unit: metric            (or imperial)
 1. {seg1}
 2. {seg2}
 …
-+ {S−20} more in the attached file      (only if S > 20)
-```
+Total: {total}
 
-**Bulk text** (for 2 or more recordings; a single recording uses the single format with no truncation):
-```
-Showdist: {N} measurements
-
-YYYY-MM-DD HH:MM
-{single-recording text, no truncation}
-
-YYYY-MM-DD HH:MM
+#2 · YYYY-MM-DD HH:MM
 …
 ```
 
 **Actions:**
-- **Share .txt**: write the text to a file in `<cache>/exports/`. The folder is deleted and recreated first, so old exports are removed. Then open the Android share sheet with the file attached (MIME `text/plain`).
-  - Single recording: the file is named `showdist-YYYYMMDD-HHMMSS.txt` using the recording's creation time. The share subject is `Showdist: {total}`, and the same text is included as the share body text.
-  - Bulk: the file is named `showdist-YYYYMMDD-HHMMSS-{N}.txt` using the current time. The subject is `Showdist: {N} measurements`, with no body text.
+- **Share**: open the Android share sheet with `ACTION_SEND`, type `text/plain`, the text as `EXTRA_TEXT` (not a file, not via the FileProvider). Subject: `Showdist: {total}` for one recording, `Showdist: {N} measurements` for more.
 - **Copy text**: put the text on the clipboard, then show a snackbar reading "Copied to clipboard".
 - **On failure**: show a snackbar reading "Could not share: {reason}" or "Could not copy: {reason}". The reason is the first line of the error message, cut to 117 characters plus "..." if it is longer than 120.
 

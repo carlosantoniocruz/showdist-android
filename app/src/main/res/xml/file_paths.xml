@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Only the exports folder is shared, for "Share .txt" (SPEC.md §2.7). -->
+<!-- Only the exports folder is shared, for the PDF report (SPEC.md §2.12). Text is shared
+     in memory, never as a file (SPEC.md §2.7). -->
 <paths>
     <cache-path name="exports" path="exports/" />
 </paths>
