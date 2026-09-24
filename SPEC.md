@@ -614,8 +614,7 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
   - Normally 2.5 dp wide in **citrine**. When level, 3.5 dp wide in **peach**.
 - **Bubble:**
   - A filled circle, diameter 56 dp: **white**, or **peach** when level.
-  - `travel = length/2 − 28 − 6`
-  - `offset = clamp(displayed / 15, −1, 1) × travel` along the vial axis.
+  - Its position comes from the bubble motion (§4.4). `travel = length/2 − 2 − 28`: the bubble's centre runs from the middle to where its edge touches the inner wall.
   - A positive reading moves the bubble down in portrait and right in landscape. So a clockwise rotation moves it up in portrait and left in landscape.
 
 ### 4.3 Bullseye Leveler visuals
@@ -632,7 +631,17 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 - **Bubble:**
   - A filled circle, diameter 56 dp: **white**, or **peach** when level.
   - It moves toward the higher side: right for positive X, up the screen for positive Y.
-  - `travel = radius − 28 − 6`; `offset = (displayedX, −displayedY) / 15`, scaled down to length 1 if longer, × travel.
+  - Its position comes from the bubble motion (§4.4), in two dimensions. `travel = radius − 2 − 28`: the bubble's centre runs from the middle to where its edge touches the rim.
+
+### 4.4 Bubble motion and shape
+
+Both levelers share this.
+
+- **Target:** `displayed / 15` along the vial (the tube), or `(displayedX, −displayedY) / 15` (the bullseye, screen y running down), where 1 means the bubble touches the wall. Past 1 the target is clamped back to the wall, except that the bubble may press on into the wall by up to 30% of its radius, growing with how far past full scale the reading is (×2, capped).
+- **Motion:** a spring-damper toward the target, stiffness 90 s⁻² (about 1.5 Hz) and damping ratio 0.5, so the bubble eases in and settles with a slight wobble instead of snapping. It's stepped once per display frame (`withFrameNanos`) in substeps of at most 1/120 s, with a frame's time capped at 50 ms. The sensor input is already low-passed (§4.1). At the press limit the bubble stops and bounces back at 25% of its speed into the wall.
+- **Shape:** drawn each frame as a 64-point polygon in one reused path, filled like the round bubble (white, or peach when level).
+  - **Velocity stretch:** an ellipse with the round bubble's area, radius × s along the direction of travel and radius ÷ s across it, where `s = 1 + min(speed / (25 × radius), 0.4)` with speed in px/s. At rest it's round.
+  - **Wall contact:** any outline point past the wall's inner edge (the outline's inner edge plus a hairline, 2 dp in) is moved back onto it, so a bubble pressed against the vial's round end or the bullseye's rim flattens to follow that curve instead of overlapping it.
 
 ---
 
