@@ -213,6 +213,7 @@ When the screen opens:
    - Update mode: latest camera image.
    - Focus: auto.
    - Depth mode: automatic, if the device supports it.
+   - Instant Placement: disabled (v1.1).
 5. Resume the session. The start routine returns one of these outcomes:
 
 | Outcome | Title | Body | Button |
@@ -268,6 +269,7 @@ The hint is 13 sp white at alpha 0.85, letter-spacing 0.3, with a text shadow (b
 | lost/paused, reason camera unavailable | Camera unavailable |
 | lost/paused, other or no reason | Tracking lost. Move slowly |
 | tracking, 0 planes and no reticle hit | Move slowly to scan surfaces |
+| tracking, not warmed up (§2.4), 0 points, no placed/aligning projection | Move slowly to scan surfaces (0 planes) / Move the phone slowly to get started |
 | tracking, reticle hit, projection aiming (§2.11) | Tap where its first point goes |
 | tracking, reticle hit, projection aligning | Turn it to line up, then tap |
 | tracking, no reticle hit and (<2 points or projection aiming/aligning) | Aim at a surface |
@@ -280,12 +282,18 @@ The hint is 13 sp white at alpha 0.85, letter-spacing 0.3, with a text shadow (b
 Work runs only when ARCore delivers a **new camera image**, about 30 per second. The GL view itself redraws continuously at the display rate, drawing only the camera background on frames with no new image. For each new image:
 
 - **Tracking status:** TRACKING, PAUSED (treated as "lost"), or STOPPED. The failure reason is none, bad state, insufficient light, excessive motion, insufficient features, or camera unavailable.
-- **Plane count:** the number of planes that are TRACKING and not subsumed by another plane. It is recounted every 10th new image, about 3 times a second, and is only used for the hint.
-- **Reticle hit:** hit-test the **exact centre of the camera area**. Walk ARCore's hit results in order and take the first one that is:
-  - a Plane, with the hit pose inside the plane's polygon, or
-  - a DepthPoint, or
-  - a feature Point whose orientation mode is ESTIMATED_SURFACE_NORMAL.
-  If none qualifies, there is no reticle hit. Hit testing only runs while the camera is TRACKING.
+- **Plane count:** the number of planes that are TRACKING and not subsumed by another plane. It is recounted every 10th new image, about 3 times a second, and is used for the hint and the warm-up.
+- **Reticle hit:** hit-test the **exact centre of the camera area**, then take, by priority (v1.1):
+  1. the nearest Plane hit whose pose is inside the plane's polygon, else
+  2. the nearest DepthPoint hit (when the device supports depth), else
+  3. the nearest feature Point hit whose orientation mode is ESTIMATED_SURFACE_NORMAL, as a last resort.
+  If none qualifies, there is no reticle hit. Hit testing only runs while the camera is TRACKING (so never with a tracking failure reason).
+- **Warm-up (v1.1):** before the first point of a measurement (or a projection's first tap), the session must have found at least one plane and the camera must have moved at least **8 cm** from where tracking began, for parallax. The camera position comes from the view matrix (−Rᵀt). Once warmed up, it stays so for the session. Until then the main button is disabled and the hint says why (§2.3).
+- **Placing a point (v1.1):** a tap on the main button (enabled only with a reticle hit and, for a first point, after warm-up):
+  - **Snap:** if a visible point's screen position is within **24 dp** of the reticle, the new point is anchored at that point's current pose (the nearest such point). Projections don't snap.
+  - **Otherwise sample:** the reticle hit's position is recorded on each of the next new camera images until **6** samples are taken (about 200 ms), within at most 12 images. Tracking must hold throughout, or the placement is dropped. With at least 3 samples, the point is anchored at their **component-wise median**; with fewer, nothing is placed. Further taps are ignored while sampling.
+  - Each point gets its own session anchor. Distances are recomputed from the live anchor poses every new image, and the anchors are re-read when saving.
+  - **Debug builds only:** each placement is logged (tag `ShowdistMeasure`) with the hit kind (Plane, Depth, Point or Snap), the tracking state, the sample count and the spread (largest distance of a sample from the median, in mm). Release builds contain none of this.
 - **Screen projection:** project each world point with ARCore's camera matrices (near 0.05 m, far 100 m):
   - `clip = Projection × View × (x, y, z, 1)`
   - The point is behind the camera if `clip.w ≤ 1e-4`.
@@ -348,7 +356,7 @@ It is divided into **five equal-width columns**, each control centred in its own
 |---|---|---|
 | 1 | History | `history_rounded` icon. If ≥1 saved, a count badge appears (white, 11 sp, weight 700, top-right of the 52×52 hit area, at right 4 / top 6). Opens History (pausing the session). |
 | 2 | Undo | `undo_rounded`. Tooltip "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
-| 3 | Main button | 96×96. Place point on tap. Shows the save charge. |
+| 3 | Main button | 96×96. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
 | 4 | Clear | `close_rounded`. Tooltip "Clear all points". Also removes a projection. Disabled when there are no points and no projection. |
 | 5 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is white, weight 700. The inactive one is white at alpha 0.5, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
 
@@ -839,7 +847,7 @@ The repo has no raster images or other assets. The native AR layer already exist
 
 ## 10. Icons used (Material Symbols, rounded style)
 
-settings (outlined), history, chevron_right, arrow_forward, arrow_back, undo, close, ios_share, content_copy, select_all, delete_outline, check_circle, circle (outlined), radio_button_checked, radio_button_unchecked, center_focus_strong, restart_alt.
+settings (outlined), history, chevron_right, arrow_forward, arrow_back, undo, close, ios_share, content_copy, select_all, delete_outline, check_circle, circle (outlined), radio_button_checked, radio_button_unchecked, center_focus_strong, restart_alt, picture_as_pdf.
 
 ## 11. Haptics summary
 

@@ -189,6 +189,8 @@ private fun MeasureArea(
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
+    val snapRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    SideEffect { tracker.snapRadiusPx = snapRadiusPx }
     // Labels and the total reformat on the next camera frame after a change.
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
@@ -210,6 +212,8 @@ private fun MeasureArea(
                 focusMode = Config.FocusMode.AUTO,
                 sessionConfiguration = { _, config ->
                     config.lightEstimationMode = Config.LightEstimationMode.DISABLED
+                    // Every point comes from a real surface hit (SPEC.md §2.4).
+                    config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
                 },
                 // The spec draws no plane visualisation, only the camera feed and the overlay.
                 planeRenderer = false,
@@ -247,7 +251,7 @@ private fun MeasureArea(
             )
         }
         ControlBar(
-            canPlace = tracker.hasHit,
+            canPlace = tracker.canPlace,
             hasPoints = tracker.pointCount > 0 || tracker.projectionStage != ProjectionStage.None,
             savedCount = RecordingStore.recordings.size,
             units = units,

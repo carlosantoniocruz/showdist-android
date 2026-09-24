@@ -1,6 +1,7 @@
 package com.showconfigs.showdist.measure
 
 import android.opengl.Matrix
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -13,9 +14,11 @@ import com.google.ar.core.Frame
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.core.Point
+import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
+import com.showconfigs.showdist.BuildConfig
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -36,6 +39,19 @@ private const val MIN_HEADING_M = 0.01f
 /** While aligning, the reticle must be this far from the first point to turn the shape. */
 private const val MIN_ALIGN_M = 0.05f
 
+/** Hit samples per placement, and how many new images to wait for them (SPEC.md §2.4). */
+private const val SAMPLES = 6
+private const val MIN_SAMPLES = 3
+private const val SAMPLE_WINDOW = 12
+
+/** Warm-up: the camera must have moved this far from where tracking began (parallax). */
+private const val WARM_UP_M = 0.08f
+
+private const val TAG = "ShowdistMeasure"
+
+/** Which kind of surface a hit came from, in order of preference (SPEC.md §2.4). */
+private enum class HitKind { Plane, Depth, Point, Snap }
+
 /** The hint line's text (SPEC.md §2.3). */
 enum class Hint(val text: String) {
     Starting("Starting camera…"),
@@ -49,6 +65,7 @@ enum class Hint(val text: String) {
     PlaceFirst("Tap to place a point"),
     PlaceNext("Place the next point"),
     AddOrSave("Tap to add · hold anywhere to save"),
+    WarmUp("Move the phone slowly to get started"),
     ProjectAim("Tap where its first point goes"),
     ProjectAlign("Turn it to line up, then tap"),
 }
@@ -73,6 +90,13 @@ enum class ProjectionStage { None, Aim, Align, Placed }
 class MeasureTracker {
     /** True when the screen-centre hit test found a usable surface in front of the camera. */
     var hasHit by mutableStateOf(false)
+        private set
+
+    /**
+     * True when a tap would place something: a surface is hit and, before the first point,
+     * the session has warmed up (SPEC.md §2.4). Drives the main button.
+     */
+    var canPlace by mutableStateOf(false)
         private set
 
     /** Seconds into the current reticle turn, sampled once per new camera image. */
@@ -162,6 +186,25 @@ class MeasureTracker {
     private var liveKey = Long.MIN_VALUE
     private var totalKey = Long.MIN_VALUE
     private var addRequested = false
+
+    // Multi-frame placement: hit positions from consecutive new images, then their median.
+    private val samples = FloatArray(SAMPLES * 3)
+    private val sampleKinds = IntArray(HitKind.entries.size)
+    private val median = FloatArray(3)
+    private val sortBuf = FloatArray(SAMPLES)
+    private var sampling = false
+    private var sampleCount = 0
+    private var sampleImages = 0
+    private var snapRequested = -1
+
+    // Warm-up: the first tracked camera position, and whether it has moved far enough.
+    private val startCam = FloatArray(3)
+    private var hasStartCam = false
+    private var warmedUp = false
+    private var lastHitKind = HitKind.Plane
+
+    /** A reticle within this many pixels of a point's screen position snaps to it. */
+    var snapRadiusPx = 0f
     private var imageCount = 0
     private var planeCount = 0
 
@@ -176,9 +219,13 @@ class MeasureTracker {
         centerY = height / 2f
     }
 
-    /** Place a point at the reticle on the next new camera image (SPEC.md §2.5). */
+    /**
+     * Place a point at the reticle (SPEC.md §2.4, §2.5): sampled over the next few new
+     * camera images, or snapped to an existing point under the reticle. Ignored while a
+     * placement is already sampling.
+     */
     fun requestAdd() {
-        addRequested = true
+        if (!sampling) addRequested = true
     }
 
     /** Removes the user's last point; with none left, steps the projection back a stage. */
@@ -245,8 +292,12 @@ class MeasureTracker {
         for (i in 1 until projectionCount) projTextLength[i] = DistanceFormat.formatInto(projMetres[i], units, projText[i])
     }
 
-    /** Current world positions of every point, in metres, for saving a recording. */
+    /**
+     * Current world positions of every point, in metres, for saving a recording. Re-read
+     * from the anchors so ARCore's latest corrections are included (SPEC.md §2.4).
+     */
     fun snapshotPoints(): List<DoubleArray> = List(anchors.size) { i ->
+        if (anchors[i].trackingState == TrackingState.TRACKING) anchors[i].pose.getTranslation(world, i * 3)
         doubleArrayOf(world[i * 3].toDouble(), world[i * 3 + 1].toDouble(), world[i * 3 + 2].toDouble())
     }
 
@@ -267,6 +318,8 @@ class MeasureTracker {
             Matrix.multiplyMM(viewProj, 0, projMatrix, 0, viewMatrix, 0)
         }
 
+        if (tracking) updateWarmUp()
+
         var hit = if (tracking) centreSurfaceHit(frame) else null
         if (hit != null) {
             hit.hitPose.getTranslation(hitWorld, 0)
@@ -274,21 +327,46 @@ class MeasureTracker {
             if (!project(hitWorld[0], hitWorld[1], hitWorld[2], hitXY, 0)) hit = null
         }
         hasHit = hit != null
+        // The warm-up only gates the first placement of a measurement or projection.
+        val needsWarmUp = anchors.isEmpty() && projectionStage != ProjectionStage.Align
+        canPlace = hit != null && (warmedUp || !needsWarmUp)
 
         if (addRequested) {
             addRequested = false
-            if (hit != null && projectionStage == ProjectionStage.Aim) {
-                projAnchor = session.createAnchor(hit.hitPose)
-                projectionStage = if (projHasRef) ProjectionStage.Align else ProjectionStage.Placed
-            } else if (hit != null && projectionStage == ProjectionStage.Align) {
+            if (hit != null && projectionStage == ProjectionStage.Align) {
                 // projYaw already follows the reticle; the tap just freezes it.
                 projectionStage = ProjectionStage.Placed
-            } else if (hit != null && anchors.size < MAX_POINTS) {
-                // A session (world-space) anchor, not a plane-attached one, so plane
-                // refinement can't drag the point.
-                System.arraycopy(hitWorld, 0, world, anchors.size * 3, 3)
-                anchors.add(session.createAnchor(hit.hitPose))
-                pointCount = anchors.size
+            } else if (canPlace && (projectionStage == ProjectionStage.Aim || anchors.size < MAX_POINTS)) {
+                snapRequested = if (projectionStage == ProjectionStage.Aim) -1 else snapTarget()
+                if (snapRequested >= 0) {
+                    placeAt(session, anchors[snapRequested].pose, HitKind.Snap, 0f, camera.trackingState)
+                } else {
+                    sampling = true
+                    sampleCount = 0
+                    sampleImages = 0
+                    sampleKinds.fill(0)
+                }
+            }
+        }
+        if (sampling) {
+            // Tracking must hold for the whole placement (SPEC.md §2.4).
+            if (!tracking) {
+                sampling = false
+            } else {
+                sampleImages++
+                if (hit != null && sampleCount < SAMPLES) {
+                    System.arraycopy(hitWorld, 0, samples, sampleCount * 3, 3)
+                    sampleKinds[lastHitKind.ordinal]++
+                    sampleCount++
+                }
+                if (sampleCount == SAMPLES || sampleImages >= SAMPLE_WINDOW) {
+                    sampling = false
+                    if (sampleCount >= MIN_SAMPLES) {
+                        val spread = medianOfSamples()
+                        val kind = HitKind.entries[sampleKinds.indices.maxBy { sampleKinds[it] }]
+                        placeAt(session, Pose.makeTranslation(median[0], median[1], median[2]), kind, spread, camera.trackingState)
+                    }
+                }
             }
         }
 
@@ -338,6 +416,88 @@ class MeasureTracker {
     }
 
     /**
+     * Anchors the next point (or a projection's first point) at [pose]: a session
+     * (world-space) anchor, not a plane-attached one, so plane refinement can't drag it.
+     * Called on a tap, not per frame.
+     */
+    private fun placeAt(session: Session, pose: Pose, kind: HitKind, spreadM: Float, state: TrackingState) {
+        if (projectionStage == ProjectionStage.Aim) {
+            projAnchor = session.createAnchor(pose)
+            projectionStage = if (projHasRef) ProjectionStage.Align else ProjectionStage.Placed
+        } else if (anchors.size < MAX_POINTS) {
+            pose.getTranslation(world, anchors.size * 3)
+            anchors.add(session.createAnchor(pose))
+            pointCount = anchors.size
+        }
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "placed: hit=$kind tracking=$state samples=$sampleCount spread=${"%.1f".format(spreadM * 1000)} mm")
+        }
+    }
+
+    /**
+     * Component-wise median of the samples into [median]; returns the largest distance of
+     * any sample from it (the spread).
+     */
+    private fun medianOfSamples(): Float {
+        val n = sampleCount
+        for (a in 0..2) {
+            for (i in 0 until n) sortBuf[i] = samples[i * 3 + a]
+            sortBuf.sort(0, n)
+            median[a] = if (n % 2 == 1) sortBuf[n / 2] else (sortBuf[n / 2 - 1] + sortBuf[n / 2]) * 0.5f
+        }
+        var spread = 0f
+        for (i in 0 until n) {
+            val dx = samples[i * 3] - median[0]
+            val dy = samples[i * 3 + 1] - median[1]
+            val dz = samples[i * 3 + 2] - median[2]
+            spread = maxOf(spread, sqrt(dx * dx + dy * dy + dz * dz))
+        }
+        return spread
+    }
+
+    /** The index of a visible point within [snapRadiusPx] of the reticle, else −1 (nearest wins). */
+    private fun snapTarget(): Int {
+        if (snapRadiusPx <= 0f) return -1
+        var best = -1
+        var bestD = snapRadiusPx
+        for (i in anchors.indices) {
+            if (!visible[i] || anchors[i].trackingState != TrackingState.TRACKING) continue
+            val dx = screenXY[i * 2] * centerX * 2f - centerX
+            val dy = screenXY[i * 2 + 1] * centerY * 2f - centerY
+            val d = sqrt(dx * dx + dy * dy)
+            if (d <= bestD) {
+                bestD = d
+                best = i
+            }
+        }
+        return best
+    }
+
+    /**
+     * Warm-up (SPEC.md §2.4): done once the camera has moved [WARM_UP_M] from where tracking
+     * began, giving ARCore some parallax, and at least one plane is found. The camera's
+     * position comes from the view matrix (−Rᵀt), so nothing is allocated.
+     */
+    private fun updateWarmUp() {
+        if (warmedUp) return
+        val m = viewMatrix
+        val x = -(m[0] * m[12] + m[1] * m[13] + m[2] * m[14])
+        val y = -(m[4] * m[12] + m[5] * m[13] + m[6] * m[14])
+        val z = -(m[8] * m[12] + m[9] * m[13] + m[10] * m[14])
+        if (!hasStartCam) {
+            startCam[0] = x
+            startCam[1] = y
+            startCam[2] = z
+            hasStartCam = true
+            return
+        }
+        val dx = x - startCam[0]
+        val dy = y - startCam[1]
+        val dz = z - startCam[2]
+        if (planeCount > 0 && sqrt(dx * dx + dy * dy + dz * dz) >= WARM_UP_M) warmedUp = true
+    }
+
+    /**
      * Positions the projected points for this frame: its first point at the reticle hit
      * while aiming, else at its anchor, turned about the vertical by [projYaw].
      */
@@ -356,7 +516,7 @@ class MeasureTracker {
         } else {
             val anchor = projAnchor
             val anchorTracking = anchor != null && anchor.trackingState == TrackingState.TRACKING
-            if (anchorTracking) anchor!!.pose.getTranslation(projOrigin, 0)
+            if (anchorTracking) anchor.pose.getTranslation(projOrigin, 0)
             shown = shown && anchorTracking
             if (stage == ProjectionStage.Align && hasHit) {
                 val dx = hitWorld[0] - projOrigin[0]
@@ -392,6 +552,8 @@ class MeasureTracker {
                 else -> Hint.TrackingLost
             }
             planeCount == 0 && !hasHit -> Hint.Scan
+            !warmedUp && points == 0 && projectionStage != ProjectionStage.Align &&
+                projectionStage != ProjectionStage.Placed -> if (planeCount == 0) Hint.Scan else Hint.WarmUp
             hasHit && projectionStage == ProjectionStage.Aim -> Hint.ProjectAim
             hasHit && projectionStage == ProjectionStage.Align -> Hint.ProjectAlign
             !hasHit && (points < 2 || projectionStage == ProjectionStage.Aim || projectionStage == ProjectionStage.Align) -> Hint.Aim
@@ -416,29 +578,40 @@ class MeasureTracker {
     fun release() {
         anchors.clear()
         pointCount = 0
+        sampling = false
         projAnchor = null
         projectionStage = ProjectionStage.None
         projectionCount = 0
     }
 
     /**
-     * First qualifying hit from the screen centre, or null. ARCore's hitTest allocates its
-     * result list and poses; that's inherent to the API. Index loop avoids an extra iterator.
+     * The best hit from the screen centre, or null (SPEC.md §2.4): the nearest plane hit
+     * inside its polygon, else the nearest depth hit, else the nearest feature point with a
+     * surface normal. Sets [lastHitKind]. ARCore's hitTest allocates its result list and
+     * poses; that's inherent to the API. Index loop avoids an extra iterator.
      */
     private fun centreSurfaceHit(frame: Frame): HitResult? {
         if (centerX == 0f || centerY == 0f) return null
         val hits = frame.hitTest(centerX, centerY)
+        var depth: HitResult? = null
+        var point: HitResult? = null
         for (i in hits.indices) {
             val hit = hits[i]
-            val qualifies = when (val trackable = hit.trackable) {
-                is Plane -> trackable.isPoseInPolygon(hit.hitPose)
-                is DepthPoint -> true
-                is Point -> trackable.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL
-                else -> false
+            when (val trackable = hit.trackable) {
+                is Plane -> if (trackable.isPoseInPolygon(hit.hitPose)) {
+                    lastHitKind = HitKind.Plane
+                    return hit
+                }
+                is DepthPoint -> if (depth == null) depth = hit
+                is Point -> if (point == null && trackable.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL) point = hit
             }
-            if (qualifies) return hit
         }
-        return null
+        if (depth != null) {
+            lastHitKind = HitKind.Depth
+            return depth
+        }
+        lastHitKind = HitKind.Point
+        return point
     }
 
     /**
