@@ -12,9 +12,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,7 +27,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.showconfigs.showdist.history.HistoryScreen
+import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
+import com.showconfigs.showdist.leveler.LevelerMode
+import com.showconfigs.showdist.leveler.LevelerPicker
 import com.showconfigs.showdist.leveler.LevelerScreen
 import com.showconfigs.showdist.measure.MeasureScreen
 import com.showconfigs.showdist.menu.MainMenu
@@ -61,9 +68,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Settings, About, Licenses, LicenseDetail }
+private enum class Screen { Menu, Measure, LevelerPicker, Leveler, History, Settings, About, Licenses, LicenseDetail }
 
-/** A back-stack entry; [arg] is the license index for LicenseDetail, unused otherwise. */
+/**
+ * A back-stack entry; [arg] is the license index for LicenseDetail and the [LevelerMode]
+ * ordinal for Leveler, unused otherwise.
+ */
 private data class Route(val screen: Screen, val arg: Int = 0)
 
 /**
@@ -85,8 +95,25 @@ private fun ShowdistApp() {
         ),
     ) { mutableListOf(Route(Screen.Menu)).toMutableStateList() }
 
+    // The recording "View in AR" projects in Measure (SPEC.md §2.11); cleared when Measure closes.
+    var projectionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var projectionSerial by rememberSaveable { mutableIntStateOf(0) }
+
     fun push(screen: Screen, arg: Int = 0) = stack.add(Route(screen, arg))
-    fun pop() = stack.removeAt(stack.lastIndex)
+    fun pop() {
+        if (stack.removeAt(stack.lastIndex).screen == Screen.Measure) projectionId = null
+    }
+
+    /** Back to the open Measure if there is one (History over it), else a new Measure on top. */
+    fun viewInAr(recording: Recording) {
+        projectionId = recording.id
+        projectionSerial++
+        if (stack.any { it.screen == Screen.Measure }) {
+            while (stack.last().screen != Screen.Measure) pop()
+        } else {
+            push(Screen.Measure)
+        }
+    }
 
     BackHandler(enabled = stack.size > 1) { pop() }
 
@@ -100,22 +127,26 @@ private fun ShowdistApp() {
             if (stack.any { it.screen == Screen.Measure }) {
                 MeasureScreen(
                     units = unitSettings.units,
+                    projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
+                    projectionSerial = projectionSerial,
                     covered = top.screen != Screen.Measure,
                     onUnits = unitSettings::select,
                     onHistory = { push(Screen.History) },
+                    onBack = ::pop,
                 )
             }
             when (top.screen) {
                 Screen.Menu -> MainMenu(
                     savedCount = saved,
                     onMeasure = { push(Screen.Measure) },
-                    onLeveler = { push(Screen.Leveler) },
+                    onLeveler = { push(Screen.LevelerPicker) },
                     onHistory = { push(Screen.History) },
                     onSettings = { push(Screen.Settings) },
                 )
                 Screen.Measure -> Unit // Drawn in its slot above.
-                Screen.Leveler -> LevelerScreen(onBack = ::pop)
-                Screen.History -> HistoryScreen(unitSettings.units, onBack = ::pop)
+                Screen.LevelerPicker -> LevelerPicker(onPick = { push(Screen.Leveler, it.ordinal) }, onBack = ::pop)
+                Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
+                Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
                 Screen.Settings -> SettingsScreen(unitSettings, onAbout = { push(Screen.About) }, onBack = ::pop)
                 Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)

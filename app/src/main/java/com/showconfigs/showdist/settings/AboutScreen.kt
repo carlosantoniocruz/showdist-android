@@ -25,6 +25,7 @@ import com.showconfigs.showdist.ui.CaptionText
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
 
+private const val DEVELOPER_NAME = "Carlos Cruz"
 private const val DEVELOPER_EMAIL = "sh.run.configs@gmail.com"
 
 /** About (SPEC.md §1.6, §7.1), with the wording updated for the native build. */
@@ -57,6 +58,8 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             Text("DEVELOPER", Modifier.fillMaxWidth(), style = CaptionText.copy(textAlign = TextAlign.Start))
             Spacer(Modifier.height(12.dp))
+            Text(DEVELOPER_NAME, style = BaseText.copy(fontSize = 16.sp))
+            Spacer(Modifier.height(4.dp))
             SelectionContainer {
                 Text(DEVELOPER_EMAIL, style = BaseText.copy(color = Palette.Peach, fontSize = 15.sp))
             }

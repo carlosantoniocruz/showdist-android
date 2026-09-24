@@ -16,6 +16,9 @@ import com.google.ar.core.Point
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Reticle period: one clockwise turn every 11 s (SPEC.md §3.1). */
@@ -26,6 +29,12 @@ const val MAX_POINTS = 24
 
 private const val NEAR_M = 0.05f
 private const val FAR_M = 100f
+
+/** A segment shorter than this horizontally can't set a projection's heading. */
+private const val MIN_HEADING_M = 0.01f
+
+/** While aligning, the reticle must be this far from the first point to turn the shape. */
+private const val MIN_ALIGN_M = 0.05f
 
 /** The hint line's text (SPEC.md §2.3). */
 enum class Hint(val text: String) {
@@ -40,7 +49,16 @@ enum class Hint(val text: String) {
     PlaceFirst("Tap to place a point"),
     PlaceNext("Place the next point"),
     AddOrSave("Tap to add · hold anywhere to save"),
+    ProjectAim("Tap where its first point goes"),
+    ProjectAlign("Turn it to line up, then tap"),
 }
+
+/**
+ * A saved measurement projected into the scene (SPEC.md §2.11). Placing it takes two taps:
+ * [Aim] (the first point follows the reticle), then [Align] (the shape turns about its
+ * first point to follow the reticle); after that it's [Placed].
+ */
+enum class ProjectionStage { None, Aim, Align, Placed }
 
 /**
  * Per-frame measuring state (SPEC.md §2.4, §2.5). [onFrame] is called on every render frame
@@ -81,6 +99,7 @@ class MeasureTracker {
             totalKey = Long.MIN_VALUE
             segmentKey.fill(Long.MIN_VALUE)
             liveKey = Long.MIN_VALUE
+            formatProjectionText()
         }
 
     // Screen positions below are normalised (0..1, top-left origin): x at 2i, y at 2i+1.
@@ -107,6 +126,31 @@ class MeasureTracker {
     val liveText = CharArray(DISTANCE_TEXT_CAPACITY)
     var liveTextLength = 0
         private set
+
+    var projectionStage by mutableStateOf(ProjectionStage.None)
+        private set
+
+    /** Points in the projected recording; 0 when there's none. */
+    var projectionCount = 0
+        private set
+
+    /** Projected points and segment labels, laid out like the user's own points above. */
+    val projScreenXY = FloatArray(MAX_POINTS * 2)
+    val projVisible = BooleanArray(MAX_POINTS)
+    val projMidXY = FloatArray(MAX_POINTS * 2)
+    val projMidInFront = BooleanArray(MAX_POINTS)
+    val projText = Array(MAX_POINTS) { CharArray(DISTANCE_TEXT_CAPACITY) }
+    val projTextLength = IntArray(MAX_POINTS)
+
+    /** Offsets from the recording's first point (world axes of its own session; y is up). */
+    private val projRel = FloatArray(MAX_POINTS * 3)
+    private val projMetres = DoubleArray(MAX_POINTS)
+    private val projWorld = FloatArray(MAX_POINTS * 3)
+    private val projOrigin = FloatArray(3)
+    private var projRefHeading = 0f
+    private var projHasRef = false
+    private var projYaw = 0f
+    private var projAnchor: Anchor? = null
 
     private val anchors = ArrayList<Anchor>(MAX_POINTS)
     private val world = FloatArray(MAX_POINTS * 3)
@@ -137,16 +181,68 @@ class MeasureTracker {
         addRequested = true
     }
 
+    /** Removes the user's last point; with none left, steps the projection back a stage. */
     fun undo() {
-        if (anchors.isEmpty()) return
-        anchors.removeAt(anchors.lastIndex).detach()
-        pointCount = anchors.size
+        if (anchors.isNotEmpty()) {
+            anchors.removeAt(anchors.lastIndex).detach()
+            pointCount = anchors.size
+            return
+        }
+        when (projectionStage) {
+            ProjectionStage.Placed -> if (projHasRef) projectionStage = ProjectionStage.Align else unplaceProjection()
+            ProjectionStage.Align -> unplaceProjection()
+            else -> Unit
+        }
     }
 
+    /** Removes every point, and the projection. */
     fun clear() {
         for (i in anchors.indices) anchors[i].detach()
         anchors.clear()
         pointCount = 0
+        projAnchor?.detach()
+        projAnchor = null
+        projectionStage = ProjectionStage.None
+        projectionCount = 0
+    }
+
+    /**
+     * Starts projecting a saved measurement (SPEC.md §2.11), replacing any current one. Its
+     * shape and heights are kept; where it sits and which way it faces are set by two taps.
+     */
+    fun startProjection(points: List<DoubleArray>) {
+        projAnchor?.detach()
+        projAnchor = null
+        val n = minOf(points.size, MAX_POINTS)
+        if (n < 2) return
+        val first = points[0]
+        projHasRef = false
+        for (i in 0 until n) {
+            for (a in 0..2) projRel[i * 3 + a] = (points[i][a] - first[a]).toFloat()
+            if (i > 0) {
+                projMetres[i] = distance(projRel, (i - 1) * 3, projRel, i * 3)
+                // The first point that's horizontally clear of the first point sets the heading.
+                val x = projRel[i * 3]
+                val z = projRel[i * 3 + 2]
+                if (!projHasRef && sqrt(x * x + z * z) > MIN_HEADING_M) {
+                    projRefHeading = atan2(x, z)
+                    projHasRef = true
+                }
+            }
+        }
+        projectionCount = n
+        formatProjectionText()
+        projectionStage = ProjectionStage.Aim
+    }
+
+    private fun unplaceProjection() {
+        projAnchor?.detach()
+        projAnchor = null
+        projectionStage = ProjectionStage.Aim
+    }
+
+    private fun formatProjectionText() {
+        for (i in 1 until projectionCount) projTextLength[i] = DistanceFormat.formatInto(projMetres[i], units, projText[i])
     }
 
     /** Current world positions of every point, in metres, for saving a recording. */
@@ -181,7 +277,13 @@ class MeasureTracker {
 
         if (addRequested) {
             addRequested = false
-            if (hit != null && anchors.size < MAX_POINTS) {
+            if (hit != null && projectionStage == ProjectionStage.Aim) {
+                projAnchor = session.createAnchor(hit.hitPose)
+                projectionStage = if (projHasRef) ProjectionStage.Align else ProjectionStage.Placed
+            } else if (hit != null && projectionStage == ProjectionStage.Align) {
+                // projYaw already follows the reticle; the tap just freezes it.
+                projectionStage = ProjectionStage.Placed
+            } else if (hit != null && anchors.size < MAX_POINTS) {
                 // A session (world-space) anchor, not a plane-attached one, so plane
                 // refinement can't drag the point.
                 System.arraycopy(hitWorld, 0, world, anchors.size * 3, 3)
@@ -189,6 +291,8 @@ class MeasureTracker {
                 pointCount = anchors.size
             }
         }
+
+        if (projectionCount > 0) updateProjection(tracking, hit != null)
 
         var total = 0.0
         for (i in anchors.indices) {
@@ -233,6 +337,49 @@ class MeasureTracker {
         hint = hintFor(camera.trackingState, camera.trackingFailureReason, hit != null, anchors.size)
     }
 
+    /**
+     * Positions the projected points for this frame: its first point at the reticle hit
+     * while aiming, else at its anchor, turned about the vertical by [projYaw].
+     */
+    private fun updateProjection(tracking: Boolean, hasHit: Boolean) {
+        val stage = projectionStage
+        var shown = tracking
+        if (stage == ProjectionStage.Aim) {
+            shown = shown && hasHit
+            if (shown) {
+                System.arraycopy(hitWorld, 0, projOrigin, 0, 3)
+                // Point the shape away from the camera: its forward is the view matrix's −z row.
+                val fx = -viewMatrix[2]
+                val fz = -viewMatrix[10]
+                projYaw = atan2(fx, fz) - projRefHeading
+            }
+        } else {
+            val anchor = projAnchor
+            val anchorTracking = anchor != null && anchor.trackingState == TrackingState.TRACKING
+            if (anchorTracking) anchor!!.pose.getTranslation(projOrigin, 0)
+            shown = shown && anchorTracking
+            if (stage == ProjectionStage.Align && hasHit) {
+                val dx = hitWorld[0] - projOrigin[0]
+                val dz = hitWorld[2] - projOrigin[2]
+                if (sqrt(dx * dx + dz * dz) > MIN_ALIGN_M) projYaw = atan2(dx, dz) - projRefHeading
+            }
+        }
+
+        // Rotation about +y by projYaw: adds projYaw to each offset's atan2(x, z) heading.
+        val c = cos(projYaw)
+        val sn = sin(projYaw)
+        for (i in 0 until projectionCount) {
+            val o = i * 3
+            val rx = projRel[o]
+            val rz = projRel[o + 2]
+            projWorld[o] = projOrigin[0] + rx * c + rz * sn
+            projWorld[o + 1] = projOrigin[1] + projRel[o + 1]
+            projWorld[o + 2] = projOrigin[2] - rx * sn + rz * c
+            projVisible[i] = shown && project(projWorld[o], projWorld[o + 1], projWorld[o + 2], projScreenXY, i * 2)
+            if (i > 0) projMidInFront[i] = shown && projectMidpoint(projWorld, o - 3, projWorld, o, projMidXY, i * 2)
+        }
+    }
+
     /** SPEC.md §2.3, in table order. */
     private fun hintFor(state: TrackingState, reason: TrackingFailureReason, hasHit: Boolean, points: Int): Hint =
         when {
@@ -245,7 +392,9 @@ class MeasureTracker {
                 else -> Hint.TrackingLost
             }
             planeCount == 0 && !hasHit -> Hint.Scan
-            !hasHit && points < 2 -> Hint.Aim
+            hasHit && projectionStage == ProjectionStage.Aim -> Hint.ProjectAim
+            hasHit && projectionStage == ProjectionStage.Align -> Hint.ProjectAlign
+            !hasHit && (points < 2 || projectionStage == ProjectionStage.Aim || projectionStage == ProjectionStage.Align) -> Hint.Aim
             points == 0 -> Hint.PlaceFirst
             points == 1 -> Hint.PlaceNext
             else -> Hint.AddOrSave
@@ -267,6 +416,9 @@ class MeasureTracker {
     fun release() {
         anchors.clear()
         pointCount = 0
+        projAnchor = null
+        projectionStage = ProjectionStage.None
+        projectionCount = 0
     }
 
     /**

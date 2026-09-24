@@ -21,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -75,7 +77,8 @@ fun rememberExportActions(units: UnitSystem): ExportActions {
 
 /**
  * The measurement sheet (SPEC.md §2.7): "SAVED" after saving, "MEASUREMENT" from History.
- * Share and Copy close the sheet first, then act.
+ * Share and Copy close the sheet first, then act. With [onViewInAr] (History only), a
+ * "View in AR" button projects the recording in Measure (SPEC.md §2.11).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +87,7 @@ fun MeasurementSheet(
     recording: Recording,
     units: UnitSystem,
     onDismiss: () -> Unit,
+    onViewInAr: (() -> Unit)? = null,
 ) {
     val export = rememberExportActions(units)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -127,6 +131,14 @@ fun MeasurementSheet(
                 }
             }
             Spacer(Modifier.height(18.dp))
+            if (onViewInAr != null && recording.points.size >= 2) {
+                Button(
+                    onClick = { closeThen(onViewInAr) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Peach, contentColor = Palette.White),
+                ) { Text("View in AR", style = BaseText.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold)) }
+                Spacer(Modifier.height(8.dp))
+            }
             OutlinedButton(
                 onClick = { closeThen { export.share(listOf(recording)) } },
                 modifier = Modifier.fillMaxWidth(),

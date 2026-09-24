@@ -18,6 +18,7 @@ import com.showconfigs.showdist.R
 import com.showconfigs.showdist.ui.Palette
 
 private const val POINT_RADIUS_DP = 6f
+private const val PROJ_POINT_RADIUS_DP = 4.5f
 private const val LINE_WIDTH_DP = 1.3f
 private const val DASH_DP = 6f
 private const val SHADOW_OFFSET_Y_DP = 1.2f
@@ -30,8 +31,9 @@ private const val LABEL_EDGE_DP = 8f
 private const val LABEL_BORDER_DP = 1f
 
 /**
- * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): segment
- * lines, the dashed live line, point dots, the reticle, then labels. Reads [tracker] only
+ * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): a projected
+ * recording (§2.11), segment lines, the dashed live line, point dots, the reticle, then
+ * labels (projected ones first). Reads [tracker] only
  * inside the draw lambda, so it redraws once per new camera image (spinSeconds changes
  * every image) and never recomposes.
  */
@@ -51,27 +53,40 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
         val count = tracker.pointCount
         val w = size.width
         val h = size.height
+        val projStage = tracker.projectionStage
+        val projCount = tracker.projectionCount
+        val projPlaced = projStage == ProjectionStage.Placed
         drawIntoCanvas { canvas ->
             val c = canvas.nativeCanvas
+            if (projCount > 0) points.drawProjection(c, w, h, projCount, projPlaced, tracker)
             points.drawSegments(c, w, h, count, tracker)
             if (tracker.liveVisible) points.drawLiveLine(c, w, h, count, tracker)
             points.drawDots(c, w, h, count, tracker)
             reticle.draw(c, w / 2f, h / 2f, hit, spin)
 
-            // One label per drawn segment, plus the live label.
+            // One label per drawn projected segment, one per drawn segment, plus the live label.
+            for (i in 1 until projCount) {
+                if (!tracker.projVisible[i - 1] || !tracker.projVisible[i] || !tracker.projMidInFront[i]) continue
+                labels.draw(
+                    c, w, h,
+                    tracker.projMidXY[i * 2], tracker.projMidXY[i * 2 + 1],
+                    tracker.projText[i], tracker.projTextLength[i],
+                    if (projPlaced) labels.citrine else labels.seafoamMuted,
+                )
+            }
             for (i in 1 until count) {
                 if (!tracker.visible[i - 1] || !tracker.visible[i] || !tracker.segmentMidInFront[i]) continue
                 labels.draw(
                     c, w, h,
                     tracker.segmentMidXY[i * 2], tracker.segmentMidXY[i * 2 + 1],
-                    tracker.segmentText[i], tracker.segmentTextLength[i], live = false,
+                    tracker.segmentText[i], tracker.segmentTextLength[i], labels.peach,
                 )
             }
             if (tracker.liveVisible && tracker.liveMidInFront) {
                 labels.draw(
                     c, w, h,
                     tracker.liveMidXY[0], tracker.liveMidXY[1],
-                    tracker.liveText, tracker.liveTextLength, live = true,
+                    tracker.liveText, tracker.liveTextLength, labels.seafoamMuted,
                 )
             }
         }
@@ -101,6 +116,16 @@ private class PointsPainter(private val density: Float) {
         pathEffect = dash
     }
     private val liveLineShadow = Paint(lineShadow).apply { pathEffect = dash }
+
+    // A projected recording (SPEC.md §2.11): dashed seafoamMuted while being placed, solid
+    // citrine once placed, with smaller dots than the user's own points.
+    private val projLine = Paint(line).apply { color = Palette.Citrine.toArgb() }
+    private val projPreviewLine = Paint(liveLine)
+    private val projDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Palette.Citrine.toArgb()
+    }
+    private val projPreviewDot = Paint(projDot).apply { color = Palette.SeafoamMuted.toArgb() }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = peach
@@ -108,6 +133,38 @@ private class PointsPainter(private val density: Float) {
     private val dotShadow = Paint(dot).apply {
         color = shadowColor
         maskFilter = shadowBlur
+    }
+
+    /** The projected shape: lines between visible points, then its dots; shadows first. */
+    fun drawProjection(c: Canvas, w: Float, h: Float, count: Int, placed: Boolean, t: MeasureTracker) {
+        val xy = t.projScreenXY
+        val v = t.projVisible
+        val dy = SHADOW_OFFSET_Y_DP * density
+        val r = PROJ_POINT_RADIUS_DP * density
+        for (pass in 0..1) {
+            val paint = when {
+                pass == 0 -> if (placed) lineShadow else liveLineShadow
+                placed -> projLine
+                else -> projPreviewLine
+            }
+            val offset = if (pass == 0) dy else 0f
+            for (i in 1 until count) {
+                if (!v[i - 1] || !v[i]) continue
+                c.drawLine(
+                    xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h + offset,
+                    xy[i * 2] * w, xy[i * 2 + 1] * h + offset,
+                    paint,
+                )
+            }
+        }
+        for (pass in 0..1) {
+            val paint = if (pass == 0) dotShadow else if (placed) projDot else projPreviewDot
+            val offset = if (pass == 0) dy else 0f
+            for (i in 0 until count) {
+                if (!v[i]) continue
+                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h + offset, r, paint)
+            }
+        }
     }
 
     /** Segments are drawn only when both endpoints are visible; shadow copy first. */
@@ -174,13 +231,16 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         style = Paint.Style.STROKE
         strokeWidth = LABEL_BORDER_DP * density
     }
-    private val peach = Palette.Peach.toArgb()
-    private val seafoamMuted = Palette.SeafoamMuted.toArgb()
+    // Border colours: peach for a placed segment, seafoamMuted for the live label (and a
+    // projection being placed), citrine for a placed projection.
+    val peach = Palette.Peach.toArgb()
+    val seafoamMuted = Palette.SeafoamMuted.toArgb()
+    val citrine = Palette.Citrine.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 
     /** [nx], [ny] are the normalised midpoint; hidden if it's off-canvas. */
-    fun draw(c: Canvas, w: Float, h: Float, nx: Float, ny: Float, chars: CharArray, length: Int, live: Boolean) {
+    fun draw(c: Canvas, w: Float, h: Float, nx: Float, ny: Float, chars: CharArray, length: Int, borderColor: Int) {
         if (length == 0 || nx < 0f || nx > 1f || ny < 0f || ny > 1f) return
         val pillWidth = text.measureText(chars, 0, length) + 2 * LABEL_PAD_H_DP * density
         val edge = LABEL_EDGE_DP * density
@@ -192,8 +252,7 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         val radius = pillHeight / 2f
 
         c.drawRoundRect(left, top, left + pillWidth, top + pillHeight, radius, radius, scrim)
-        // Peach outlines a placed segment's label, muted seafoam the live one.
-        border.color = if (live) seafoamMuted else peach
+        border.color = borderColor
         val inset = border.strokeWidth / 2f
         c.drawRoundRect(
             left + inset, top + inset, left + pillWidth - inset, top + pillHeight - inset,

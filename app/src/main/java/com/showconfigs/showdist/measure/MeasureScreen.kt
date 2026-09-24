@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -34,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -69,6 +74,7 @@ import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.CaptionText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
 import com.showconfigs.showdist.ui.Palette
+import com.showconfigs.showdist.ui.ShowdistIcons
 import io.github.sceneview.ar.ARSceneView
 
 /** Outcome of the start routine (SPEC.md §2.1). */
@@ -97,9 +103,12 @@ private enum class ProblemAction(val label: String) {
 @Composable
 fun MeasureScreen(
     units: UnitSystem,
+    projection: Recording?,
+    projectionSerial: Int,
     covered: Boolean,
     onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
@@ -151,7 +160,7 @@ fun MeasureScreen(
     Box(Modifier.fillMaxSize().background(Palette.Ink)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, covered, onUnits, onHistory, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -171,15 +180,20 @@ fun MeasureScreen(
 @Composable
 private fun MeasureArea(
     units: UnitSystem,
+    projection: Recording?,
+    projectionSerial: Int,
     covered: Boolean,
     onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
+    onBack: () -> Unit,
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
     // Labels and the total reformat on the next camera frame after a change.
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
+    // Each "View in AR" bumps the serial, so picking the same recording again restarts it.
+    LaunchedEffect(projectionSerial) { projection?.let { tracker.startProjection(it.points) } }
     val sessionLifecycle = rememberCappedLifecycle(capped = covered)
     val barRotation = rememberBarRotation(sessionLifecycle)
     var saved by remember { mutableStateOf<Recording?>(null) }
@@ -214,7 +228,7 @@ private fun MeasureArea(
                 Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 12.dp, top = 16.dp, end = 12.dp),
+                    .padding(start = 60.dp, top = 16.dp, end = 60.dp), // clear of the menu button
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HintLine(tracker.hint)
@@ -223,10 +237,18 @@ private fun MeasureArea(
                     RunningTotal(tracker.totalMetres, units)
                 }
             }
+            MenuButton(
+                rotation = { barRotation.value },
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .padding(start = 8.dp, top = 8.dp),
+            )
         }
         ControlBar(
             canPlace = tracker.hasHit,
-            hasPoints = tracker.pointCount > 0,
+            hasPoints = tracker.pointCount > 0 || tracker.projectionStage != ProjectionStage.None,
             savedCount = RecordingStore.recordings.size,
             units = units,
             charge = holdToSave::charge,
@@ -240,6 +262,28 @@ private fun MeasureArea(
     }
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
+}
+
+/**
+ * Back to the main menu (SPEC.md §2.2): top-left of the camera area, as far as possible from
+ * the control bar so it isn't hit by accident. A 48 dp target around a 40 dp scrim disc with
+ * a white arrow; it turns with the bar icons (SPEC.md §2.9).
+ */
+@Composable
+private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(48.dp)
+            .graphicsLayer { rotationZ = rotation() }
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Back to menu" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(40.dp).background(Palette.Scrim, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(ShowdistIcons.ArrowBack, contentDescription = null, tint = Palette.White.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
+        }
+    }
 }
 
 /** ink at 0.6 fading to transparent over the top 22% (SPEC.md §2.2). */

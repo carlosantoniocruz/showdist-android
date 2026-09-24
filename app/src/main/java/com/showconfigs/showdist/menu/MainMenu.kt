@@ -1,11 +1,11 @@
 package com.showconfigs.showdist.menu
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,17 +29,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
+import com.showconfigs.showdist.ui.ToolCard
 
 private val RulerBandHeight = 92.dp
 
@@ -59,20 +58,25 @@ fun MainMenu(
         LandingRuler(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(RulerBandHeight))
 
         Column(Modifier.fillMaxSize().padding(start = 28.dp, end = 28.dp, bottom = RulerBandHeight)) {
-            Spacer(Modifier.height(76.dp))
-            Text(
-                text = "SHOWDIST",
-                modifier = Modifier.fillMaxWidth(),
-                style = BaseText.copy(
-                    color = Palette.Citrine,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 3.sp,
-                    textAlign = TextAlign.Center,
-                ),
-            )
-            // Equal flexible spacers centre the cards between the wordmark and the ruler.
+            // Equal flexible spacers centre the wordmark, its dimension line and the cards
+            // between the top and the ruler.
             Spacer(Modifier.weight(1f))
+            // The dimension line spans exactly the wordmark's width.
+            Column(Modifier.align(Alignment.CenterHorizontally).width(IntrinsicSize.Max)) {
+                Text(
+                    text = "SHOWDIST",
+                    style = BaseText.copy(
+                        color = Palette.Citrine,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 3.sp,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+                Spacer(Modifier.height(14.dp))
+                DimensionLine(Modifier.fillMaxWidth().height(20.dp))
+            }
+            Spacer(Modifier.height(40.dp))
             ToolCard(
                 label = "MEASURE",
                 description = "Point the camera, tap two spots, get the distance.",
@@ -83,7 +87,7 @@ fun MainMenu(
             Spacer(Modifier.height(20.dp))
             ToolCard(
                 label = "LEVELER",
-                description = "Hold flat against a wall to check plumb.",
+                description = "Check level and plumb with a tube or bullseye.",
                 prominent = false,
                 onClick = onLeveler,
             )
@@ -94,41 +98,23 @@ fun MainMenu(
     }
 }
 
-/** Tool card (SPEC.md §1.4): MEASURE is prominent (peach), LEVELER quiet (olympicBlue). */
+/**
+ * The app icon's dimension line (SPEC.md §1.4, §8.1), stretched to the wordmark's width:
+ * a citrine rule with an end tick at each end, and a peach point on each end.
+ */
 @Composable
-private fun ToolCard(label: String, description: String, prominent: Boolean, onClick: () -> Unit) {
-    val accent = if (prominent) Palette.Peach else Palette.OlympicBlue
-    val shape = RoundedCornerShape(14.dp)
-    val labelSize: TextUnit = if (prominent) 20.sp else 16.sp
-    val arrowSize: Dp = if (prominent) 22.dp else 18.dp
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(if (prominent) Palette.InkSurface else Color.Transparent)
-            .border(BorderStroke(1.dp, accent.copy(alpha = if (prominent) 0.9f else 0.45f)), shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = if (prominent) 18.dp else 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = BaseText.copy(fontSize = labelSize, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp),
-            )
-            Spacer(Modifier.height(if (prominent) 6.dp else 4.dp))
-            Text(
-                text = description,
-                style = BaseText.copy(
-                    color = Palette.WarmGrey,
-                    fontSize = if (prominent) 13.sp else 12.sp,
-                    lineHeight = 1.35.em,
-                ),
-            )
+private fun DimensionLine(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val stroke = 2.5.dp.toPx()
+        val r = 5.dp.toPx()
+        val cy = size.height / 2f
+        val x0 = r
+        val x1 = size.width - r
+        drawLine(Palette.Citrine, Offset(x0, cy), Offset(x1, cy), stroke, StrokeCap.Round)
+        for (x in floatArrayOf(x0, x1)) {
+            drawLine(Palette.Citrine, Offset(x, stroke / 2f), Offset(x, size.height - stroke / 2f), stroke, StrokeCap.Round)
+            drawCircle(Palette.Peach, r, Offset(x, cy))
         }
-        Spacer(Modifier.width(12.dp))
-        Icon(ShowdistIcons.ArrowForward, contentDescription = null, tint = accent, modifier = Modifier.size(arrowSize))
     }
 }
 

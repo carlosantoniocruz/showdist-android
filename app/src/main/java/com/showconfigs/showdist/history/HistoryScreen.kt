@@ -55,7 +55,7 @@ private class DeleteRequest(val ids: Set<String>, val title: String, val confirm
 /** History (SPEC.md §1.9): saved measurements, newest first, with selection and delete. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(units: UnitSystem, onBack: () -> Unit) {
+fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: () -> Unit) {
     val recordings = RecordingStore.recordings
     val export = rememberExportActions(units)
     var selecting by rememberSaveable { mutableStateOf(false) }
@@ -154,7 +154,13 @@ fun HistoryScreen(units: UnitSystem, onBack: () -> Unit) {
     }
 
     recordings.firstOrNull { it.id == openId }?.let { recording ->
-        MeasurementSheet("MEASUREMENT", recording, units, onDismiss = { openId = null })
+        MeasurementSheet(
+            "MEASUREMENT",
+            recording,
+            units,
+            onDismiss = { openId = null },
+            onViewInAr = { onViewInAr(recording) },
+        )
     }
 
     pendingDelete?.let { request ->

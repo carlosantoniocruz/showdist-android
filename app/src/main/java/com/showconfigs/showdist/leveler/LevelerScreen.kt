@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,36 +41,47 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** The Leveler (SPEC.md §4): a single-axis bubble level held flat against a wall. */
+/** Which Leveler the picker opened (SPEC.md §4). */
+enum class LevelerMode { Tube, Bullseye }
+
+/**
+ * The Leveler (SPEC.md §4): the tube, a single-axis level held flat against a wall, or
+ * the bullseye, a two-axis level laid flat on a surface.
+ */
 @Composable
-fun LevelerScreen(onBack: () -> Unit) {
+fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
     val sensor = remember {
         LevelSensor(context.getSystemService(Context.SENSOR_SERVICE) as SensorManager)
     }
-    // Survives rotation, but not leaving the screen: it resets each time the Leveler opens.
+    // Survive rotation, but not leaving the screen: they reset each time the Leveler opens.
     var offset by rememberSaveable { mutableFloatStateOf(0f) }
+    var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
+    var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
+    val zeroed = if (mode == LevelerMode.Tube) offset != 0f else offsetX != 0f || offsetY != 0f
 
-    AllowLandscapeWhileShown()
+    // The tube rotates with the phone; the bullseye lies flat, where rotation can't be sensed.
+    if (mode == LevelerMode.Tube) AllowLandscapeWhileShown()
     // The sensor runs only while the screen is visible and the app is in the foreground.
     LifecycleResumeEffect(sensor) {
         sensor.start()
         onPauseOrDispose { sensor.stop() }
     }
 
-    // Recomposes only when the readout's tenth of a degree changes, not on every sample.
-    val readoutTenths by remember { derivedStateOf { (abs(sensor.roll - offset) * 10).roundToInt() } }
-
     Scaffold(
         topBar = {
-            ShowdistAppBar("LEVELER", onBack) {
-                AppBarAction(ShowdistIcons.CenterFocusStrong, "Zero — null against an uneven wall") {
+            ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER", onBack) {
+                AppBarAction(ShowdistIcons.CenterFocusStrong, "Zero — null against an uneven surface") {
                     offset = sensor.roll
+                    offsetX = sensor.tiltX
+                    offsetY = sensor.tiltY
                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
-                AppBarAction(ShowdistIcons.RestartAlt, "Reset to true level", enabled = offset != 0f) {
+                AppBarAction(ShowdistIcons.RestartAlt, "Reset to true level", enabled = zeroed) {
                     offset = 0f
+                    offsetX = 0f
+                    offsetY = 0f
                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }
@@ -76,24 +90,66 @@ fun LevelerScreen(onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "HOLD FLAT AGAINST THE SURFACE",
+                text = if (mode == LevelerMode.Tube) "HOLD FLAT AGAINST THE SURFACE" else "LAY FLAT ON THE SURFACE",
                 modifier = Modifier.fillMaxWidth().padding(start = 32.dp, top = 20.dp, end = 32.dp),
                 style = CaptionText.copy(fontSize = 11.sp, letterSpacing = 2.sp),
             )
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                Vial(displayed = { sensor.roll - offset }, modifier = Modifier.fillMaxSize())
+            when (mode) {
+                LevelerMode.Tube -> {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        Vial(displayed = { sensor.roll - offset }, modifier = Modifier.fillMaxSize())
+                    }
+                    // Recomposes only when the readout's tenth of a degree changes, not on every sample.
+                    val tenths by remember { derivedStateOf { tenthsOf(sensor.roll - offset) } }
+                    Readout(tenths, Modifier.padding(bottom = 40.dp))
+                }
+                LevelerMode.Bullseye -> {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        Bullseye(
+                            x = { sensor.tiltX - offsetX },
+                            y = { sensor.tiltY - offsetY },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    val xTenths by remember { derivedStateOf { tenthsOf(sensor.tiltX - offsetX) } }
+                    val yTenths by remember { derivedStateOf { tenthsOf(sensor.tiltY - offsetY) } }
+                    Row(Modifier.padding(bottom = 40.dp), verticalAlignment = Alignment.Bottom) {
+                        AxisLabel("X")
+                        Readout(xTenths)
+                        Spacer(Modifier.width(28.dp))
+                        AxisLabel("Y")
+                        Readout(yTenths)
+                    }
+                }
             }
-            Text(
-                text = "${readoutTenths / 10}.${readoutTenths % 10}°",
-                modifier = Modifier.padding(bottom = 40.dp),
-                style = BaseText.copy(
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.ExtraLight,
-                    fontFeatureSettings = FEATURES_TABULAR,
-                ),
-            )
         }
     }
+}
+
+private fun tenthsOf(degrees: Float) = (abs(degrees) * 10).roundToInt()
+
+/** `|value|` to one decimal place and "°" (SPEC.md §4.2): 40 sp, weight 200, tabular. */
+@Composable
+private fun Readout(tenths: Int, modifier: Modifier = Modifier) {
+    Text(
+        text = "${tenths / 10}.${tenths % 10}°",
+        modifier = modifier,
+        style = BaseText.copy(
+            fontSize = 40.sp,
+            fontWeight = FontWeight.ExtraLight,
+            fontFeatureSettings = FEATURES_TABULAR,
+        ),
+    )
+}
+
+/** The bullseye's axis letter before each readout (SPEC.md §4.3). */
+@Composable
+private fun AxisLabel(axis: String) {
+    Text(
+        text = axis,
+        modifier = Modifier.padding(end = 8.dp, bottom = 10.dp),
+        style = CaptionText.copy(fontSize = 14.sp, letterSpacing = 0.sp),
+    )
 }
 
 /**
