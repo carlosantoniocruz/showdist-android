@@ -179,6 +179,7 @@ Tapping LEVELER on the main menu opens a picker before any leveler.
   - The title is "N selected" (16 sp, weight 400).
   - Actions:
     - "Select all" (`select_all_rounded`).
+    - "Export PDF" (`picture_as_pdf`), disabled when nothing is selected. It exports the selection as one PDF report (§2.12).
     - The share menu, disabled when nothing is selected. It exports the selection as one bulk document in list order (newest first).
     - "Delete selected" (`delete_outline_rounded`, **peach**), disabled when nothing is selected.
   - Tapping or long-pressing a row toggles it.

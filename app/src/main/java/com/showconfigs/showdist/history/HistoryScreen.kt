@@ -82,6 +82,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     count = selected.size,
                     onCancel = ::exitSelection,
                     onSelectAll = { selected = recordings.map { it.id }.toSet() },
+                    onExportPdf = { /* Stage 3 (SPEC.md §2.12) */ },
                     onShare = { export.share(selectedInOrder()) },
                     onCopy = { export.copy(selectedInOrder()) },
                     onDelete = {
@@ -237,6 +238,7 @@ private fun SelectionBar(
     count: Int,
     onCancel: () -> Unit,
     onSelectAll: () -> Unit,
+    onExportPdf: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onDelete: () -> Unit,
@@ -247,6 +249,7 @@ private fun SelectionBar(
         windowInsets = AppBarInsets,
         actions = {
             AppBarAction(ShowdistIcons.SelectAll, "Select all", onClick = onSelectAll)
+            AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF", enabled = count > 0, onClick = onExportPdf)
             ShareMenuButton(enabled = count > 0, onShare = onShare, onCopy = onCopy)
             AppBarAction(
                 ShowdistIcons.DeleteOutline,
