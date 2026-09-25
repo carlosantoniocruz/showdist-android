@@ -58,20 +58,24 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 ## Graphics checklist
 
-| Asset | Requirement | Status |
+| Asset | Requirement | File |
 |---|---|---|
-| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | To make: render the adaptive icon (ink background, citrine dimension line, peach end points) |
-| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | To make: ink background, SHOWDIST wordmark and dimension line |
-| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | To make: the Pixel's native 1080 × 2424 is 2.24:1, so screenshots must be cropped or padded to 1080 × 2160 (or framed) |
+| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (ink background, citrine dimension line, peach end points) |
+| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: wordmark, dimension line, tagline and the main-menu ruler |
+| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), scaled to fit 1080 × 2160 with the screen's edge colours extended to fill the sides. **Still missing: the AR measurement shot (1).** |
 
-Suggested screenshot set, in order:
+The graphics are rendered by `Render.java` (run with `java Render.java <out-dir> [in.png out.png]…`), so they can be regenerated after a palette change.
+
+Screenshot order for the listing (numbers match the file names):
 1. A measurement in progress: several placed points, segment labels, running total.
 2. Main menu.
 3. Tube level in landscape against a wall.
 4. Bullseye level.
-5. History with thumbnails.
-6. A PDF report page.
-7. "View in AR" projecting a saved shape.
+5. Leveler picker.
+6. History with thumbnails.
+7. A saved measurement's detail sheet.
+
+Optional extras once the AR shot is done: "View in AR" projecting a saved shape, and a PDF report page (the report isn't an app screen, so show it open in a PDF viewer on the phone).
 
 ---
 
@@ -80,7 +84,7 @@ Suggested screenshot set, in order:
 > **Showdist Privacy Policy**
 > Effective date: [DATE]
 >
-> Showdist ("the app") is developed by [DEVELOPER NAME]. This policy explains what the app does with your information.
+> Showdist ("the app") is developed by Carlos Cruz. This policy explains what the app does with your information.
 >
 > **Information the app uses.** The app uses your device's camera to show the augmented-reality view and to measure distances, and its motion sensors for the level. Camera images and sensor readings are processed on your device in real time. The app does not record, save or transmit photos, video or sensor data.
 >
@@ -135,7 +139,7 @@ Expected result: Everyone / PEGI 3.
 
 ## Before you submit
 
-1. **Upload an App Bundle, not an APK.** Play requires `.aab` for new apps: `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/app-release.aab`, signed with the same release keystore.
+1. **Upload an App Bundle, not an APK.** Play requires `.aab` for new apps: `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/app-release.aab`, signed with the same release keystore. The 1.1 bundle is built and verified (same certificate as the installed APK, SHA-256 `43:B8:ED:39:…:7F:B2`); a copy is at `~/Showdist-1.1.aab`.
 2. **Play App Signing.** When you create the app, let Google manage the app signing key. The `showdist-release.jks` you already have becomes your **upload key**. Keep it and its password backed up.
 3. **Closed test first (new personal accounts).** Personal developer accounts created after November 2023 must run a closed test with at least 12 testers opted in for 14 consecutive days before they can apply for production access. Check the current requirement in Play Console; if it applies, plan to recruit testers early.
 4. **Device targeting.** The manifest requires `android.hardware.camera.ar`, so Play will only offer the app to ARCore-supported phones. That's intended.
