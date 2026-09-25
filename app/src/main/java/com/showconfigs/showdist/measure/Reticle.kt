@@ -14,7 +14,6 @@ private const val CENTRE_DOT_RADIUS_DP = 2.6f
 private const val HOLLOW_STROKE_DP = 1.6f
 private const val SHADOW_OFFSET_Y_DP = 1.5f
 private const val SHADOW_SIGMA_DP = 2.5f
-private const val SHADOW_COLOR = 0x66000000
 private const val SEARCHING_ALPHA = (0.6f * 255).toInt()
 private const val DEG_TO_RAD = (Math.PI / 180.0).toFloat()
 
@@ -28,6 +27,7 @@ fun blurForSigma(sigmaPx: Float) =
  */
 class ReticlePainter(private val density: Float) {
     private val seafoam = Palette.Seafoam.toArgb()
+    private val shadowColor = Palette.ReticleShadow.toArgb()
     private val strokeWidth = HOLLOW_STROKE_DP * density
     private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
 
@@ -47,13 +47,13 @@ class ReticlePainter(private val density: Float) {
     }
     private val shadowFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = SHADOW_COLOR
+        color = shadowColor
         maskFilter = shadowBlur
     }
     private val shadowStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = this@ReticlePainter.strokeWidth
-        color = SHADOW_COLOR
+        color = shadowColor
         maskFilter = shadowBlur
     }
 

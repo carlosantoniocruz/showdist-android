@@ -55,7 +55,7 @@ Every screen is a full-screen page pushed on a back stack. The system Back butto
 
 ### 1.3 Launch screen
 
-- Pre-Android 12: the window background is a plain **ink (#14343F)** field. No logo.
+- Pre-Android 12: the window background is a plain **ink (#0D313D)** field. No logo.
 - Android 12+: the system splash screen shows the app icon on `windowSplashScreenBackground` = ink.
 - The window background behind the app while it starts is also ink, so nothing flashes white.
 
@@ -246,9 +246,8 @@ The screen is a vertical column:
 
 1. **Camera area** fills all the height above the control bar, so nothing measured is ever hidden behind the bar. It is a stack of layers, bottom to top:
    1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping.
-   2. **Top scrim:** a vertical gradient from ink at alpha 0.6 at the top to fully transparent at 22% of the height. Touches pass through it.
-   3. The **overlay canvas** (§2.4, §3). Touches pass through it.
-   4. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L60 T16 R60 so it stays clear of the menu button:
+   2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total carry their own shadow and pill.
+   3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L60 T16 R60 so it stays clear of the menu button:
       - The **hint** line (§2.3).
       - When there are ≥2 points: a 6 dp gap, then the **running total** as a pill. The pill is scrim (black at 50%) with 14 dp corner radius and 16 h × 4 v padding. The total text is 34 sp, weight 200, white, with tabular figures, formatted per §2.5.
    5. The **menu button**, top-left inside the safe area, 8 dp from the top and left: a 48 dp tap target around a 40 dp scrim disc holding a white `arrow_back_rounded` (22 dp, alpha 0.9). It returns to the main menu, closing the session like Back. Its content description is "Back to menu". It sits as far as possible from the control bar so it isn't hit by accident, and it turns with the bar icons (§2.9). A quick tap is needed; a long press still charges hold-to-save.
@@ -347,18 +346,18 @@ The rationale for this precision is that AR tracking is good to about 1 cm.
 
 **Bar:**
 - ink fill with a **1.5 dp citrine top border**.
-- Bottom safe-area inset applied, plus 12 dp vertical padding.
+- Bottom safe-area inset applied, plus 24 dp vertical padding.
 - The bar itself never rotates.
 
 It is divided into **five equal-width columns**, each control centred in its own column. Left to right:
 
 | # | Control | Details |
 |---|---|---|
-| 1 | History | `history_rounded` icon. If ≥1 saved, a count badge appears (white, 11 sp, weight 700, top-right of the 52×52 hit area, at right 4 / top 6). Opens History (pausing the session). |
+| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is white, weight 700. The inactive one is white at alpha 0.5, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
 | 2 | Undo | `undo_rounded`. Tooltip "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
 | 3 | Main button | 96×96. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
 | 4 | Clear | `close_rounded`. Tooltip "Clear all points". Also removes a projection. Disabled when there are no points and no projection. |
-| 5 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is white, weight 700. The inactive one is white at alpha 0.5, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
+| 5 | History | `history_rounded` icon. If ≥1 saved, a count badge appears (white, 11 sp, weight 700, top-right of the 52×52 hit area, at right 4 / top 6). Opens History (pausing the session). |
 
 - The icon buttons are bare 24 dp icons centred in a 52×52 hit area. They are white at alpha 0.9 when enabled and 0.3 when disabled.
 - Controls 1, 2, 4 and 5 each sit in a fixed 60×60 slot and **rotate** to stay upright (§2.9). The round main button doesn't rotate.
@@ -506,7 +505,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
   1. **Aiming:** the shape's first point follows the reticle hit, turned so that its reference line points away from the camera. A tap anchors the first point there (a session anchor).
   2. **Aligning:** the shape turns about its first point so that its reference line points at the reticle hit, once the hit is more than 5 cm away horizontally. A tap freezes that heading.
   - The **reference line** runs from the first point to the first later point that is more than 1 cm away horizontally. A recording with no such point (straight up and down) skips aligning.
-- **Drawn** before the user's own points and labels (§3.2): lines 1.3 dp, dots radius 4.5 dp, with the usual overlay shadows. While aiming or aligning they're **seafoamMuted** and dashed (like the live line); once placed, **citrineLight** and solid, bright enough to read over the camera feed. Each drawn segment gets a label with the recording's saved length and a border to match.
+- **Drawn** before the user's own points and labels (§3.2): lines 1.3 dp, dots radius 4.5 dp, with the usual overlay shadows. While aiming or aligning they're **seafoamMuted** and dashed (1.3 dp, dash 6 dp and gap 6 dp); once placed, **citrineLight** and solid, bright enough to read over the camera feed. Each drawn segment gets a label with the recording's saved length and a border to match.
 - **Measuring continues** as normal once placed: taps add the user's own peach points, and hold-to-save saves only those.
 - **Undo** with no user points left steps back: placed → aligning → aiming. **Clear** removes the projection as well. Leaving Measure ends it.
 
@@ -530,6 +529,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 - **Cell:** a 0.5 pt border with 12 pt padding. Caption at the bottom (30 pt): "#N · total" (Bold 10 pt), then the date "YYYY-MM-DD HH:MM" (9 pt). N is the position in the selection, from 1.
 - **Diagram:** the points projected onto their best-fit plane (PCA). No plane is stored per measurement, so this is always the fallback. On a steep plane (|normal · up| < 0.7, e.g. a wall) world-up stays up and across is horizontal in the plane; on a flat one (a floor) it's seen from above, its widest direction across. A straight line is drawn horizontal, or vertical if it's steep (|direction · up| > 0.7). The diagram is fitted at one uniform scale into the space above the caption, inset by 2.2 × the label size for labels, and centred. Only the geometry scales.
 - **Labels:** each segment's true 3D length, formatted per §2.5 in the current unit setting, never below 9 pt. Each sits at its segment's midpoint, pushed 4 pt plus half its box along the segment's normal, on the side away from the diagram's centre, on a white box so it never sits on a line, and moved back inside the cell if it would cross its edge.
+- **Crowded labels:** if any label box would overlap another label, come within 3 pt of a point, or cross a segment other than its own, the cell switches to a list: each segment is labelled with its number (1, 2, …, in drawing order) instead, and "N  length" lines are listed at the label size to the right of the diagram, vertically centred, wrapping into more columns if they don't fit (taking at most the right half of the cell). The diagram is refitted into the space left of the list.
 - **No points:** a recording with fewer than 2 points is drawn as one horizontal line, 70% of the diagram's width, labelled with its stored total.
 - **Output:** `<cache>/exports/showdist_YYYYMMDD_HHMM.pdf`, shared through the FileProvider with `ACTION_SEND`, type `application/pdf`, subject "Showdist — Measurement Report". No storage permissions. Each export first deletes files in `exports/` older than 24 hours. On failure, a snackbar "Could not export PDF: …".
 
@@ -542,7 +542,7 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 ### 3.1 Reticle
 
 - **Position:** always the **fixed centre of the camera area**, not the projected hit point.
-- **Motif:** three **seafoam (#1FB89A)** dots in an equilateral triangle around a **white** centre dot. Seafoam is used for the reticle dots and nothing else.
+- **Motif:** three **seafoam (#0EB997)** dots in an equilateral triangle around a **white** centre dot. Seafoam is used for the reticle dots and nothing else.
   - Ring radius (centre to each dot): **22 dp**.
   - Outer dot radius: **5 dp**. Centre dot radius: **2.6 dp**.
 - **Rotation:**
@@ -565,7 +565,7 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 
 **Live line:**
 - A dashed line from the last point to the reticle hit's projected screen position.
-- It is **seafoamMuted**, 1.3 dp wide with round caps, dash 6 dp and gap 6 dp.
+- It is **white**, 2.5 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3.5 dp on, 8.5 dp off, allowing for the caps). Its shadow is the same width.
 - It is drawn only when there is a hit, ≥1 point, and the last point is visible.
 
 **Overlay shadow** (for points and lines):
@@ -673,27 +673,26 @@ Both levelers share this.
 
 ## 5. Colour palette
 
-The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's *A Dictionary of Color Combinations*. The alpha variants below are the only other colours used.
+The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's *A Dictionary of Color Combinations*. Each is pushed to higher saturation than the book's swatch, same hue, for legibility in direct sunlight. The alpha variants below are the only other colours used.
 
 | Token | Hex (ARGB as in code) | Used for |
 |---|---|---|
-| **ink** | `#14343F` (`0xFF14343F`) | Main background of every screen, including the Leveler body. All app bars. The Measure control bar fill. Launch screen / splash background. App-icon background. Top camera scrim, hint shadow and overlay shadow (alpha variants). |
-| **inkSurface** | `#1F3E48` | Card and surface fill: the Measure card, the Leveler vial and bullseye, dialogs, bottom sheets and popup menus. |
-| **olympicBlue** | `#5A82B3` | Leveler tool card on the main menu and both cards on the Leveler picker (border at alpha 0.45, arrow icon). Selected radio icon in Settings. |
-| **citrine** | `#8B835B` | SHOWDIST wordmark. License detail heading. Main-menu ruler ticks and baseline. The 1.5 dp top rule of the Measure control bar. The Leveler vial and bullseye outlines, centre marks, centre ring and crosshairs. The app-icon dimension line. |
-| **citrineLight** | `#E0D49A` | A placed projected recording's lines, dots and label borders (§2.11). |
-| **peach** | `#F15A30` | Primary accent; in AR it means placed ("done"). Measure card (border at alpha 0.9, arrow), History link rule (alpha 0.6), capture button (alpha 0.4 when disabled), placed point dots, segment lines and their label borders, "Delete selected" icon, confirm button in the memory dialog, Problem-view circle (alpha 0.85), Licenses loading spinner, developer email on About, History selection (row tint at alpha 0.12, thumbnail, check icon), the "View in AR" button, the Leveler's centre marks, centre ring and bubble when level, the app-icon end points. The Material colour scheme uses it as the primary colour. |
-| **seafoam** | `#1FB89A` | Reticle dots only. |
-| **seafoamMuted** | `#5E9A8E` | In progress: the dashed live line and the live label's border; a projected recording while it's being placed. |
-| **warmGrey** | `#B5AEA3` | Muted/secondary text, including the Leveler instruction: descriptions, captions, subtitles, "N saved", empty states, dialog bodies, cancel buttons. Chevrons and the gear icon. Unselected radio icons. |
-| **white** | `#FFFFFF` | Body text, titles, live numbers, running total, label text, reticle centre dot, Leveler bubble (when not level) and readout, charge arc, bar icons (alpha 0.9 enabled / 0.3 disabled), dividers (alpha 0.08), outlined-button borders (alpha 0.3). |
+| **ink** | `#0D313D` (`0xFF0D313D`) | Main background of every screen, including the Leveler body. All app bars. The Measure control bar fill. Launch screen / splash background. App-icon background. Hint shadow and overlay shadow (alpha variants). |
+| **inkSurface** | `#1A3E4A` | Card and surface fill: the Measure card, the Leveler vial and bullseye, dialogs, bottom sheets and popup menus. |
+| **olympicBlue** | `#4D84C7` | Leveler tool card on the main menu and both cards on the Leveler picker (border at alpha 0.45, arrow icon). Selected radio icon in Settings. |
+| **citrine** | `#A29553` | SHOWDIST wordmark. License detail heading. Main-menu ruler ticks and baseline. The 1.5 dp top rule of the Measure control bar. The Leveler vial and bullseye outlines, centre marks, centre ring and crosshairs. The app-icon dimension line. |
+| **citrineLight** | `#EDDD91` | A placed projected recording's lines, dots and label borders (§2.11). |
+| **peach** | `#FB5628` | Primary accent; in AR it means placed ("done"). Measure card (border at alpha 0.9, arrow), History link rule (alpha 0.6), capture button (alpha 0.4 when disabled), placed point dots, segment lines and their label borders, "Delete selected" icon, confirm button in the memory dialog, Problem-view circle (alpha 0.85), Licenses loading spinner, developer email on About, History selection (row tint at alpha 0.12, thumbnail, check icon), the "View in AR" button, the Leveler's centre marks, centre ring and bubble when level, the app-icon end points. The Material colour scheme uses it as the primary colour. |
+| **seafoam** | `#0EB997` | Reticle dots only. |
+| **seafoamMuted** | `#53AC9A` | In progress: the live label's border; a projected recording while it's being placed. |
+| **warmGrey** | `#C0B6A5` | Muted/secondary text, including the Leveler instruction: descriptions, captions, subtitles, "N saved", empty states, dialog bodies, cancel buttons. Chevrons and the gear icon. Unselected radio icons. |
+| **white** | `#FFFFFF` | Body text, titles, the dashed live line, live numbers, running total, label text, reticle centre dot, Leveler bubble (when not level) and readout, charge arc, bar icons (alpha 0.9 enabled / 0.3 disabled), dividers (alpha 0.08), outlined-button borders (alpha 0.3). |
 
 **Scrims and shadows** (derived colours, not palette tokens):
 
 | Name | Value | Used for |
 |---|---|---|
 | scrim | `#80000000`, black 50% | Behind every distance label and the running total |
-| Top camera scrim | ink at alpha 0.6 → 0 over the top 22% | Behind the hint and total in Measure |
 | Hint text shadow | ink at alpha 0.67, blur 6 | Hint line |
 | Overlay shadow | ink at alpha 0.7, offset (0, 1.2), blur 1.4 | Point dots, segment and dashed lines |
 | Reticle shadow | `#66000000`, black 40%, offset (0, 1.5), blur 2.5 | Reticle dots |
@@ -783,7 +782,7 @@ For the Kotlin rebuild, the Licenses screen should list at least **ARCore**, **J
 
 The icon is an Android **adaptive icon** built from vector drawables on a 108×108 canvas. The visible area is the inner 72 dp circle, radius 36, centred at (54, 54). It has no lettering.
 
-- **Background layer:** solid ink `#14343F`.
+- **Background layer:** solid ink `#0D313D`.
 - **Foreground layer:** a dimension line, well inside the 66 dp safe zone:
   - citrine strokes, width 3.5, round caps: a horizontal rule from (34, 54) to (74, 54) and an end tick at each end, x = 34 and x = 74, from y = 43 to y = 65.
   - Two peach dots, radius 6, at (34, 54) and (74, 54).

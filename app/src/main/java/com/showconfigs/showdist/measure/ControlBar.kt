@@ -44,8 +44,8 @@ import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 
 /**
- * The Measure control bar (SPEC.md §2.6): History, Undo, the main button, Clear and the
- * M/FT unit toggle, in five equal columns. The four small controls sit in fixed 60×60
+ * The Measure control bar (SPEC.md §2.6): the M/FT unit toggle, Undo, the main button,
+ * Clear and History, in five equal columns. The four small controls sit in fixed 60×60
  * slots that turn by [rotation] degrees to stay upright (SPEC.md §2.9); the bar itself and
  * the main button never rotate. [rotation] and [charge] are read only in the draw/layer phase, so
  * neither recomposes the bar.
@@ -68,10 +68,10 @@ fun ControlBar(
     Column(modifier.fillMaxWidth().background(Palette.Ink)) {
         Box(Modifier.fillMaxWidth().height(1.5.dp).background(Palette.Citrine))
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 12.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BarColumn { RotatingSlot(rotation) { HistoryButton(savedCount, onHistory) } }
+            BarColumn { RotatingSlot(rotation) { UnitToggle(units, onUnits) } }
             BarColumn {
                 RotatingSlot(rotation) { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onUndo) }
             }
@@ -79,7 +79,7 @@ fun ControlBar(
             BarColumn {
                 RotatingSlot(rotation) { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClear) }
             }
-            BarColumn { RotatingSlot(rotation) { UnitToggle(units, onUnits) } }
+            BarColumn { RotatingSlot(rotation) { HistoryButton(savedCount, onHistory) } }
         }
     }
 }

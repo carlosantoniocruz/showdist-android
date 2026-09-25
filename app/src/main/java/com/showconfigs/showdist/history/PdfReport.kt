@@ -41,6 +41,9 @@ private const val CELL_PAD = 12f
 private const val CAPTION_H = 30f
 private const val LARGE_PER_PAGE = 12 // 3 × 4
 private const val MIN_LABEL_PT = 9f
+private const val LIST_GAP = 8f
+private const val DOT_CLEARANCE = 3f
+private const val SEGMENT_SAMPLES = 24
 private const val EXPORT_MAX_AGE_MS = 24L * 60 * 60 * 1000
 
 /** Cells per page and label size for a selection of [count] recordings (SPEC.md §2.12). */
@@ -216,12 +219,46 @@ object PdfReport {
             c.drawLine(cx - half, cy, cx + half, cy, paints.line)
             c.drawCircle(cx - half, cy, 2.5f, paints.dot)
             c.drawCircle(cx + half, cy, 2.5f, paints.dot)
-            drawLabel(c, DistanceFormat.format(r.total, units), cx, cy, 0f, -1f, paints)
+            placeLabel(c, DistanceFormat.format(r.total, units), cx, cy, 0f, -1f, paints)
             return
         }
 
         val xy = planeCoords(r.points)
         val n = r.points.size
+        val lengths = List(n - 1) { DistanceFormat.format(r.segments[it], units) }
+        var at = fitDiagram(xy, n, boxL, boxT, boxR, boxB)
+        var labels = placeLabels(null, at, n, lengths, paints)
+
+        // Labels that would cover each other, a point or another segment: number the
+        // segments instead, and list the lengths beside the diagram.
+        if (anyCollision(labels, at, n)) {
+            val entries = List(n - 1) { "${it + 1}  ${lengths[it]}" }
+            val fm = paints.text.fontMetrics
+            val lineH = (fm.descent - fm.ascent) * 1.3f
+            val listT = top + CELL_PAD
+            val listB = paints.maxY
+            val rows = maxOf(1, ((listB - listT) / lineH).toInt())
+            val columns = (entries.size + rows - 1) / rows
+            val columnW = entries.maxOf { paints.text.measureText(it) } + LIST_GAP
+            val listL = maxOf(left + w - CELL_PAD - columns * columnW + LIST_GAP, cx)
+            val shown = minOf(entries.size, rows)
+            val firstY = (listT + listB) / 2f - shown * lineH / 2f - fm.ascent
+            for (k in entries.indices) {
+                c.drawText(entries[k], listL + (k / rows) * columnW, firstY + (k % rows) * lineH, paints.text)
+            }
+            paints.maxX = listL - LIST_GAP
+            at = fitDiagram(xy, n, boxL, boxT, maxOf(listL - LIST_GAP - room, boxL + 1f), boxB)
+            labels = placeLabels(null, at, n, List(n - 1) { "${it + 1}" }, paints)
+        }
+
+        for (i in 1 until n) c.drawLine(at[(i - 1) * 2], at[(i - 1) * 2 + 1], at[i * 2], at[i * 2 + 1], paints.line)
+        val dotR = if (labelPt > MIN_LABEL_PT) 3f else 2.5f
+        for (i in 0 until n) c.drawCircle(at[i * 2], at[i * 2 + 1], dotR, paints.dot)
+        placeLabels(c, at, n, labels.map { it.text }, paints)
+    }
+
+    /** The diagram's page positions (x at 2i, y at 2i+1) at one uniform scale, centred in the box. */
+    private fun fitDiagram(xy: FloatArray, n: Int, boxL: Float, boxT: Float, boxR: Float, boxB: Float): FloatArray {
         var minX = Float.MAX_VALUE
         var maxX = -Float.MAX_VALUE
         var minY = Float.MAX_VALUE
@@ -238,31 +275,62 @@ object PdfReport {
             spanY < 1e-6f -> (boxR - boxL) / spanX
             else -> minOf((boxR - boxL) / spanX, (boxB - boxT) / spanY)
         }
+        val cx = (boxL + boxR) / 2f
+        val cy = (boxT + boxB) / 2f
         val midX = (minX + maxX) / 2f
         val midY = (minY + maxY) / 2f
         // Page y runs down; the diagram's y runs up.
-        fun px(i: Int) = cx + (xy[i * 2] - midX) * scale
-        fun py(i: Int) = cy - (xy[i * 2 + 1] - midY) * scale
+        return FloatArray(n * 2) { k ->
+            if (k % 2 == 0) cx + (xy[k] - midX) * scale else cy - (xy[k] - midY) * scale
+        }
+    }
 
-        for (i in 1 until n) c.drawLine(px(i - 1), py(i - 1), px(i), py(i), paints.line)
-        val dotR = if (labelPt > MIN_LABEL_PT) 3f else 2.5f
-        for (i in 0 until n) c.drawCircle(px(i), py(i), dotR, paints.dot)
+    private class Label(val text: String, val l: Float, val t: Float, val r: Float, val b: Float)
 
-        // Labels at each segment's midpoint, pushed off the line on the side away from the
-        // shape's centre (either side for a straight shape).
+    /** Whether any label box overlaps another, a point, or a segment other than its own. */
+    private fun anyCollision(labels: List<Label>, at: FloatArray, n: Int): Boolean {
+        fun hits(a: Label, x: Float, y: Float, pad: Float) =
+            x > a.l - pad && x < a.r + pad && y > a.t - pad && y < a.b + pad
+        for (i in labels.indices) {
+            val a = labels[i]
+            for (j in i + 1 until labels.size) {
+                val o = labels[j]
+                if (a.l < o.r && o.l < a.r && a.t < o.b && o.t < a.b) return true
+            }
+            for (p in 0 until n) if (hits(a, at[p * 2], at[p * 2 + 1], DOT_CLEARANCE)) return true
+            // Label i belongs to segment i + 1 (points i to i + 1); sample the others.
+            for (s in 1 until n) {
+                if (s == i + 1) continue
+                for (k in 1 until SEGMENT_SAMPLES) {
+                    val f = k / SEGMENT_SAMPLES.toFloat()
+                    val x = at[(s - 1) * 2] + (at[s * 2] - at[(s - 1) * 2]) * f
+                    val y = at[(s - 1) * 2 + 1] + (at[s * 2 + 1] - at[(s - 1) * 2 + 1]) * f
+                    if (hits(a, x, y, 0f)) return true
+                }
+            }
+        }
+        return false
+    }
+
+    /**
+     * Places one label per segment at its midpoint, pushed off the line on the side away
+     * from the shape's centre (either side for a straight shape). Draws them if [c] is set.
+     */
+    private fun placeLabels(c: Canvas?, at: FloatArray, n: Int, texts: List<String>, paints: Paints): List<Label> {
         var gx = 0f
         var gy = 0f
         for (i in 0 until n) {
-            gx += px(i)
-            gy += py(i)
+            gx += at[i * 2]
+            gy += at[i * 2 + 1]
         }
         gx /= n
         gy /= n
-        for (i in 1 until n) {
-            val ax = px(i - 1)
-            val ay = py(i - 1)
-            val bx = px(i)
-            val by = py(i)
+        return List(n - 1) { k ->
+            val i = k + 1
+            val ax = at[(i - 1) * 2]
+            val ay = at[(i - 1) * 2 + 1]
+            val bx = at[i * 2]
+            val by = at[i * 2 + 1]
             val mx = (ax + bx) / 2f
             val my = (ay + by) / 2f
             val len = hypot(bx - ax, by - ay)
@@ -272,15 +340,15 @@ object PdfReport {
                 nx = -nx
                 ny = -ny
             }
-            drawLabel(c, DistanceFormat.format(r.segments[i - 1], units), mx, my, nx, ny, paints)
+            placeLabel(c, texts[k], mx, my, nx, ny, paints)
         }
     }
 
     /**
      * Text centred [4 pt + half its box] from ([x], [y]) along the unit normal, on white,
-     * shifted back inside the cell if it would cross its edge.
+     * shifted back inside the cell if it would cross its edge. Returns its box.
      */
-    private fun drawLabel(c: Canvas, label: String, x: Float, y: Float, nx: Float, ny: Float, paints: Paints) {
+    private fun placeLabel(c: Canvas?, label: String, x: Float, y: Float, nx: Float, ny: Float, paints: Paints): Label {
         val p = paints.text
         val tw = p.measureText(label)
         val fm = p.fontMetrics
@@ -288,8 +356,12 @@ object PdfReport {
         val offset = 4f + abs(nx) * tw / 2f + abs(ny) * th / 2f
         val lx = (x + nx * offset).coerceIn(paints.minX + tw / 2f + 1.5f, maxOf(paints.maxX - tw / 2f - 1.5f, paints.minX + tw / 2f + 1.5f))
         val ly = (y + ny * offset).coerceIn(paints.minY + th / 2f + 1f, maxOf(paints.maxY - th / 2f - 1f, paints.minY + th / 2f + 1f))
-        c.drawRect(lx - tw / 2f - 1.5f, ly - th / 2f - 1f, lx + tw / 2f + 1.5f, ly + th / 2f + 1f, paints.paper)
-        c.drawText(label, lx - tw / 2f, ly - (fm.ascent + fm.descent) / 2f, p)
+        val box = Label(label, lx - tw / 2f - 1.5f, ly - th / 2f - 1f, lx + tw / 2f + 1.5f, ly + th / 2f + 1f)
+        if (c != null) {
+            c.drawRect(box.l, box.t, box.r, box.b, paints.paper)
+            c.drawText(label, lx - tw / 2f, ly - (fm.ascent + fm.descent) / 2f, p)
+        }
+        return box
     }
 }
 

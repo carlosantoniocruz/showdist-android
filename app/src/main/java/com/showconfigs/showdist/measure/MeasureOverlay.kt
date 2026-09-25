@@ -20,6 +20,7 @@ import com.showconfigs.showdist.ui.Palette
 private const val POINT_RADIUS_DP = 6f
 private const val PROJ_POINT_RADIUS_DP = 4.5f
 private const val LINE_WIDTH_DP = 1.3f
+private const val LIVE_LINE_WIDTH_DP = 2.5f
 private const val DASH_DP = 6f
 private const val SHADOW_OFFSET_Y_DP = 1.2f
 private const val SHADOW_SIGMA_DP = 1.4f
@@ -99,7 +100,15 @@ private class PointsPainter(private val density: Float) {
     private val shadowColor = Palette.Ink.copy(alpha = 0.7f).toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
     private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
+    private val liveLineWidth = LIVE_LINE_WIDTH_DP * density
     private val dash = DashPathEffect(floatArrayOf(DASH_DP * density, DASH_DP * density), 0f)
+
+    // Round caps add half the width to each end, so the live line's intervals are adjusted
+    // to keep its visible dashes and gaps at 6 dp.
+    private val liveDash = DashPathEffect(
+        floatArrayOf((DASH_DP - LIVE_LINE_WIDTH_DP) * density, (DASH_DP + LIVE_LINE_WIDTH_DP) * density),
+        0f,
+    )
 
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -112,15 +121,23 @@ private class PointsPainter(private val density: Float) {
         maskFilter = shadowBlur
     }
     private val liveLine = Paint(line).apply {
-        color = Palette.SeafoamMuted.toArgb()
-        pathEffect = dash
+        strokeWidth = liveLineWidth
+        color = Palette.White.toArgb()
+        pathEffect = liveDash
     }
-    private val liveLineShadow = Paint(lineShadow).apply { pathEffect = dash }
+    private val liveLineShadow = Paint(lineShadow).apply {
+        strokeWidth = liveLineWidth
+        pathEffect = liveDash
+    }
+    private val dashedShadow = Paint(lineShadow).apply { pathEffect = dash }
 
     // A projected recording (SPEC.md §2.11): dashed seafoamMuted while being placed, solid
     // citrineLight once placed, with smaller dots than the user's own points.
     private val projLine = Paint(line).apply { color = Palette.CitrineLight.toArgb() }
-    private val projPreviewLine = Paint(liveLine)
+    private val projPreviewLine = Paint(line).apply {
+        color = Palette.SeafoamMuted.toArgb()
+        pathEffect = dash
+    }
     private val projDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Palette.CitrineLight.toArgb()
@@ -143,7 +160,7 @@ private class PointsPainter(private val density: Float) {
         val r = PROJ_POINT_RADIUS_DP * density
         for (pass in 0..1) {
             val paint = when {
-                pass == 0 -> if (placed) lineShadow else liveLineShadow
+                pass == 0 -> if (placed) lineShadow else dashedShadow
                 placed -> projLine
                 else -> projPreviewLine
             }

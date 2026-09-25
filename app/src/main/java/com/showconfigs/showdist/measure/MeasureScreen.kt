@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.semantics.contentDescription
@@ -225,8 +224,7 @@ private fun MeasureArea(
                 arCoreAvailabilityOverlay = {},
                 lifecycle = sessionLifecycle,
             )
-            // Layers (SPEC.md §2.2): camera, top scrim, overlay canvas, top info column.
-            TopScrim(Modifier.fillMaxSize())
+            // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
             MeasureOverlay(tracker, Modifier.fillMaxSize())
             Column(
                 Modifier
@@ -287,19 +285,6 @@ private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Mod
         Box(Modifier.size(40.dp).background(Palette.Scrim, CircleShape), contentAlignment = Alignment.Center) {
             Icon(ShowdistIcons.ArrowBack, contentDescription = null, tint = Palette.White.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
         }
-    }
-}
-
-/** ink at 0.6 fading to transparent over the top 22% (SPEC.md §2.2). */
-@Composable
-private fun TopScrim(modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        drawRect(
-            Brush.verticalGradient(
-                0f to Palette.Ink.copy(alpha = 0.6f),
-                0.22f to Palette.Ink.copy(alpha = 0f),
-            ),
-        )
     }
 }
 
