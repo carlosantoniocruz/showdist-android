@@ -12,7 +12,7 @@ All sizes are in density-independent pixels (dp; for text, sp). "Alpha" is opaci
 |---|---|
 | App name (launcher label) | Showdist |
 | Application ID / namespace | `com.showconfigs.showdist` |
-| Version | 1.0.0 (version code 1) |
+| Version | 1.1 (version code 2) |
 | Min SDK | 24 (ARCore requires 24+) |
 | Target / compile SDK | Latest stable (was Flutter's default, platform 36) |
 | JVM target | 17 |
@@ -118,7 +118,7 @@ Tapping an option sets the unit system immediately and persists it (§2.6).
 
 A scrolling list with padding L24 T32 R24 B24:
 
-1. "Version 1.0.0", centred, 14 sp, warmGrey. The native build reads the version from the installed package, so it always matches the build.
+1. "Version 1.1", centred, 14 sp, warmGrey. The native build reads the version from the installed package, so it always matches the build.
 2. 20 dp gap.
 3. "An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore." Centred, 14 sp, warmGrey, line height 1.5. *(Updated for the native rebuild; the Flutter build said "built with Flutter and ARCore".)*
 4. 28 dp gap, then a divider (1 dp, white at alpha 0.08), then a 20 dp gap.
@@ -748,7 +748,7 @@ The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's
 
 ### 7.1 About text (verbatim)
 
-- `Version 1.0.0`
+- `Version 1.1`
 - `An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore.`
 - `DEVELOPER`
 - `sh.run.configs@gmail.com`

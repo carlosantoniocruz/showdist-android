@@ -20,8 +20,8 @@ android {
         applicationId = "com.showconfigs.showdist"
         minSdk = 24 // ARCore requires API 24+
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     signingConfigs {
