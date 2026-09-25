@@ -50,9 +50,9 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 **Contact email:** `sh.run.configs@gmail.com` (the address on the About screen)
 
-**Website:** optional. The GitHub repo is private, so leave this blank or point it at the privacy-policy page.
+**Website:** optional. The code repo is private, so leave this blank or use the privacy-policy page.
 
-**Privacy policy URL:** required because the app uses the camera. See the draft below; it needs to be hosted at a public URL.
+**Privacy policy URL:** https://carlosantoniocruz.github.io/showdist-privacy/ (GitHub Pages, from the public `carlosantoniocruz/showdist-privacy` repo; the page is the text below).
 
 ---
 
@@ -79,10 +79,10 @@ Optional extras once the AR shot is done: "View in AR" projecting a saved shape,
 
 ---
 
-## Privacy policy (draft)
+## Privacy policy (published)
 
 > **Showdist Privacy Policy**
-> Effective date: [DATE]
+> Effective date: 24 September 2026
 >
 > Showdist ("the app") is developed by Carlos Cruz. This policy explains what the app does with your information.
 >
