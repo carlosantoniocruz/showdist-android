@@ -19,17 +19,19 @@ import com.showconfigs.showdist.ui.Palette
 
 private const val POINT_RADIUS_DP = 6f
 private const val PROJ_POINT_RADIUS_DP = 4.5f
-private const val LINE_WIDTH_DP = 1.3f
-private const val LIVE_LINE_WIDTH_DP = 2.5f
+private const val LINE_WIDTH_DP = 2.5f
+private const val LIVE_LINE_WIDTH_DP = 3f
 private const val DASH_DP = 6f
-private const val SHADOW_OFFSET_Y_DP = 1.2f
-private const val SHADOW_SIGMA_DP = 1.4f
 
-private const val LABEL_TEXT_SP = 12.5f
-private const val LABEL_PAD_H_DP = 8f
-private const val LABEL_PAD_V_DP = 4f
+/** The dark halo around every line and dot, each side, so they read on bright surfaces. */
+private const val HALO_DP = 1.5f
+private const val HALO_SIGMA_DP = 1.2f
+
+private const val LABEL_TEXT_SP = 14f
+private const val LABEL_PAD_H_DP = 10f
+private const val LABEL_PAD_V_DP = 5f
 private const val LABEL_EDGE_DP = 8f
-private const val LABEL_BORDER_DP = 1f
+private const val LABEL_BORDER_DP = 1.5f
 
 /**
  * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): a projected
@@ -63,7 +65,7 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
             points.drawSegments(c, w, h, count, tracker)
             if (tracker.liveVisible) points.drawLiveLine(c, w, h, count, tracker)
             points.drawDots(c, w, h, count, tracker)
-            reticle.draw(c, w / 2f, h / 2f, hit, spin)
+            reticle.draw(c, w / 2f, h / 2f, hit, tracker.units == UnitSystem.Metric, spin)
 
             // One label per drawn projected segment, one per drawn segment, plus the live label.
             for (i in 1 until projCount) {
@@ -72,7 +74,7 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
                     c, w, h,
                     tracker.projMidXY[i * 2], tracker.projMidXY[i * 2 + 1],
                     tracker.projText[i], tracker.projTextLength[i],
-                    if (projPlaced) labels.citrineLight else labels.seafoamMuted,
+                    labels.violet,
                 )
             }
             for (i in 1 until count) {
@@ -80,26 +82,30 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
                 labels.draw(
                     c, w, h,
                     tracker.segmentMidXY[i * 2], tracker.segmentMidXY[i * 2 + 1],
-                    tracker.segmentText[i], tracker.segmentTextLength[i], labels.peach,
+                    tracker.segmentText[i], tracker.segmentTextLength[i], labels.green,
                 )
             }
             if (tracker.liveVisible && tracker.liveMidInFront) {
                 labels.draw(
                     c, w, h,
                     tracker.liveMidXY[0], tracker.liveMidXY[1],
-                    tracker.liveText, tracker.liveTextLength, labels.seafoamMuted,
+                    tracker.liveText, tracker.liveTextLength, labels.white,
                 )
             }
         }
     }
 }
 
-/** Placed points, segment lines and the live line (SPEC.md §3.2). Paints are created once. */
+/**
+ * Placed points, segment lines and the live line (SPEC.md §3.2): pink points on green
+ * segments, as in the app icon, and a dashed white live line, each over a dark halo drawn
+ * first. Paints are created once.
+ */
 private class PointsPainter(private val density: Float) {
-    private val peach = Palette.Peach.toArgb()
-    private val shadowColor = Palette.Ink.copy(alpha = 0.7f).toArgb()
+    private val haloColor = Palette.Halo.toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
-    private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
+    private val halo = 2 * HALO_DP * density
+    private val haloBlur = blurForSigma(HALO_SIGMA_DP * density)
     private val liveLineWidth = LIVE_LINE_WIDTH_DP * density
     private val dash = DashPathEffect(floatArrayOf(DASH_DP * density, DASH_DP * density), 0f)
 
@@ -114,11 +120,12 @@ private class PointsPainter(private val density: Float) {
         style = Paint.Style.STROKE
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
-        color = peach
+        color = Palette.Green.toArgb()
     }
     private val lineShadow = Paint(line).apply {
-        color = shadowColor
-        maskFilter = shadowBlur
+        strokeWidth = lineWidth + halo
+        color = haloColor
+        maskFilter = haloBlur
     }
     private val liveLine = Paint(line).apply {
         strokeWidth = liveLineWidth
@@ -126,77 +133,60 @@ private class PointsPainter(private val density: Float) {
         pathEffect = liveDash
     }
     private val liveLineShadow = Paint(lineShadow).apply {
-        strokeWidth = liveLineWidth
+        strokeWidth = liveLineWidth + halo
         pathEffect = liveDash
     }
     private val dashedShadow = Paint(lineShadow).apply { pathEffect = dash }
 
-    // A projected recording (SPEC.md §2.11): dashed seafoamMuted while being placed, solid
-    // citrineLight once placed, with smaller dots than the user's own points.
-    private val projLine = Paint(line).apply { color = Palette.CitrineLight.toArgb() }
-    private val projPreviewLine = Paint(line).apply {
-        color = Palette.SeafoamMuted.toArgb()
-        pathEffect = dash
-    }
-    private val projDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Palette.CitrineLight.toArgb()
-    }
-    private val projPreviewDot = Paint(projDot).apply { color = Palette.SeafoamMuted.toArgb() }
+    // A projected recording (SPEC.md §2.11): dashed violet while being placed, solid violet
+    // once placed, with smaller dots than the user's own points.
+    private val projLine = Paint(line).apply { color = Palette.Violet.toArgb() }
+    private val projPreviewLine = Paint(projLine).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = peach
+        color = Palette.Pink.toArgb()
     }
+    private val projDot = Paint(dot).apply { color = Palette.Violet.toArgb() }
     private val dotShadow = Paint(dot).apply {
-        color = shadowColor
-        maskFilter = shadowBlur
+        color = haloColor
+        maskFilter = haloBlur
     }
 
     /** The projected shape: lines between visible points, then its dots; shadows first. */
     fun drawProjection(c: Canvas, w: Float, h: Float, count: Int, placed: Boolean, t: MeasureTracker) {
         val xy = t.projScreenXY
         val v = t.projVisible
-        val dy = SHADOW_OFFSET_Y_DP * density
         val r = PROJ_POINT_RADIUS_DP * density
+        val haloR = HALO_DP * density
         for (pass in 0..1) {
             val paint = when {
                 pass == 0 -> if (placed) lineShadow else dashedShadow
                 placed -> projLine
                 else -> projPreviewLine
             }
-            val offset = if (pass == 0) dy else 0f
             for (i in 1 until count) {
                 if (!v[i - 1] || !v[i]) continue
-                c.drawLine(
-                    xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h + offset,
-                    xy[i * 2] * w, xy[i * 2 + 1] * h + offset,
-                    paint,
-                )
+                c.drawLine(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h, xy[i * 2] * w, xy[i * 2 + 1] * h, paint)
             }
         }
         for (pass in 0..1) {
-            val paint = if (pass == 0) dotShadow else if (placed) projDot else projPreviewDot
-            val offset = if (pass == 0) dy else 0f
+            val paint = if (pass == 0) dotShadow else projDot
+            val radius = if (pass == 0) r + haloR else r
             for (i in 0 until count) {
                 if (!v[i]) continue
-                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h + offset, r, paint)
+                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, radius, paint)
             }
         }
     }
 
-    /** Segments are drawn only when both endpoints are visible; shadow copy first. */
+    /** Segments are drawn only when both endpoints are visible; halos first. */
     fun drawSegments(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
         val xy = t.screenXY
         for (pass in 0..1) {
             val paint = if (pass == 0) lineShadow else line
-            val offset = if (pass == 0) SHADOW_OFFSET_Y_DP * density else 0f
             for (i in 1 until count) {
                 if (!t.visible[i - 1] || !t.visible[i]) continue
-                c.drawLine(
-                    xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h + offset,
-                    xy[i * 2] * w, xy[i * 2 + 1] * h + offset,
-                    paint,
-                )
+                c.drawLine(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h, xy[i * 2] * w, xy[i * 2 + 1] * h, paint)
             }
         }
     }
@@ -209,8 +199,7 @@ private class PointsPainter(private val density: Float) {
         val y0 = t.screenXY[last * 2 + 1] * h
         val x1 = t.hitXY[0] * w
         val y1 = t.hitXY[1] * h
-        val dy = SHADOW_OFFSET_Y_DP * density
-        c.drawLine(x0, y0 + dy, x1, y1 + dy, liveLineShadow)
+        c.drawLine(x0, y0, x1, y1, liveLineShadow)
         c.drawLine(x0, y0, x1, y1, liveLine)
     }
 
@@ -219,23 +208,23 @@ private class PointsPainter(private val density: Float) {
         val r = POINT_RADIUS_DP * density
         for (pass in 0..1) {
             val paint = if (pass == 0) dotShadow else dot
-            val offset = if (pass == 0) SHADOW_OFFSET_Y_DP * density else 0f
+            val radius = if (pass == 0) r + HALO_DP * density else r
             for (i in 0 until count) {
                 if (!t.visible[i]) continue
-                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h + offset, r, paint)
+                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, radius, paint)
             }
         }
     }
 }
 
 /**
- * Distance label pills (SPEC.md §3.3): JetBrains Mono 12.5 sp, tabular figures and slashed
- * zero, on Palette.Scrim. Weight 500 renders with the bundled Regular face (SPEC.md §6.1).
+ * Distance label pills (SPEC.md §3.3): JetBrains Mono Bold 14 sp, tabular figures and
+ * slashed zero, on the dark Palette.Scrim, so they stay legible outdoors.
  * Text is drawn straight from the tracker's char buffers, so nothing is allocated.
  */
 private class LabelPainter(context: Context, private val density: Float, fontScale: Float) {
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_regular)
+        typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_bold)
         textSize = LABEL_TEXT_SP * density * fontScale
         color = Palette.White.toArgb()
         fontFeatureSettings = "'tnum', 'zero'"
@@ -248,11 +237,11 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         style = Paint.Style.STROKE
         strokeWidth = LABEL_BORDER_DP * density
     }
-    // Border colours: peach for a placed segment, seafoamMuted for the live label (and a
-    // projection being placed), citrineLight for a placed projection.
-    val peach = Palette.Peach.toArgb()
-    val seafoamMuted = Palette.SeafoamMuted.toArgb()
-    val citrineLight = Palette.CitrineLight.toArgb()
+    // Border colours: green for a placed segment, white for the live label, violet for a
+    // projected recording.
+    val green = Palette.Green.toArgb()
+    val white = Palette.White.toArgb()
+    val violet = Palette.Violet.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 

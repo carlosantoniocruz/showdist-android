@@ -4,11 +4,11 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
@@ -17,7 +17,6 @@ import com.showconfigs.showdist.R
 import com.showconfigs.showdist.measure.DistanceFormat
 import com.showconfigs.showdist.measure.UnitSystem
 import com.showconfigs.showdist.ui.LocalSnackbarHostState
-import com.showconfigs.showdist.ui.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,7 +33,8 @@ private const val PAGE_W = 612
 private const val PAGE_H = 792
 private const val MARGIN = 54f
 private const val CONTENT_W = PAGE_W - 2 * MARGIN
-private const val HEADER_H = 48f
+private const val HEADER_H = 52f
+private const val MARK_W = 30f
 private const val FOOTER_H = 24f
 private const val CELL_GAP = 12f
 private const val CELL_PAD = 12f
@@ -106,8 +106,8 @@ object PdfReport {
     internal fun write(context: Context, recordings: List<Recording>, units: UnitSystem, now: Date, out: File) {
         val regular = ResourcesCompat.getFont(context, R.font.jetbrains_mono_regular)
         val bold = ResourcesCompat.getFont(context, R.font.jetbrains_mono_bold)
-        val ink = Palette.Ink.toArgb()
-        val peach = Palette.Peach.toArgb()
+        // Monochrome for printing (SPEC.md §2.12): black on white, no accent colours.
+        val ink = Color.BLACK
 
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = regular; color = ink }
         val boldText = Paint(text).apply { typeface = bold }
@@ -115,15 +115,15 @@ object PdfReport {
             style = Paint.Style.STROKE
             strokeWidth = 1.5f
             strokeCap = Paint.Cap.ROUND
-            color = peach
+            color = ink
         }
-        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = peach }
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = ink }
         val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 0.5f
-            color = Palette.WarmGrey.toArgb()
+            color = ink
         }
-        val paper = Paint().apply { style = Paint.Style.FILL; color = Palette.White.toArgb() }
+        val paper = Paint().apply { style = Paint.Style.FILL; color = Color.WHITE }
         val paints = Paints(text, boldText, line, dot, paper)
 
         val tier = pdfTier(recordings.size)
@@ -137,14 +137,18 @@ object PdfReport {
             for (p in 0 until pages) {
                 val page = doc.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, p + 1).create())
                 val c = page.canvas
-                c.drawColor(Palette.White.toArgb())
+                c.drawColor(Color.WHITE)
 
                 var top = MARGIN
                 if (p == 0) {
+                    // The app icon's mark, as vectors, beside the SHOWDIST wordmark.
+                    drawMark(c, MARGIN, top + 10f, line, dot)
                     boldText.textSize = 16f
-                    c.drawText("Showdist — Measurement Report", MARGIN, top + 16f, boldText)
+                    boldText.letterSpacing = 0.15f
+                    c.drawText("SHOWDIST", MARGIN + MARK_W + 10f, top + 16f, boldText)
+                    boldText.letterSpacing = 0f
                     text.textSize = 10f
-                    c.drawText("Exported $exported", MARGIN, top + 32f, text)
+                    c.drawText("Measurement Report · Exported $exported", MARGIN, top + 34f, text)
                     top += HEADER_H
                 }
                 val bottom = PAGE_H - MARGIN - FOOTER_H
@@ -169,6 +173,21 @@ object PdfReport {
         } finally {
             doc.close()
         }
+    }
+
+    /**
+     * The app icon's mark (SPEC.md §8.1) in [MARK_W] × 12 pt, centred on [cy]: a rule
+     * between two tick caps, with a point on each end.
+     */
+    private fun drawMark(c: Canvas, left: Float, cy: Float, line: Paint, dot: Paint) {
+        val r = 2.5f
+        val x0 = left + r
+        val x1 = left + MARK_W - r
+        c.drawLine(x0, cy, x1, cy, line)
+        c.drawLine(x0, cy - 6f, x0, cy + 6f, line)
+        c.drawLine(x1, cy - 6f, x1, cy + 6f, line)
+        c.drawCircle(x0, cy, r, dot)
+        c.drawCircle(x1, cy, r, dot)
     }
 
     private class Paints(val text: Paint, val bold: Paint, val line: Paint, val dot: Paint, val paper: Paint) {

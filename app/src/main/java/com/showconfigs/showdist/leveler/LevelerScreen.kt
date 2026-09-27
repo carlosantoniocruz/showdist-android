@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -39,6 +40,7 @@ import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
 import com.showconfigs.showdist.ui.ShowdistIcons
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /** Which Leveler the picker opened (SPEC.md §4). */
@@ -86,7 +88,7 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                 }
             }
         },
-        containerColor = Palette.Ink,
+        containerColor = Palette.Black,
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -101,7 +103,7 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                     }
                     // Recomposes only when the readout's tenth of a degree changes, not on every sample.
                     val tenths by remember { derivedStateOf { tenthsOf(sensor.roll - offset) } }
-                    Readout(tenths, Modifier.padding(bottom = 40.dp))
+                    Readout(tenths, level = tenths <= LEVEL_TENTHS, Modifier.padding(bottom = 24.dp))
                 }
                 LevelerMode.Bullseye -> {
                     Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -113,12 +115,15 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                     }
                     val xTenths by remember { derivedStateOf { tenthsOf(sensor.tiltX - offsetX) } }
                     val yTenths by remember { derivedStateOf { tenthsOf(sensor.tiltY - offsetY) } }
-                    Row(Modifier.padding(bottom = 40.dp), verticalAlignment = Alignment.Bottom) {
+                    val level by remember {
+                        derivedStateOf { hypot(sensor.tiltX - offsetX, sensor.tiltY - offsetY) <= LEVEL_THRESHOLD_DEG }
+                    }
+                    Row(Modifier.padding(bottom = 24.dp), verticalAlignment = Alignment.Bottom) {
                         AxisLabel("X")
-                        Readout(xTenths)
-                        Spacer(Modifier.width(28.dp))
+                        Readout(xTenths, level, size = 48.sp)
+                        Spacer(Modifier.width(24.dp))
                         AxisLabel("Y")
-                        Readout(yTenths)
+                        Readout(yTenths, level, size = 48.sp)
                     }
                 }
             }
@@ -128,15 +133,23 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
 
 private fun tenthsOf(degrees: Float) = (abs(degrees) * 10).roundToInt()
 
-/** `|value|` to one decimal place and "°" (SPEC.md §4.2): 40 sp, weight 200, tabular. */
+/** The tube's level test in readout tenths: |displayed| ≤ 0.3° (SPEC.md §4.1). */
+private const val LEVEL_TENTHS = 3
+
+/**
+ * `|value|` to one decimal place and "°" (SPEC.md §4.2): bold, tabular, near-white, green
+ * when level; 64 sp for the tube, 48 sp for the bullseye's pair, big enough to read from a
+ * foot away.
+ */
 @Composable
-private fun Readout(tenths: Int, modifier: Modifier = Modifier) {
+private fun Readout(tenths: Int, level: Boolean, modifier: Modifier = Modifier, size: TextUnit = 64.sp) {
     Text(
         text = "${tenths / 10}.${tenths % 10}°",
         modifier = modifier,
         style = BaseText.copy(
-            fontSize = 40.sp,
-            fontWeight = FontWeight.ExtraLight,
+            color = if (level) Palette.Green else Palette.Text,
+            fontSize = size,
+            fontWeight = FontWeight.Bold,
             fontFeatureSettings = FEATURES_TABULAR,
         ),
     )
@@ -147,8 +160,8 @@ private fun Readout(tenths: Int, modifier: Modifier = Modifier) {
 private fun AxisLabel(axis: String) {
     Text(
         text = axis,
-        modifier = Modifier.padding(end = 8.dp, bottom = 10.dp),
-        style = CaptionText.copy(fontSize = 14.sp, letterSpacing = 0.sp),
+        modifier = Modifier.padding(end = 8.dp, bottom = 16.dp),
+        style = CaptionText.copy(color = Palette.Violet, fontSize = 16.sp, letterSpacing = 0.sp),
     )
 }
 

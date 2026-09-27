@@ -2,7 +2,7 @@
 <!-- Pre-adaptive-icon fallback (API 24-25; adaptive icons need API 26), with no
      layers and no launcher mask. It draws only what an adaptive-icon launcher
      would show, the inner 72 of the 108 canvas (hence the viewport and the -18
-     shift), as a round icon: an ink disc under the same dimension line. -->
+     shift), as a round icon: a black disc under the same dimension line. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="72dp"
     android:height="72dp"
@@ -12,15 +12,15 @@
         android:translateX="-18"
         android:translateY="-18">
         <path
-            android:fillColor="@color/ink"
+            android:fillColor="@color/black"
             android:pathData="M18,54 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
         <path
-            android:strokeColor="@color/citrine"
+            android:strokeColor="@color/green"
             android:strokeWidth="3.5"
             android:strokeLineCap="round"
             android:pathData="M34,54 H74 M34,43 V65 M74,43 V65" />
         <path
-            android:fillColor="@color/peach"
+            android:fillColor="@color/pink"
             android:pathData="M28,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0
                               M68,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
     </group>

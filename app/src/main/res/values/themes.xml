@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The window theme only; everything on screen is drawn by ShowdistTheme in Compose.
-         The window is ink, the launch screen's colour, so nothing flashes white while
+         The window is black, the launch screen's colour, so nothing flashes white while
          Compose starts (SPEC.md §1.3). -->
     <style name="Theme.Showdist" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:windowBackground">@color/black</item>
     </style>
 </resources>

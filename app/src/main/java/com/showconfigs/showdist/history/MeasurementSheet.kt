@@ -104,7 +104,7 @@ fun MeasurementSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Palette.InkSurface,
+        containerColor = Palette.Surface,
     ) {
         Column(
             Modifier
@@ -119,11 +119,11 @@ fun MeasurementSheet(
                 style = BaseText.copy(fontSize = 44.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
             )
             Spacer(Modifier.height(4.dp))
-            Text(recording.countsLine(), style = BaseText.copy(color = Palette.WarmGrey, fontSize = 13.sp))
+            Text(recording.countsLine(), style = BaseText.copy(color = Palette.TextMuted, fontSize = 13.sp))
             Spacer(Modifier.height(18.dp))
             recording.segments.forEachIndexed { i, length ->
                 Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", Modifier.width(32.dp), style = BaseText.copy(color = Palette.WarmGrey, fontSize = 13.sp))
+                    Text("${i + 1}", Modifier.width(32.dp), style = BaseText.copy(color = Palette.TextMuted, fontSize = 13.sp))
                     Text(
                         DistanceFormat.format(length, units),
                         style = BaseText.copy(fontSize = 15.sp, fontFeatureSettings = FEATURES_TABULAR),
@@ -135,21 +135,21 @@ fun MeasurementSheet(
                 Button(
                     onClick = { closeThen(onViewInAr) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Peach, contentColor = Palette.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Green, contentColor = Palette.Black),
                 ) { Text("View in AR", style = BaseText.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold)) }
                 Spacer(Modifier.height(8.dp))
             }
             OutlinedButton(
                 onClick = { closeThen { export.share(listOf(recording)) } },
                 modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.dp, Palette.White.copy(alpha = 0.3f)),
-            ) { IconLabel(ShowdistIcons.IosShare, "Share", Palette.White) }
+                border = BorderStroke(1.dp, Palette.Line),
+            ) { IconLabel(ShowdistIcons.IosShare, "Share", Palette.Text) }
             Spacer(Modifier.height(4.dp))
             TextButton(onClick = { closeThen { export.copy(listOf(recording)) } }, modifier = Modifier.fillMaxWidth()) {
-                IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.White)
+                IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.Text)
             }
             TextButton(onClick = { closeThen {} }, modifier = Modifier.fillMaxWidth()) {
-                Text("Done", style = BaseText.copy(color = Palette.WarmGrey, fontSize = 14.sp))
+                Text("Done", style = BaseText.copy(color = Palette.TextMuted, fontSize = 14.sp))
             }
         }
     }
@@ -182,14 +182,14 @@ fun ShareMenuButton(enabled: Boolean, onShare: () -> Unit, onCopy: () -> Unit) {
                 onClick = { open = true },
                 enabled = enabled,
                 colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = Palette.White,
-                    disabledContentColor = Palette.WarmGrey,
+                    contentColor = Palette.Text,
+                    disabledContentColor = Palette.TextMuted,
                 ),
             ) {
                 Icon(ShowdistIcons.IosShare, contentDescription = "Share or copy", modifier = Modifier.size(22.dp))
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.InkSurface) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
             MenuItem(ShowdistIcons.IosShare, "Share") { open = false; onShare() }
             MenuItem(ShowdistIcons.ContentCopy, "Copy text") { open = false; onCopy() }
         }
@@ -201,7 +201,7 @@ private fun MenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(label, style = BaseText.copy(fontSize = 14.sp)) },
         leadingIcon = {
-            Icon(icon, contentDescription = null, tint = Palette.White.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, tint = Palette.Text.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
         },
         onClick = onClick,
     )

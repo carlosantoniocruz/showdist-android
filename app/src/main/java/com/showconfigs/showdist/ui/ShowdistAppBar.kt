@@ -22,27 +22,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Shared app bar (SPEC.md §1.2): ink, no elevation or tint, white back arrow,
- * centred title in the Caption style in white.
+ * Shared app bar (SPEC.md §1.2): black, no elevation or tint, near-white back arrow,
+ * centred title in the Caption style in near-white.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -> Unit = {}) {
     CenterAlignedTopAppBar(
-        title = { Text(title, style = CaptionText.copy(color = Palette.White)) },
+        title = { Text(title, style = CaptionText.copy(color = Palette.Text)) },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(ShowdistIcons.ArrowBack, contentDescription = "Back", tint = Palette.White)
+                Icon(ShowdistIcons.ArrowBack, contentDescription = "Back", tint = Palette.Text)
             }
         },
         actions = actions,
         windowInsets = AppBarInsets,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Palette.Ink,
-            scrolledContainerColor = Palette.Ink,
-            navigationIconContentColor = Palette.White,
-            titleContentColor = Palette.White,
-            actionIconContentColor = Palette.White,
+            containerColor = Palette.Black,
+            scrolledContainerColor = Palette.Black,
+            navigationIconContentColor = Palette.Text,
+            titleContentColor = Palette.Text,
+            actionIconContentColor = Palette.Text,
         ),
     )
 }
@@ -54,14 +54,14 @@ fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowSc
 val AppBarInsets: WindowInsets
     @Composable get() = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
 
-/** An app-bar action icon with a tooltip on long press, in [tint] (white by default), at 0.3 alpha when disabled. */
+/** An app-bar action icon with a tooltip on long press, in [tint] (near-white by default), at 0.3 alpha when disabled. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppBarAction(
     icon: ImageVector,
     tooltip: String,
     enabled: Boolean = true,
-    tint: Color = Palette.White,
+    tint: Color = Palette.Text,
     onClick: () -> Unit,
 ) {
     TooltipBox(

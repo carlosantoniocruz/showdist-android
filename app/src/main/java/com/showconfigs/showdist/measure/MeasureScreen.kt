@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
@@ -156,7 +155,7 @@ fun MeasureScreen(
         if ((state as? StartState.Problem)?.retryOnResume == true) start()
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.Ink)) {
+    Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
             StartState.Ready -> MeasureArea(units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
@@ -288,31 +287,28 @@ private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Mod
     }
 }
 
-/** The hint line (SPEC.md §2.3): 13 sp white at 0.85 with a soft shadow, cross-fading on change. */
+/** The hint line (SPEC.md §2.3): 13 sp white on a scrim pill, cross-fading on change. */
 @Composable
 private fun HintLine(hint: Hint) {
-    val shadowBlur = with(LocalDensity.current) { 6.dp.toPx() }
     Crossfade(hint, animationSpec = tween(250), label = "hint") { h ->
         Text(
             h.text,
+            modifier = Modifier
+                .background(Palette.Scrim, RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
             textAlign = TextAlign.Center,
-            style = BaseText.copy(
-                color = Palette.White.copy(alpha = 0.85f),
-                fontSize = 13.sp,
-                letterSpacing = 0.3.sp,
-                shadow = Shadow(Palette.Ink.copy(alpha = 0.67f), blurRadius = shadowBlur),
-            ),
+            style = BaseText.copy(color = Palette.White, fontSize = 13.sp, letterSpacing = 0.3.sp),
         )
     }
 }
 
-/** Running total pill (SPEC.md §2.2): Palette.Scrim, 14 dp corners, 34 sp weight 200. */
+/** Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 34 sp, pure white. */
 @Composable
 private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier) {
     BasicText(
         text = DistanceFormat.format(metres, units),
         modifier = modifier
-            .background(Palette.Scrim, RoundedCornerShape(14.dp))
+            .background(Palette.Scrim, RoundedCornerShape(50))
             .padding(horizontal = 16.dp, vertical = 4.dp),
         style = BaseText.copy(
             color = Palette.White,
@@ -380,12 +376,12 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Canvas(Modifier.size(40.dp)) { drawCircle(Palette.Peach.copy(alpha = 0.85f)) }
+        Canvas(Modifier.size(40.dp)) { drawCircle(Palette.Pink) }
         Spacer(Modifier.height(24.dp))
         BasicText(
             text = problem.title,
             style = BaseText.copy(
-                color = Palette.White,
+                color = Palette.Text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Light,
                 textAlign = TextAlign.Center,
@@ -395,7 +391,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         BasicText(
             text = problem.body,
             style = BaseText.copy(
-                color = Palette.WarmGrey,
+                color = Palette.TextMuted,
                 fontSize = 14.sp,
                 lineHeight = 1.4.em,
                 textAlign = TextAlign.Center,
@@ -414,10 +410,10 @@ private fun OutlinedTextButton(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .border(BorderStroke(1.dp, Palette.White.copy(alpha = 0.3f)), shape)
+            .border(BorderStroke(1.dp, Palette.Green), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 10.dp),
     ) {
-        BasicText(label, style = BaseText.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium))
+        BasicText(label, style = BaseText.copy(color = Palette.Green, fontSize = 14.sp, fontWeight = FontWeight.Bold))
     }
 }

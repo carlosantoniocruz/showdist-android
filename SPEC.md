@@ -22,7 +22,7 @@ All sizes are in density-independent pixels (dp; for text, sp). "Alpha" is opaci
 | Orientation | Activity locked to **portrait**, except the tube Leveler, which allows portrait, landscape-left and landscape-right while it is open, then restores portrait-only on exit |
 | System UI | Immersive sticky (status and navigation bars hidden; they reappear briefly on swipe) |
 | Screen timeout | Screen kept on (`FLAG_KEEP_SCREEN_ON`) while the app is in the foreground |
-| Theme | One fixed dark theme. It ignores the system light/dark setting |
+| Theme | One fixed night-sky theme (true black, near-white text, bright accents; §5), after the Android 17 Easter egg. It ignores the system light/dark setting |
 | License | MIT, © 2026 carlosantoniocruz |
 
 ---
@@ -32,73 +32,68 @@ All sizes are in density-independent pixels (dp; for text, sp). "Alpha" is opaci
 ### 1.1 Screen map
 
 ```
-Launch screen (ink field)
-  └─ Main Menu (landing)
+Launch screen (black field)
+  └─ Main Menu (landing; carries the About details)
        ├─ Measure (AR)  ──► History ──► Measurement detail sheet
        │        └─► "Saved" sheet (after hold-to-save)
        ├─ History (only shown once ≥1 measurement is saved) ──► Measurement detail sheet
        │        └─► "View in AR" ──► Measure, projecting it (§2.11)
-       ├─ Leveler picker ──► Tube Leveler / Bullseye Leveler
+       ├─ Export PDF (only shown once ≥1 measurement is saved; shares every saved measurement)
+       ├─ Tube Leveler
+       ├─ Bullseye Leveler
        └─ Settings (gear, top-right)
-             └─ About
-                  └─ Licenses
-                       └─ License detail (one package)
+             └─ Licenses
+                  └─ License detail (one package)
 ```
 
 Every screen is a full-screen page pushed on a back stack. The system Back button/gesture and each app bar's back arrow (`arrow_back_rounded`, tooltip "Back") pop one level. The main menu is the root; Back there exits the app.
 
-### 1.2 Shared app-bar style (Settings, About, Licenses, License detail, History, Leveler)
+### 1.2 Shared app-bar style (Settings, Licenses, License detail, History, Leveler)
 
-- Background ink, no elevation, no surface tint. Foreground (icons, title) white.
-- Title centred and set in the **Caption** style (§6.3) in white: "SETTINGS", "SHOWDIST" (About), "LICENSES", "LICENSE", "HISTORY", "LEVELER".
+- Background black, no elevation, no surface tint. Foreground (icons, title) near-white (text).
+- Title centred and set in the **Caption** style (§6.3) in near-white: "SETTINGS", "LICENSES", "LICENSE", "HISTORY", "TUBE LEVELER", "BULLSEYE LEVELER".
 - Leading: back arrow.
 
 ### 1.3 Launch screen
 
-- Pre-Android 12: the window background is a plain **ink (#0D313D)** field. No logo.
-- Android 12+: the system splash screen shows the app icon on `windowSplashScreenBackground` = ink.
-- The window background behind the app while it starts is also ink, so nothing flashes white.
+- Pre-Android 12: the window background is a plain **black (#000000)** field. No logo.
+- Android 12+: the system splash screen shows the app icon on `windowSplashScreenBackground` = black.
+- The window background behind the app while it starts is also black, so nothing flashes white.
 
 ### 1.4 Main Menu (landing screen)
 
-Background ink. Content sits inside the system safe area.
+Background black, with the night-sky motif (§6.4) behind everything. Content sits inside the system safe area, in a column with 24 dp side padding and 24 dp bottom padding. The column scrolls only if its content is taller than the screen (large font sizes); otherwise the header sits at the top and the tools are centred in the height left below it. The screen reads as information-dense: no large empty regions.
 
-Layout, top to bottom:
+**1. Header block** (upper left, read as one section):
+- A row, 8 dp top padding: the **SHOWDIST wordmark** (§6.2); 14 dp gap; the **dimension mark** (the app icon's motif, §8.1) 56 × 16 dp; flexible space; the **Settings** button (outlined gear `settings_outlined` in textMuted, tooltip "Settings"), which opens Settings.
+- 14 dp gap, then "An AR tape measure and a level." (13 sp, text, line height 1.5).
+- 14 dp gap, then **HOW TO USE** in the Caption style (11 sp, start-aligned), a 6 dp gap, and one row per task. Each row has 2 dp vertical padding: a 76 dp-wide label (11 sp, weight 700, letter-spacing 1, in the tool's accent) and its text (12 sp, textMuted, line height 1.45), verbatim:
 
-1. **Settings button** is absolutely positioned 4 dp from the top and 4 dp from the right. It is an outlined gear icon (`settings_outlined`) in warmGrey with tooltip "Settings" and opens Settings.
-2. Content column with 28 dp horizontal padding and a bottom padding of 92 dp (the height of the ruler band):
-   - Flexible spacer.
-   - The **SHOWDIST wordmark** (§6.2).
-   - 14 dp gap, then the **dimension line**: the app icon's motif (§8.1) stretched to the width of the wordmark, 20 dp tall. A citrine rule (2.5 dp, round caps) runs between two end ticks (citrine, 2.5 dp, the full 20 dp height), with a peach dot (radius 5 dp) centred on each end. The dots are inset by their radius so they aren't clipped.
-   - 40 dp gap.
-   - The **MEASURE** card (prominent).
-   - The **HISTORY** link. It is present only when ≥1 recording is saved and updates live.
-   - 20 dp gap.
-   - The **LEVELER** card (quiet).
-   - Flexible spacer. The two spacers are equal, so the wordmark, dimension line and cards sit as one group, centred between the top of the safe area and the ruler.
-3. The **ruler band** is 92 dp tall and pinned to the bottom edge at full width (§6.4).
+  | Label | Accent | Text |
+  |---|---|---|
+  | MEASURE | green | Move slowly until the reticle's dots turn solid, then tap the green button to drop points. Each span is labelled; the total shows at the top. Undo, × clears, M / FT switches units. |
+  | SAVE | green | With two or more points, hold anywhere until the ring fills. |
+  | HISTORY | green | Share, copy, or View in AR: tap where the first point goes, turn to line up, tap. Select several for one PDF. |
+  | TUBE | violet | Hold an edge to a wall or beam, upright or sideways. Green within 0.3° of level. |
+  | BULLSEYE | violet | Lay flat. X is side to side, Y front to back. |
+  | ZERO | violet | On an uneven base, the target icon sets level here; reset returns to true level. |
 
-**Tool card** (full width, rounded 14 dp corners, ripple on tap):
+- 10 dp gap, then the **About** lines (11 sp, textMuted, line height 1.5): "v{versionName} · Carlos Cruz · sh.run.configs@gmail.com", then "Created with AI assistance" in italic. The version is read from the installed package.
 
-| | MEASURE (prominent) | LEVELER (quiet) |
-|---|---|---|
-| Accent | peach | olympicBlue |
-| Border | 1 dp, accent at alpha 0.9 | 1 dp, accent at alpha 0.45 |
-| Fill | inkSurface | transparent |
-| Padding | 20 h × 18 v | 20 h × 14 v |
-| Label | "MEASURE", 20 sp, weight 800, letter-spacing 2, white | "LEVELER", 16 sp, weight 800, letter-spacing 2, white |
-| Gap label→description | 6 dp | 4 dp |
-| Description | "Point the camera, tap two spots, get the distance." 13 sp, warmGrey, line height 1.35 | "Check level and plumb with a tube or bullseye." 12 sp, warmGrey, line height 1.35 |
-| Trailing icon | `arrow_forward_rounded`, 22 dp, accent | same, 18 dp |
+**2. Tools**, 16 dp below the header:
+- The **MEASURE** card (full width).
+- Only when ≥1 recording is saved (updating live), two **sub-links** under it:
+  - **HISTORY** ("N saved"): opens History without starting the camera.
+  - **EXPORT PDF** ("1 measurement" / "all N"): writes one PDF report (§2.12) of every saved measurement, newest first, and opens the share sheet.
+- 16 dp gap, then a row of two half-width **tiles** with a 12 dp gap: **TUBE** and **BULLSEYE**. Each opens its Leveler directly.
 
-There is a 12 dp gap between the text column and the arrow.
+**Tool card** (MEASURE): 28 dp corners, fill surfaceHigh at alpha 0.92, 1 dp border in green at alpha 0.7, ripple, padding L18 T16 R20 B16. Leading: the dimension mark (44 dp), 16 dp gap; then "MEASURE" (18 sp, weight 700, letter-spacing 2, text), a 4 dp gap, "Distances with the camera." (12 sp, textMuted, line height 1.35); 12 dp gap; `arrow_forward_rounded` (22 dp, green).
 
-**History link** (under Measure):
+**Tool tile** (TUBE, BULLSEYE): the card's shape, fill and ripple with a violet border, padding L18 T16 R14 B16. A row with the 44 dp picture and `arrow_forward_rounded` (20 dp, violet) at the far end; 12 dp gap; the label (15 sp, weight 700, letter-spacing 2); 4 dp gap; the description (11 sp, textMuted): TUBE "Walls, posts, beams.", BULLSEYE "Flat surfaces."
+- **Tube picture:** a stadium 44 dp wide and 16 dp tall, 1.5 dp line outline, with a white diamond star (half-diagonal 2.5 dp) 3 dp beyond a violet bubble (radius 5 dp) on each side.
+- **Bullseye picture:** a 44 dp circle and a ring at 55% of its radius, both in line, a white diamond star at the four rim points, a violet centre bubble (radius 5 dp).
 
-- Indented 20 dp from the left.
-- A vertical rule, 1.5 dp wide and 44 dp tall, in peach at alpha 0.6, sits at its left edge.
-- Tappable row with rounded 10 dp ripple and padding L14 T12 R4 B12. It contains: the `history_rounded` icon (18 dp, warmGrey), a 10 dp gap, "HISTORY" (13 sp, weight 700, letter-spacing 1.5, white), a 10 dp gap, the count text "1 saved" / "N saved" (12 sp, warmGrey, fills the remaining width), and `chevron_right_rounded` (20 dp, warmGrey).
-- Opens History directly. This does **not** start the camera.
+**Sub-link:** indented 40 dp; a vertical rule 1 dp × 44 dp in green at alpha 0.6 at its left edge; a tappable pill-shaped row, padding L14 T12 R8 B12: icon (18 dp, green: `history_rounded` / `picture_as_pdf`), 10 dp gap, label (13 sp, weight 700, letter-spacing 1.5, text), 10 dp gap, detail (12 sp, textMuted, fills the width), `chevron_right_rounded` (20 dp, textMuted).
 
 The main menu never touches the camera or the AR session.
 
@@ -106,70 +101,35 @@ The main menu never touches the camera or the AR session.
 
 A list with 8 dp vertical padding:
 
-- Section header "UNITS" in the Caption style, warmGrey, left-aligned, padding L20 T12 R20 B4.
-- Option row "Imperial (ft, in)" (16 sp, white). Its trailing radio icon is `radio_button_checked_rounded` in **olympicBlue** when selected, or `radio_button_unchecked_rounded` in warmGrey otherwise.
-- Option row "Metric (m, cm)", styled the same way.
-- 24 dp gap, then a 1 dp divider (white at alpha 0.08, inset 20 dp on both sides).
-- A row reading "About" (white) with a warmGrey chevron. It opens About.
+- Section header "UNITS" in the Caption style, textMuted, left-aligned, padding L16 T12 R16 B4.
+- Option row "Imperial (ft, in)" (16 sp, text). Its trailing radio icon is `radio_button_checked_rounded` in **amber** when selected, or `radio_button_unchecked_rounded` in textMuted otherwise.
+- Option row "Metric (m, cm)", the same, with **cyan** when selected. (Amber and cyan are the unit colours, §5.)
+- 16 dp gap, then a 1 dp divider (grid colour, inset 20 dp on both sides).
+- Section header "ABOUT".
+- A row "Licenses" (text) with subtitle "ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)" (12 sp, textMuted) and a textMuted chevron. It opens Licenses.
 
-Tapping an option sets the unit system immediately and persists it (§2.6).
-
-### 1.6 About
-
-A scrolling list with padding L24 T32 R24 B24:
-
-1. "Version 1.1", centred, 14 sp, warmGrey. The native build reads the version from the installed package, so it always matches the build.
-2. 20 dp gap.
-3. "An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore." Centred, 14 sp, warmGrey, line height 1.5. *(Updated for the native rebuild; the Flutter build said "built with Flutter and ARCore".)*
-4. 28 dp gap, then a divider (1 dp, white at alpha 0.08), then a 20 dp gap.
-5. "DEVELOPER" in the Caption style, warmGrey.
-6. 12 dp gap, then "Carlos Cruz" (16 sp, white, left-aligned), then a 4 dp gap.
-7. `sh.run.configs@gmail.com` as **selectable** text (long-press to copy), 15 sp, **peach**. This is left-aligned.
-8. 28 dp gap, then a divider.
-9. List row (no side padding): title "View licenses" (white), subtitle "ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)" (12 sp, warmGrey), and a warmGrey chevron. It opens Licenses.
-10. 24 dp gap.
-11. "**Created with AI assistance**", centred, 12 sp, warmGrey, *italic*.
+Tapping an option sets the unit system immediately and persists it (§2.7). About's content (version, developer, "Created with AI assistance") is in the main menu header (§1.4); there is no About screen.
 
 ### 1.7 Licenses
 
-- While loading, a centred circular progress indicator is shown in peach.
-- The screen shows every package that has a registered license, sorted alphabetically. Each row shows the package name in white with a warmGrey chevron. Rows are separated by dividers (1 dp, white at alpha 0.08, indented 20 dp).
+- While loading, a centred circular progress indicator is shown in green.
+- The screen shows every shipped component, sorted alphabetically. Each row shows the name in text with a textMuted chevron. Rows are separated by dividers (1 dp, grid colour, indented 20 dp).
 - The license list is built once per app run and cached.
-- Tapping a row opens **License detail**. Its padding is 24 dp on all sides. The package name is shown in citrine at 24 sp, weight 700, followed by a 20 dp gap. Then comes each license paragraph in white at 13 sp with line height 1.5 and a 16 dp gap after each. Paragraphs marked "centred" are centre-aligned, and all others are start-aligned.
-- The app itself registers one extra entry, **"JetBrains Mono"**, with this text:
-  > JetBrains Mono is licensed under the SIL Open Font License, Version 1.1.
-  > Copyright 2020 The JetBrains Mono Project Authors
-  > (https://github.com/JetBrains/JetBrainsMono)
-  >
-  > Full license text: assets/fonts/JetBrainsMono/OFL.txt
-
-See §7.2 for what the Kotlin build should list.
-
-### 1.8 Leveler picker
-
-Tapping LEVELER on the main menu opens a picker before any leveler.
-
-- Standard app bar titled "LEVELER" with a back arrow; background ink.
-- Content column with 28 dp horizontal padding, centred vertically on the whole screen (not just the space under the app bar): two quiet (olympicBlue) tool cards (§1.4) with a 20 dp gap:
-  1. **"TUBE"**: "Hold the phone's edge against a wall or beam to check plumb or level along one line." Opens the tube Leveler (§4.2).
-  2. **"BULLSEYE"**: "Lay the phone flat on a surface to check it front to back and side to side." Opens the bullseye Leveler (§4.3).
-- Each card leads with a 52 dp picture of its leveler, 16 dp before the text, in the leveler's own colours (inkSurface fill, 1.5 dp citrine strokes, white bubble of radius 5.5 dp):
-  - **Tube:** a stadium the full 52 dp wide and 18 dp tall, with a centre mark 3 dp beyond the bubble on each side.
-  - **Bullseye:** a 52 dp disc with faint crosshairs (citrine at alpha 0.35, 1 dp) and a centre ring 3 dp outside the bubble.
-- Back from either leveler returns to the picker.
+- Tapping a row opens **License detail**. Its padding is 24 dp on all sides. The component name is shown in **violet** at 24 sp, weight 700, followed by a 20 dp gap. Then comes each license paragraph in text at 13 sp with line height 1.5 and a 16 dp gap after each. Paragraphs marked "centred" are centre-aligned, and all others are start-aligned.
+- The list is curated by hand in `settings/Licenses.kt` (§7.2).
 
 ### 1.9 History
 
-- The list shows every saved measurement, newest first, separated by dividers (1 dp, white at alpha 0.08, indented 72 dp). The list has 24 dp bottom padding.
-- **Empty state:** centred text with 40 dp side padding, 14 sp, warmGrey, line height 1.5:
+- The list shows every saved measurement, newest first, separated by dividers (1 dp, grid colour, indented 72 dp). The list has 24 dp bottom padding.
+- **Empty state:** centred text with 40 dp side padding, 14 sp, textMuted, line height 1.5:
   "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save."
 - **Row** (left padding 16, right padding 4):
-  - Leading: a 44×44 **shape thumbnail** (§2.8), drawn in white, or peach when the row is selected.
-  - Title: the total length (§2.5), 20 sp, weight 300, white.
-  - Subtitle: "N points", 12 sp, warmGrey. No date is shown anywhere.
+  - Leading: a 44×44 **shape thumbnail** (§2.8), drawn in text, or green when the row is selected.
+  - Title: the total length (§2.5), 20 sp, weight 300, text.
+  - Subtitle: "N points", 12 sp, textMuted. No date is shown anywhere.
   - Trailing (normal mode): a share-menu button (§2.7).
-  - Trailing (selection mode): `check_circle_rounded` in peach if selected, `circle_outlined` in warmGrey if not, with 12 dp right padding.
-  - A selected row is tinted peach at alpha 0.12.
+  - Trailing (selection mode): `check_circle_rounded` in green if selected, `circle_outlined` in textMuted if not, with 12 dp right padding.
+  - A selected row is tinted green at alpha 0.12.
 - **Normal mode:**
   - Tapping a row opens the **Measurement sheet** (§2.7) titled "MEASUREMENT".
   - Long-pressing a row enters selection mode with that row selected.
@@ -181,14 +141,14 @@ Tapping LEVELER on the main menu opens a picker before any leveler.
     - "Select all" (`select_all_rounded`).
     - "Export PDF" (`picture_as_pdf`), disabled when nothing is selected. It exports the selection as one PDF report (§2.12).
     - "Copy" (`content_copy`) and "Share" (`ios_share`), each disabled when nothing is selected. They copy or share the selection as one text in list order (newest first).
-    - "Delete selected" (`delete_outline_rounded`, **peach**), disabled when nothing is selected.
+    - "Delete selected" (`delete_outline_rounded`, **pink**), disabled when nothing is selected.
   - Tapping or long-pressing a row toggles it.
   - System Back first leaves selection mode and only pops the screen on the next press.
 - **Confirmation dialog** (used for every delete):
-  - Background inkSurface.
-  - Title in white, 18 sp, weight 400: "Delete 1 measurement?", "Delete N measurements?", or "Delete all N measurements?".
-  - Body: "This can't be undone." in warmGrey.
-  - Buttons: "Cancel" (warmGrey) and "Delete" or "Delete all" (white).
+  - Background surface, 28 dp corners.
+  - Title in text, 18 sp, weight 400: "Delete 1 measurement?", "Delete N measurements?", or "Delete all N measurements?".
+  - Body: "This can't be undone." in textMuted.
+  - Buttons: "Cancel" (textMuted) and "Delete" or "Delete all" (text).
   - After a confirmed delete, selection mode exits and the items are removed.
 - History can be reached from the main menu or from the Measure screen. Opening it from Measure **pauses** the AR session, and returning **resumes** it with all points intact.
 
@@ -201,7 +161,7 @@ Tapping LEVELER on the main menu opens a picker before any leveler.
 When the screen opens:
 
 1. Start the device-orientation listener (§2.9) and register the memory-high callback (§2.10).
-2. Show a centred Caption "WAKING THE CAMERA" (warmGrey) on ink.
+2. Show a centred Caption "WAKING THE CAMERA" (textMuted) on black.
 3. Request camera permission.
    - **If denied**, show the Problem view:
      - Title: "Camera access needed"
@@ -229,10 +189,10 @@ When the screen opens:
 The ARCore install prompt is shown only on the first attempt. Later attempts don't re-prompt the user.
 
 **Problem view** (centred, 36 dp side padding):
-- A filled 40 dp circle in peach at alpha 0.85.
-- 24 dp gap, then the title (22 sp, weight 300, white, centred).
-- 12 dp gap, then the body (14 sp, warmGrey, line height 1.4, centred).
-- If there is an action: a 28 dp gap, then an outlined button with white text and a 1 dp border in white at alpha 0.3.
+- A filled 40 dp circle in pink.
+- 24 dp gap, then the title (22 sp, weight 300, text, centred).
+- 12 dp gap, then the body (14 sp, textMuted, line height 1.4, centred).
+- If there is an action: a 28 dp gap, then a pill-shaped outlined button with green text (weight 700) and a 1 dp green border.
 
 **Lifecycle rules:**
 - When the app goes to the background (activity paused), pause the GL view and the AR session. Resume both when the app returns, but only if a session was started.
@@ -246,10 +206,10 @@ The screen is a vertical column:
 
 1. **Camera area** fills all the height above the control bar, so nothing measured is ever hidden behind the bar. It is a stack of layers, bottom to top:
    1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping.
-   2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total carry their own shadow and pill.
+   2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total each sit on their own scrim pill.
    3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L60 T16 R60 so it stays clear of the menu button:
       - The **hint** line (§2.3).
-      - When there are ≥2 points: a 6 dp gap, then the **running total** as a pill. The pill is scrim (black at 50%) with 14 dp corner radius and 16 h × 4 v padding. The total text is 34 sp, weight 200, white, with tabular figures, formatted per §2.5.
+      - When there are ≥2 points: a 6 dp gap, then the **running total** as a pill. The pill is scrim (§5), fully rounded, with 16 h × 4 v padding. The total text is 34 sp, weight 200, pure white, with tabular figures, formatted per §2.5.
    5. The **menu button**, top-left inside the safe area, 8 dp from the top and left: a 48 dp tap target around a 40 dp scrim disc holding a white `arrow_back_rounded` (22 dp, alpha 0.9). It returns to the main menu, closing the session like Back. Its content description is "Back to menu". It sits as far as possible from the control bar so it isn't hit by accident, and it turns with the bar icons (§2.9). A quick tap is needed; a long press still charges hold-to-save.
 2. **Control bar** (§2.6).
 
@@ -257,7 +217,7 @@ The whole screen, camera area and bar alike, is covered by one **long-press** de
 
 ### 2.3 Hint text
 
-The hint is 13 sp white at alpha 0.85, letter-spacing 0.3, with a text shadow (blur 6, colour ink at alpha 0.67). It cross-fades over 250 ms whenever the text changes. Its content depends on the tracking state:
+The hint is 13 sp pure white, letter-spacing 0.3, on a fully rounded scrim pill (§5) with 14 h × 6 v padding, so it reads outdoors. It cross-fades over 250 ms whenever the text changes. Its content depends on the tracking state:
 
 | State | Hint |
 |---|---|
@@ -345,7 +305,7 @@ The rationale for this precision is that AR tracking is good to about 1 cm.
 ### 2.6 Control bar & actions: undo, clear, save (reset)
 
 **Bar:**
-- ink fill with a **1.5 dp citrine top border**.
+- black fill with a **1 dp top border** in line (§5).
 - Bottom safe-area inset applied, plus 24 dp vertical padding.
 - The bar itself never rotates.
 
@@ -353,19 +313,19 @@ It is divided into **five equal-width columns**, each control centred in its own
 
 | # | Control | Details |
 |---|---|---|
-| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is white, weight 700. The inactive one is white at alpha 0.5, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
+| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is weight 700 in its unit colour: **cyan** for M, **amber** for FT. The inactive one is textMuted at alpha 0.6, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
 | 2 | Undo | `undo_rounded`. Tooltip "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
 | 3 | Main button | 96×96. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
 | 4 | Clear | `close_rounded`. Tooltip "Clear all points". Also removes a projection. Disabled when there are no points and no projection. |
 | 5 | History | `history_rounded` icon. If ≥1 saved, a count badge appears (white, 11 sp, weight 700, top-right of the 52×52 hit area, at right 4 / top 6). Opens History (pausing the session). |
 
-- The icon buttons are bare 24 dp icons centred in a 52×52 hit area. They are white at alpha 0.9 when enabled and 0.3 when disabled.
+- The icon buttons are bare 24 dp icons centred in a 52×52 hit area. They are text at alpha 0.9 when enabled and 0.3 when disabled.
 - Controls 1, 2, 4 and 5 each sit in a fixed 60×60 slot and **rotate** to stay upright (§2.9). The round main button doesn't rotate.
 - The 96 dp main button may overhang its column evenly.
 
-**Main button** (custom-drawn, 96×96). Its accent is peach at full strength when enabled (reticle on a surface) and peach at alpha 0.4 when disabled. It has:
-- An outer ring with radius `48 − 2 = 46` dp and a 1.5 dp stroke in the accent colour.
-- A filled centre dot with a 14 dp radius in the accent colour.
+**Main button** (custom-drawn, 96×96). Its accent is green at full strength when enabled (reticle on a surface) and green at alpha 0.4 when disabled. It has:
+- An outer ring with radius `48 − 2 = 46` dp and a 2 dp stroke in the accent colour.
+- A filled centre dot with a 16 dp radius in the accent colour.
 - When charge is above 0, a white arc with a 3 dp stroke, round caps and the same radius. It starts at 12 o'clock and sweeps clockwise through `360° × charge`.
 - Accessibility label: "Place point. Hold anywhere on screen to save measurement".
 
@@ -415,24 +375,24 @@ Derived values: segments (consecutive 3D distances) and total (their sum). The s
 **Units setting:** persisted in shared preferences under the key `showdist.unit_system`, value `"metric"` or `"imperial"`. If it's missing or unknown, it defaults to imperial.
 
 **Measurement sheet** ("SAVED" after saving, "MEASUREMENT" from History):
-- A modal bottom sheet with background inkSurface and a drag handle. It is scrollable, with a maximum height of 80% of the screen and padding L24 R24 B20.
+- A modal bottom sheet with background surface, 28 dp top corners and a drag handle. It is scrollable, with a maximum height of 80% of the screen and padding L24 R24 B20.
 - Contents:
-  1. The title in the Caption style, warmGrey.
-  2. 10 dp gap, then the total (44 sp, weight 200, white).
-  3. 4 dp gap, then "N points · M segments" (13 sp, warmGrey).
-  4. 18 dp gap, then one row per segment: a 32 dp-wide index "1", "2"… (13 sp, warmGrey) followed by the length (15 sp, white, tabular figures). Rows have 5 dp vertical padding.
-  5. 18 dp gap. From History only (not the "SAVED" sheet), a full-width filled **peach** button "View in AR" (white, 14 sp, weight 700) that projects the recording in Measure (§2.11), then an 8 dp gap.
-  6. An outlined button "Share" with a share icon (white text, border white at alpha 0.3).
-  7. 4 dp gap, then a text button "Copy text" with a copy icon (white).
-  8. A text button "Done" (warmGrey) that closes the sheet.
+  1. The title in the Caption style, textMuted.
+  2. 10 dp gap, then the total (44 sp, weight 200, text).
+  3. 4 dp gap, then "N points · M segments" (13 sp, textMuted).
+  4. 18 dp gap, then one row per segment: a 32 dp-wide index "1", "2"… (13 sp, textMuted) followed by the length (15 sp, text, tabular figures). Rows have 5 dp vertical padding.
+  5. 18 dp gap. From History only (not the "SAVED" sheet), a full-width filled **green** pill button "View in AR" (black, 14 sp, weight 700) that projects the recording in Measure (§2.11), then an 8 dp gap.
+  6. An outlined pill button "Share" with a share icon (text, 1 dp border in line).
+  7. 4 dp gap, then a text button "Copy text" with a copy icon (text).
+  8. A text button "Done" (textMuted) that closes the sheet.
 - Choosing View in AR, Share or Copy closes the sheet first, then performs the action.
 
 **Share menu button** (used on History rows and in selection mode):
-- A popup opened from a `ios_share_rounded` icon (22 dp; white when enabled, warmGrey when disabled). Tooltip "Share or copy". Menu background inkSurface.
+- A popup opened from a `ios_share_rounded` icon (22 dp; text when enabled, textMuted when disabled). Tooltip "Share or copy". Menu background surface.
 - Items:
   - "Share" with a share icon.
   - "Copy text" with a copy icon.
-  - Item icons are 18 dp, white at alpha 0.8, with a 12 dp gap before the label.
+  - Item icons are 18 dp, text at alpha 0.8, with a 12 dp gap before the label.
 
 **Text** (v1.1; the same data as the PDF, in the current unit setting). Built in memory for each action and never written to storage; PDF is the only file export (§2.12). For one or more recordings, in list order, separated by a blank line:
 ```
@@ -466,7 +426,7 @@ This flattens a 3D polyline into a unit square:
 
 Drawing within the 44×44 box, with 7 dp padding:
 - An open polyline with a 1.2 dp stroke, round caps and joins, in the row colour at alpha 0.7.
-- A filled dot with a 2.6 dp radius at each point, in the row colour.
+- A diamond star (half-diagonal 3.2 dp) at each point, in the row colour.
 
 ### 2.9 Orientation handling in Measure (button rotation)
 
@@ -488,11 +448,11 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 - **Check interval:** about every 3 s (every 90th new camera image). The first check after a session starts records a heap baseline, measured as native heap allocated plus Java heap used.
 - **Trigger:** the system reports low memory, *or* available memory is below 1.5× the system threshold, *or* the heap has grown more than the budget above the baseline. When any of these holds, notify the UI **once per session**.
 - **UI:** if the Measure screen is active and no prompt is already showing, show a dialog:
-  - Background inkSurface.
-  - Title: "Start a new session?" (white, 18 sp, weight 400).
+  - Background surface.
+  - Title: "Start a new session?" (text, 18 sp, weight 400).
   - Body, when ≥2 points exist: "This session is using a lot of memory. Save this measurement and start fresh to keep things running smoothly."
   - Body otherwise: "This session is using a lot of memory. Start fresh to keep things running smoothly."
-  - Buttons: "Not now" (warmGrey) and "Save & start new" / "Start new" (peach).
+  - Buttons: "Not now" (textMuted) and "Save & start new" / "Start new" (green).
 - **Confirm:** if ≥2 points exist, save the recording and show a "Saved to History" snackbar. Then close the session and restart it (the full start routine). This discards ARCore's map.
 - **Not now:** keep measuring. The prompt won't reappear in this session.
 
@@ -505,17 +465,17 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
   1. **Aiming:** the shape's first point follows the reticle hit, turned so that its reference line points away from the camera. A tap anchors the first point there (a session anchor).
   2. **Aligning:** the shape turns about its first point so that its reference line points at the reticle hit, once the hit is more than 5 cm away horizontally. A tap freezes that heading.
   - The **reference line** runs from the first point to the first later point that is more than 1 cm away horizontally. A recording with no such point (straight up and down) skips aligning.
-- **Drawn** before the user's own points and labels (§3.2): lines 1.3 dp, dots radius 4.5 dp, with the usual overlay shadows. While aiming or aligning they're **seafoamMuted** and dashed (1.3 dp, dash 6 dp and gap 6 dp); once placed, **citrineLight** and solid, bright enough to read over the camera feed. Each drawn segment gets a label with the recording's saved length and a border to match.
-- **Measuring continues** as normal once placed: taps add the user's own peach points, and hold-to-save saves only those.
+- **Drawn** before the user's own points and labels (§3.2), in **violet**: lines 2.5 dp, dots radius 4.5 dp, with the usual overlay halos. While aiming or aligning the lines are dashed (dash 6 dp, gap 6 dp); once placed, solid. Each drawn segment gets a label with the recording's saved length and a violet border.
+- **Measuring continues** as normal once placed: taps add the user's own pink points, and hold-to-save saves only those.
 - **Undo** with no user points left steps back: placed → aligning → aiming. **Clear** removes the projection as well. Leaving Measure ends it.
 
 ### 2.12 PDF report
 
-"Export PDF" in History's selection mode (§1.9) writes one report of the selection, in list order, and opens the share sheet.
+"Export PDF" in History's selection mode (§1.9) writes one report of the selection, in list order, and opens the share sheet. "EXPORT PDF" on the main menu (§1.4) does the same for every saved measurement.
 
 - **Page:** US Letter, 612 × 792 pt, portrait, 54 pt (0.75 in) margins. Drawn with Android's `PdfDocument`, vectors only (lines, circles, text; no bitmaps), one page open at a time. White background.
-- **Colours and type:** segments 1.5 pt peach with round caps; endpoints peach dots (radius 3 pt in the one- and two-cell tiers, else 2.5 pt); text in ink; cell borders 0.5 pt warmGrey. JetBrains Mono, Regular and Bold, embedded.
-- **Header (page 1 only):** "Showdist — Measurement Report" (Bold 16 pt), then "Exported YYYY-MM-DD HH:MM" (10 pt); 48 pt tall.
+- **Colours and type:** monochrome and print-friendly: black on a white page, no accent colours, no dark fills. Segments 1.5 pt black with round caps; endpoints black dots (radius 3 pt in the one- and two-cell tiers, else 2.5 pt); text black; cell borders 0.5 pt black. JetBrains Mono, Regular and Bold, embedded.
+- **Header (page 1 only), 52 pt tall:** the app icon's mark (§8.1) drawn as vectors in black, 30 × 12 pt (a 1.5 pt rule between two 12 pt tick caps, a 2.5 pt dot on each end), then 10 pt later the wordmark "SHOWDIST" (Bold 16 pt, letter-spacing 0.15 em); below them "Measurement Report · Exported YYYY-MM-DD HH:MM" (10 pt).
 - **Footer (every page):** 9 pt on the bottom margin line: "Measured with Showdist v{versionName}" (from `BuildConfig`) on the left, "Page X of Y" on the right. 24 pt is reserved above it.
 - **Tiers** (cells fill the space between header and footer, 12 pt gaps):
 
@@ -541,54 +501,53 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 
 ### 3.1 Reticle
 
+On this screen, legibility outdoors and indoors overrides the theme: strokes are brighter and thicker than elsewhere, and every mark sits on a dark halo.
+
 - **Position:** always the **fixed centre of the camera area**, not the projected hit point.
-- **Motif:** three **seafoam (#0EB997)** dots in an equilateral triangle around a **white** centre dot. Seafoam is used for the reticle dots and nothing else.
-  - Ring radius (centre to each dot): **22 dp**.
-  - Outer dot radius: **5 dp**. Centre dot radius: **2.6 dp**.
+- **Motif:** three small dots orbiting a **white** centre dot. The orbiting dots are in the **unit colour**: **amber** for imperial, **cyan** for metric (§5), following the current unit setting.
+  - Ring radius (centre to each dot): **16 dp**.
+  - Orbiting dot radius: **3.5 dp**. Centre dot radius: **2 dp**.
 - **Rotation:**
   - `angle_k = −90° + 360° × t / 11 s + k × 120°` for k = 0, 1, 2.
   - Screen y points down, so increasing angle is **clockwise**. Dot 0 starts straight up.
   - One full turn every **11 seconds**.
   - `t` is the seconds since the Measure screen opened. It is sampled only when a camera frame arrives, so the spin freezes while paused and then jumps forward to the current time.
 - **States:**
-  - **On a surface** (reticle hit): the outer dots are **filled** seafoam at alpha 1. The centre dot is white at alpha 1.
-  - **Searching** (no hit): the outer dots are **hollow** rings with a 1.6 dp stroke, seafoam at alpha 0.6. The centre dot is filled white at alpha 0.6.
-- **Shadow** under each reticle dot, drawn first:
-  - The same shape and style (filled or stroked) as the dot.
-  - **Black at 40% (`#66000000`)**, offset (0, +1.5) dp, Gaussian blur sigma 2.5.
+  - **On a surface** (reticle hit): the orbiting dots are **filled** at alpha 1, each with a soft **glow**: a 6 dp disc in the unit colour at alpha 0.55, Gaussian blur sigma 3. The centre dot is white at alpha 1.
+  - **Searching** (no hit): the orbiting dots are **hollow** rings with a 1.4 dp stroke at alpha 0.6, with no glow. The centre dot is white at alpha 0.6.
+- **Halo**, drawn first under every dot: a disc 1.5 dp larger than the dot, halo colour (§5), blur sigma 2. It keeps the reticle visible against bright surfaces.
 
 ### 3.2 Placed points, segments, live line
 
-**Placed points and segment lines:**
-- Placed points are filled circles in **peach**, radius 6 dp. They are drawn only when visible.
-- Segment lines are **peach**, 1.3 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
+**Placed points and segment lines** (the icon's colours, §8.1):
+- Placed points are filled circles in **pink**, radius 6 dp. They are drawn only when visible.
+- Segment lines are **green**, 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
 
 **Live line:**
 - A dashed line from the last point to the reticle hit's projected screen position.
-- It is **white**, 2.5 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3.5 dp on, 8.5 dp off, allowing for the caps). Its shadow is the same width.
+- It is **white**, 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
 - It is drawn only when there is a hit, ≥1 point, and the last point is visible.
 
-**Overlay shadow** (for points and lines):
-- A copy drawn first in ink at 70% alpha.
-- Offset (0, +1.2) dp, blur sigma 1.4.
+**Overlay halo** (for points and lines): a copy drawn first, centred (no offset), in the halo colour with blur sigma 1.2; lines 3 dp wider (1.5 dp each side), dots 1.5 dp larger in radius.
 
 **Draw order:**
-1. Segment lines
-2. The dashed live line
-3. Point dots
-4. The reticle
-5. Labels
+1. A projected recording (§2.11)
+2. Segment lines
+3. The dashed live line
+4. Point dots
+5. The reticle
+6. Labels (projected ones first)
 
 ### 3.3 Distance labels
 
 - There is one label per drawn segment, placed at the segment's midpoint, and one **live** label at the midpoint of the dashed line.
 - A label is **hidden** if its midpoint is off-canvas. Otherwise its centre is clamped so the whole pill stays at least 8 dp inside the canvas edges.
-- **Text:** JetBrains Mono, 12.5 sp, weight 500, white, tabular figures, slashed zero.
+- **Text:** JetBrains Mono **Bold**, 14 sp, white, tabular figures, slashed zero.
 - **Pill:**
-  - Text size plus 16 dp horizontal and 8 dp vertical (8 dp side padding, 4 dp top/bottom).
+  - Text size plus 20 dp horizontal and 10 dp vertical (10 dp side padding, 5 dp top/bottom).
   - Fully rounded, with radius half the pill's height.
-  - Filled with **scrim**, black at 50% (`#80000000`).
-- Each label has a 1 dp border: **peach** on a placed segment's label, **seafoamMuted** on the live label. Peach means placed and seafoamMuted means in progress, so the two never read with equal weight.
+  - Filled with **scrim** (§5).
+- Each label has a 1.5 dp border: **green** on a placed segment's label, **white** on the live label, **violet** on a projected recording's label.
 
 ---
 
@@ -596,7 +555,7 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 
 ### 4.1 Behaviour
 
-- **Purpose:** two levels, chosen on the picker (§1.8). The **tube** is a single-axis bubble level for hanging shelves or frames, used by holding the phone flat against a wall. The **bullseye** is a two-axis level used by laying the phone face up on a surface.
+- **Purpose:** two levels, each opened from its own tile on the main menu (§1.4). The **tube** is a single-axis bubble level for hanging shelves or frames, used by holding the phone flat against a wall. The **bullseye** is a two-axis level used by laying the phone face up on a surface.
 - **Sensor:** the accelerometer at "game" rate, about 50 Hz (20 ms). If no accelerometer is present, errors are ignored and the bubble stays centred.
 - **Smoothing:** a one-pole low-pass filter on `x/g`, `y/g` and `z/g`, with g = 9.80665 m/s² and α = 0.15.
   - `est = est + (sample − est) × 0.15`
@@ -624,38 +583,43 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 
 ### 4.2 Tube Leveler visuals
 
-- **Background:** the scaffold is **ink**, matching the main menu. The app bar is the standard ink bar titled "TUBE LEVELER", with the Zero and Reset actions on the right. *(The Flutter app used warmGrey; changed in the native rebuild at the developer's request.)*
+Drawn as a constellation on black: thin outlines, diamond-star scale marks joined by faint lines, and an accent-coloured bubble.
+
+- **Background:** black. The app bar is the standard bar titled "TUBE LEVELER", with the Zero and Reset actions on the right.
 - **Body** (inside the safe area):
-  1. Instruction "HOLD FLAT AGAINST THE SURFACE" in the Caption style at 11 sp with letter-spacing 2, in **warmGrey**, padding L32 T20 R32.
+  1. Instruction "HOLD FLAT AGAINST THE SURFACE" in the Caption style at 11 sp with letter-spacing 2, in textMuted, padding L32 T20 R32.
   2. The **vial** fills the remaining space and is centred.
-  3. The **readout**: `|displayed|` to one decimal place followed by "°", e.g. `0.4°`. It is 40 sp, weight 200, white, tabular figures, with 40 dp bottom padding. It shows no sign.
+  3. The **readout**: `|displayed|` to one decimal place followed by "°", e.g. `0.4°`. It is **64 sp, weight 700**, tabular figures, text colour, or **green** when level; large enough to read from about a foot away. 24 dp bottom padding. It shows no sign.
 - **Vial**, a stadium-shaped rounded bar:
   - Thickness 84 dp.
   - Length = the long dimension of the available space minus 2 × 28 dp.
   - Corner radius 42 dp.
-  - Filled **inkSurface** with a 2 dp **citrine** outline, matching the Measure card and the ruler.
-- **Centre marks:** two etched lines across the vial, one on each side of centre.
+  - Filled white at alpha 0.04, with a 1.5 dp outline in line (§5).
+- **Scale:** a row of diamond stars down each long side, 16 dp outside the outline, one per degree from −15° to +15°, each where the bubble's centre sits at that reading (`deg / 15 × travel` from centre). Every 5th is major (half-diagonal 3.5 dp, white at alpha 0.85); the others are minor (1.5 dp, white at alpha 0.4); the 0° star is violet, or green when level. Each row is joined by a 1 dp line in the grid colour. The 5°, 10° and 15° stars on one side are labelled "5°", "10°", "15°" (11 sp, textMuted, tabular), 10 dp further out: beside the star in portrait, under it in landscape.
+- **Centre marks:** two lines across the vial, one on each side of centre.
   - Each sits `56/2 + 5 = 33` dp from centre along the vial axis.
   - Each spans ±(84/2 − 10) = ±32 dp across the vial.
-  - Normally 2.5 dp wide in **citrine**. When level, 3.5 dp wide in **peach**.
+  - Normally 1.5 dp in text at alpha 0.7. When level, 3 dp in **green**.
 - **Bubble:**
-  - A filled circle, diameter 56 dp: **white**, or **peach** when level.
+  - A filled circle, diameter 56 dp: **violet**, or **green** when level, with a soft halo: an 8 dp stroke of the same colour at alpha 0.25 around its outline.
   - Its position comes from the bubble motion (§4.4). `travel = length/2 − 2 − 28`: the bubble's centre runs from the middle to where its edge touches the inner wall.
   - A positive reading moves the bubble down in portrait and right in landscape. So a clockwise rotation moves it up in portrait and left in landscape.
 
 ### 4.3 Bullseye Leveler visuals
 
-- The same scaffold, app bar actions and ink background as the tube, titled "BULLSEYE LEVELER".
+- The same background, app bar actions and style as the tube, titled "BULLSEYE LEVELER".
 - **Body:**
   1. Instruction "LAY FLAT ON THE SURFACE", in the tube's instruction style.
   2. The **bullseye** fills the remaining space and is centred.
-  3. The **readouts** in one row with 40 dp bottom padding: "X" then |displayedX|, a 28 dp gap, "Y" then |displayedY|. Each value uses the tube's readout style; each letter is the Caption style at 14 sp, letter-spacing 0, 8 dp before its value, sitting on the value's baseline.
+  3. The **readouts** in one row with 24 dp bottom padding: "X" then |displayedX|, a 24 dp gap, "Y" then |displayedY|. Each value uses the tube's readout style at **48 sp** (two 64 sp values don't fit side by side), both green when level. Each letter is the Caption style at 16 sp in violet, letter-spacing 0, 8 dp before its value, sitting near the value's baseline.
 - **Bullseye:** a disc of radius = half the shorter dimension of the available space − 28 dp.
-  - Filled **inkSurface** with a 2 dp **citrine** outline.
-  - Crosshairs: horizontal and vertical lines from just outside the centre ring (8 dp gap) to the rim, 1.5 dp, citrine at alpha 0.35, each ending in a 14 dp full-strength citrine tick (2.5 dp) at the rim.
-  - **Centre ring:** radius 56/2 + 5 = 33 dp. Normally 2.5 dp **citrine**; when level, 3.5 dp **peach**.
+  - Filled white at alpha 0.04, with a 1.5 dp outline in line.
+  - Faint 1 dp rings (grid colour) where the bubble's centre sits at **5°** and **10°** of tilt.
+  - Crosshairs: horizontal and vertical 1 dp lines (grid colour) from just outside the centre ring (8 dp gap) to the rim.
+  - Diamond stars where the crosshairs meet the 5° ring (2 dp, white at alpha 0.5), the 10° ring (2 dp, alpha 0.7) and the rim (3.5 dp, alpha 0.9), plus four on the diagonals at 10° (2 dp, alpha 0.35).
+  - **Centre ring:** radius 56/2 + 5 = 33 dp. Normally 1.5 dp in text at alpha 0.7; when level, 3 dp **green**.
 - **Bubble:**
-  - A filled circle, diameter 56 dp: **white**, or **peach** when level.
+  - A filled circle, diameter 56 dp: **violet**, or **green** when level, with the tube's halo.
   - It moves toward the higher side: right for positive X, up the screen for positive Y.
   - Its position comes from the bubble motion (§4.4), in two dimensions. `travel = radius − 2 − 28`: the bubble's centre runs from the middle to where its edge touches the rim.
 
@@ -665,7 +629,7 @@ Both levelers share this.
 
 - **Target:** `displayed / 15` along the vial (the tube), or `(displayedX, −displayedY) / 15` (the bullseye, screen y running down), where 1 means the bubble touches the wall. Past 1 the target is clamped back to the wall, except that the bubble may press on into the wall by up to 30% of its radius, growing with how far past full scale the reading is (×2, capped).
 - **Motion:** a spring-damper toward the target, stiffness 90 s⁻² (about 1.5 Hz) and damping ratio 0.5, so the bubble eases in and settles with a slight wobble instead of snapping. It's stepped once per display frame (`withFrameNanos`) in substeps of at most 1/120 s, with a frame's time capped at 50 ms. The sensor input is already low-passed (§4.1). At the press limit the bubble stops and bounces back at 25% of its speed into the wall.
-- **Shape:** drawn each frame as a 64-point polygon in one reused path, filled like the round bubble (white, or peach when level).
+- **Shape:** drawn each frame as a 64-point polygon in one reused path, filled like the round bubble (violet, or green when level), with its halo.
   - **Velocity stretch:** an ellipse with the round bubble's area, radius × s along the direction of travel and radius ÷ s across it, where `s = 1 + min(speed / (25 × radius), 0.4)` with speed in px/s. At rest it's round.
   - **Wall contact:** any outline point past the wall's inner edge (the outline's inner edge plus a hairline, 2 dp in) is moved back onto it, so a bubble pressed against the vial's round end or the bullseye's rim flattens to follow that curve instead of overlapping it.
 
@@ -673,74 +637,64 @@ Both levelers share this.
 
 ## 5. Colour palette
 
-The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's *A Dictionary of Color Combinations*. Each is pushed to higher saturation than the book's swatch, same hue, for legibility in direct sunlight. The alpha variants below are the only other colours used.
+The palette is fixed and app-wide, after the Android 17 Easter egg: a night-sky field (true black), near-white text, and bright, saturated, playful accents. It replaces the earlier Sanzo Wada palette entirely. The accents are the Easter egg's fallback set; swap them in `ui/Palette.kt` if sampled from the egg. There is one theme only; no light/dark modes, and no default Material colour appears anywhere.
 
-| Token | Hex (ARGB as in code) | Used for |
+| Token | Hex | Used for |
 |---|---|---|
-| **ink** | `#0D313D` (`0xFF0D313D`) | Main background of every screen, including the Leveler body. All app bars. The Measure control bar fill. Launch screen / splash background. App-icon background. Hint shadow and overlay shadow (alpha variants). |
-| **inkSurface** | `#1A3E4A` | Card and surface fill: the Measure card, the Leveler vial and bullseye, dialogs, bottom sheets and popup menus. |
-| **olympicBlue** | `#4D84C7` | Leveler tool card on the main menu and both cards on the Leveler picker (border at alpha 0.45, arrow icon). Selected radio icon in Settings. |
-| **citrine** | `#A29553` | SHOWDIST wordmark. License detail heading. Main-menu ruler ticks and baseline. The 1.5 dp top rule of the Measure control bar. The Leveler vial and bullseye outlines, centre marks, centre ring and crosshairs. The app-icon dimension line. |
-| **citrineLight** | `#EDDD91` | A placed projected recording's lines, dots and label borders (§2.11). |
-| **peach** | `#FB5628` | Primary accent; in AR it means placed ("done"). Measure card (border at alpha 0.9, arrow), History link rule (alpha 0.6), capture button (alpha 0.4 when disabled), placed point dots, segment lines and their label borders, "Delete selected" icon, confirm button in the memory dialog, Problem-view circle (alpha 0.85), Licenses loading spinner, developer email on About, History selection (row tint at alpha 0.12, thumbnail, check icon), the "View in AR" button, the Leveler's centre marks, centre ring and bubble when level, the app-icon end points. The Material colour scheme uses it as the primary colour. |
-| **seafoam** | `#0EB997` | Reticle dots only. |
-| **seafoamMuted** | `#53AC9A` | In progress: the live label's border; a projected recording while it's being placed. |
-| **warmGrey** | `#C0B6A5` | Muted/secondary text, including the Leveler instruction: descriptions, captions, subtitles, "N saved", empty states, dialog bodies, cancel buttons. Chevrons and the gear icon. Unselected radio icons. |
-| **white** | `#FFFFFF` | Body text, titles, the dashed live line, live numbers, running total, label text, reticle centre dot, Leveler bubble (when not level) and readout, charge arc, bar icons (alpha 0.9 enabled / 0.3 disabled), dividers (alpha 0.08), outlined-button borders (alpha 0.3). |
+| **black** | `#000000` | Background of every screen, app bars, the Measure control bar, launch/splash, app-icon tile. |
+| **surface** | `#121212` | Dialogs, bottom sheets and popup menus. |
+| **surfaceHigh** | `#1C1C1C` | The main menu's tool card and tiles (alpha 0.92). |
+| **text** | `#F2F2F2` | Primary text, titles, bar icons (alpha 0.9 / 0.3), the Leveler readout and centre marks (alpha 0.7). |
+| **textMuted** | `#B0B0B0` | Secondary text: descriptions, captions, subtitles, the how-to text, empty states, dialog bodies, cancel buttons; chevrons, the gear, unselected radios. |
+| **white** | `#FFFFFF` | Over the camera: the reticle centre dot, live line, label text, hint, running total, charge arc. Diamond stars (alpha variants). |
+| **grid** | white at 10% (`#1AFFFFFF`) | The menu's background grid, dividers, the Leveler's faint rings, crosshairs and scale lines. |
+| **line** | white at 25% (`#40FFFFFF`) | Outlines that should read but stay quiet: the Leveler vial and dish, the control bar's top rule, outlined-button borders, the menu's constellation lines (alpha variant). |
+| **green** | `#3DDC84` | Primary accent (the Material primary). Measure card, History/Export sub-links, the main button, segment lines and their label borders, the app-icon rule, "View in AR", selection in History, "level" on the Leveler (bubble, marks, ring, readout), Licenses spinner, Problem-view button. |
+| **violet** | `#B388FF` | The Leveler: tiles, bubble, axis letters, 0° star; a projected recording (§2.11); License detail heading. |
+| **pink** | `#FF6E9C` | Placed AR points, the app-icon end points, "Delete selected", the Problem-view circle. |
+| **amber** | `#FFB300` | **Reserved for unit state: imperial (ft, in).** Reticle dots, the FT label when active, the selected Imperial radio. Never a general accent. |
+| **cyan** | `#00E5FF` | **Reserved for unit state: metric (m, cm).** Reticle dots, the M label when active, the selected Metric radio. Never a general accent. |
 
-**Scrims and shadows** (derived colours, not palette tokens):
+**Scrims and halos** (derived colours):
 
 | Name | Value | Used for |
 |---|---|---|
-| scrim | `#80000000`, black 50% | Behind every distance label and the running total |
-| Hint text shadow | ink at alpha 0.67, blur 6 | Hint line |
-| Overlay shadow | ink at alpha 0.7, offset (0, 1.2), blur 1.4 | Point dots, segment and dashed lines |
-| Reticle shadow | `#66000000`, black 40%, offset (0, 1.5), blur 2.5 | Reticle dots |
+| scrim | `#B8000000`, black 72% | Behind every piece of live text over the camera: distance labels, the running total, the hint, the menu button |
+| halo | `#99000000`, black 60% | Under the reticle (blur 2) and every point and line (blur 1.2), §3 |
 
-**Contrast** (as documented in the code):
-- White on ink is 13.2:1.
-- warmGrey on ink is 6.0:1 (5.2:1 on inkSurface).
-- seafoam on ink is 5.3:1; seafoamMuted is 4.1:1.
-- olympicBlue, citrine and peach are about 3.3–3.9:1, so they are used only for icons, strokes and large text. The one exception is the peach email on About, at 3.9:1.
+**Contrast** (on black): text 18.8:1, textMuted 9.7:1, green 11.8:1, violet 7.9:1, pink 8.0:1, amber 11.7:1, cyan 13.7:1. White on the scrim over a pure-white scene is 9.3:1.
 
 ---
 
-## 6. Typography, wordmark, landing ruler
+## 6. Typography, wordmark, menu background
 
 ### 6.1 Font
 
 - **JetBrains Mono** is the only typeface, used everywhere, including text drawn on the AR canvas.
-- **Bundled faces:** Regular (400), Bold (700), Italic, and Bold Italic. The code also asks for weights 200, 300, 500, 600 and 800. With only 400 and 700 bundled, those render using the nearest bundled face. A rebuild may either match that or bundle the extra weights.
+- **Bundled faces:** Regular (400), Bold (700), Italic, and Bold Italic. The code also asks for weights 200, 300, 500, 600 and 800. With only 400 and 700 bundled, those render using the nearest bundled face.
 - The OpenType **`zero`** feature (slashed zero) is enabled on **all** text.
-- **Tabular figures** (`tnum`) are also enabled on the running total, distance labels, sheet segment lengths and the Leveler readout.
-- Base Material type scale: Material 3, dark, with white text.
+- **Tabular figures** (`tnum`) are also enabled on the running total, distance labels, sheet segment lengths, the Leveler readout and its scale labels.
+- Base Material type scale: Material 3, with text-colour text. Material 3 Expressive shapes are approximated with the theme's rounder corners (8 / 12 / 20 / 28 / 36 dp for extra-small to extra-large) and pill buttons; material3 1.4 has no `MaterialShapes`.
 
 ### 6.2 SHOWDIST wordmark
 
-- The text "SHOWDIST": one word, all caps, JetBrains Mono, **34 sp**, weight 800 (renders as Bold), letter-spacing 3, **citrine**.
-- It is centred horizontally, 76 dp below the top of the safe area.
-- There is no logo image, and the app icon has no lettering.
+- The text "SHOWDIST": one word, all caps, JetBrains Mono, **22 sp**, weight 700, letter-spacing 3, text colour. Modest, slightly larger than body text.
+- It sits at the top left of the menu's header block (§1.4), followed by the dimension mark.
+- The app icon has no lettering.
 
 ### 6.3 Caption style
 
 - 12 sp by default, weight 600, letter-spacing 3, centre-aligned.
-- Colour is warmGrey by default. App-bar titles override it to white.
-- Used for app-bar titles, section headers, sheet titles, "WAKING THE CAMERA" and the Leveler instruction (11 sp, letter-spacing 2).
+- Colour is textMuted by default. App-bar titles override it to text.
+- Used for app-bar titles, section headers, sheet titles, "WAKING THE CAMERA", "HOW TO USE" and the Leveler instruction (11 sp, letter-spacing 2).
 
-### 6.4 Landing-screen ruler (tick marks)
+### 6.4 Main-menu background (night sky)
 
-- **Band:** 92 dp tall and full width, at the bottom of the safe area, behind the content.
-- **Baseline:** a horizontal line 16 dp above the band's bottom, 2.6 dp stroke, citrine.
-- **Ticks point upward** from the baseline, like a tape measure's edge, all in full-strength citrine:
-  - Minor ticks every **24 dp**: 28 dp tall, 2.6 dp stroke.
-  - Every 5th tick is a **major** tick: 60 dp tall, 4.0 dp stroke.
-  - The pattern repeats every 120 dp. Stroke caps are flat (butt).
-- **Motion:** the pattern **drifts to the right** continuously.
-  - It moves one 120 dp period every **12 s** (10 dp/s), looping seamlessly. Drawing starts one period off the left edge so new ticks slide in.
-  - Updates step about every 33 ms (≈30 fps), adding a fixed amount per step, so a late step slows the drift slightly rather than jumping.
-  - The drift pauses when the menu isn't the visible screen or the app is in the background.
-  - When the system's **"remove animations" / reduce-motion** setting is on, the ticks are drawn **static**.
-  - *(The brief described the ticks as static. In the code they are static only under reduce-motion. See §13.)*
+Static, drawn behind the content:
+- **Grid:** 1 dp lines in the grid colour every 32 dp, both ways, from the top-left.
+- **Stars:** fifteen diamond stars (half-diagonal 3 dp), at fixed positions in grid cells from the top-left (a negative column counts from the right edge): four in the band above the header (cells (1.5, 1), (4, 1.6), (6.5, 0.8), (9, 1.4)), five down the left margin (column 0.2 / 0.45 at rows 5, 8, 11, 19, 23) and six down the right margin (column −0.2 / −0.45 at rows 4, 7, 13, 17, 22, 26). White ones are at alpha 0.45; one violet, one green and one pink at alpha 0.8.
+- **Constellation lines:** 1 dp, line colour at alpha 0.14, joining neighbouring stars in each group.
+- **Kept clear of text:** the header block and the tools report their bounds; no star, and no line, is drawn within 6 dp of them, so nothing sits behind anything to read, whatever the screen or font size.
 
 ---
 
@@ -748,12 +702,11 @@ The palette is fixed and app-wide. Its named colours are taken from Sanzo Wada's
 
 ### 7.1 About text (verbatim)
 
-- `Version 1.1`
-- `An augmented-reality tape measure for Android, built with Kotlin, Jetpack Compose and ARCore.`
-- `DEVELOPER`
-- `sh.run.configs@gmail.com`
-- `View licenses`, with subtitle `ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)`
+On the main menu (§1.4):
+- `v1.1 · Carlos Cruz · sh.run.configs@gmail.com` (version from the installed package)
 - `Created with AI assistance` (italic)
+
+In Settings: `Licenses`, with subtitle `ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)`.
 
 ### 7.2 Third-party components
 
@@ -782,12 +735,12 @@ For the Kotlin rebuild, the Licenses screen should list at least **ARCore**, **J
 
 The icon is an Android **adaptive icon** built from vector drawables on a 108×108 canvas. The visible area is the inner 72 dp circle, radius 36, centred at (54, 54). It has no lettering.
 
-- **Background layer:** solid ink `#0D313D`.
+- **Background layer:** solid black `#000000`.
 - **Foreground layer:** a dimension line, well inside the 66 dp safe zone:
-  - citrine strokes, width 3.5, round caps: a horizontal rule from (34, 54) to (74, 54) and an end tick at each end, x = 34 and x = 74, from y = 43 to y = 65.
-  - Two peach dots, radius 6, at (34, 54) and (74, 54).
+  - green (`#3DDC84`) strokes, width 3.5, round caps: a horizontal rule from (34, 54) to (74, 54) and an end tick at each end, x = 34 and x = 74, from y = 43 to y = 65.
+  - Two pink (`#FF6E9C`) dots, radius 6, at (34, 54) and (74, 54).
 - **Monochrome layer** (Android 13+ themed icons): the same shapes in one colour.
-- **Pre-API-26 fallback:** a 72×72 flattened vector with an ink disc (radius 36) under the same shapes.
+- **Pre-API-26 fallback:** a 72×72 flattened vector with a black disc (radius 36) under the same shapes.
 
 ### 8.2 Files to copy into the Kotlin project
 
@@ -858,7 +811,6 @@ settings (outlined), history, chevron_right, arrow_forward, arrow_back, undo, cl
 | Bar-button rotation | 250 ms, ease-out |
 | Orientation sensor | ~5 Hz |
 | Leveler sensor | ~50 Hz, low-pass α = 0.15 |
-| Ruler drift | 120 dp per 12 s, ~30 fps steps |
 | Plane recount | every 10 new camera frames |
 | Memory check | every 90 new camera frames |
 | Max points per measurement | 24 |
@@ -866,7 +818,6 @@ settings (outlined), history, chevron_right, arrow_forward, arrow_back, undo, cl
 
 ## 13. Discrepancies noted while writing this spec
 
-- **Ruler ticks:** the brief called them "static". In code they drift right at 10 dp/s and are static only with reduce-motion on (§6.4).
-- **Palette names:** the code's `Palette` tokens use the §5 names. `Palette.Scrim` is the black 50% label scrim; the other scrims and shadows are alpha variants of ink (§5).
-- **README's Leveler section is out of date:** it describes "the dot centres in the ring" and a seaGreen bubble when plumb. The code draws a stadium-shaped vial filled inkSurface with a citrine outline and a white bubble; the centre marks and bubble turn peach when level (§4.2).
+- **Palette names:** the code's `Palette` tokens use the §5 names (`Palette.Surface`, `Palette.TextMuted`, …); `Palette.unit(units)` picks amber or cyan.
+- **README's Leveler section is out of date:** it describes "the dot centres in the ring" and a seaGreen bubble when plumb. The code draws the constellation-style vial and bullseye of §4.2–4.3, with a violet bubble that turns green when level.
 - **About text:** the description and the licenses subtitle mention Flutter, and the subtitle claims ARCore's license is listed even though it isn't registered (§7.2). Both should be revised for the Kotlin build.

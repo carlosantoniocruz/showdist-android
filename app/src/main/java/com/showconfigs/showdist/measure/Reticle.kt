@@ -8,12 +8,15 @@ import com.showconfigs.showdist.ui.Palette
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val RING_RADIUS_DP = 22f
-private const val OUTER_DOT_RADIUS_DP = 5f
-private const val CENTRE_DOT_RADIUS_DP = 2.6f
-private const val HOLLOW_STROKE_DP = 1.6f
-private const val SHADOW_OFFSET_Y_DP = 1.5f
-private const val SHADOW_SIGMA_DP = 2.5f
+private const val RING_RADIUS_DP = 16f
+private const val OUTER_DOT_RADIUS_DP = 3.5f
+private const val CENTRE_DOT_RADIUS_DP = 2f
+private const val HOLLOW_STROKE_DP = 1.4f
+private const val HALO_WIDTH_DP = 1.5f
+private const val HALO_SIGMA_DP = 2f
+private const val GLOW_RADIUS_DP = 6f
+private const val GLOW_SIGMA_DP = 3f
+private const val GLOW_ALPHA = (0.55f * 255).toInt()
 private const val SEARCHING_ALPHA = (0.6f * 255).toInt()
 private const val DEG_TO_RAD = (Math.PI / 180.0).toFloat()
 
@@ -22,59 +25,62 @@ fun blurForSigma(sigmaPx: Float) =
     BlurMaskFilter(((sigmaPx - 0.5f) / 0.57735f).coerceAtLeast(0.1f), BlurMaskFilter.Blur.NORMAL)
 
 /**
- * Draws the reticle (SPEC.md §3.1) at a fixed point, normally the centre of the camera area.
- * All paints are created once per density.
+ * Draws the reticle (SPEC.md §3.1) at a fixed point, normally the centre of the camera area:
+ * a small white centre dot and three smaller dots orbiting it, amber for imperial and cyan
+ * for metric, with a soft glow. A dark halo sits behind everything so it reads on bright
+ * surfaces. All paints are created once per density; only their colour changes per frame.
  */
 class ReticlePainter(private val density: Float) {
-    private val seafoam = Palette.Seafoam.toArgb()
-    private val shadowColor = Palette.ReticleShadow.toArgb()
-    private val strokeWidth = HOLLOW_STROKE_DP * density
-    private val shadowBlur = blurForSigma(SHADOW_SIGMA_DP * density)
+    private val amber = Palette.Amber.toArgb()
+    private val cyan = Palette.Cyan.toArgb()
 
-    private val dotFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = seafoam
-    }
+    private val dotFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val dotStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = this@ReticlePainter.strokeWidth
-        color = seafoam
-        alpha = SEARCHING_ALPHA
+        strokeWidth = HOLLOW_STROKE_DP * density
+    }
+    private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        maskFilter = blurForSigma(GLOW_SIGMA_DP * density)
     }
     private val centre = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Palette.White.toArgb()
     }
-    private val shadowFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = shadowColor
-        maskFilter = shadowBlur
-    }
-    private val shadowStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = this@ReticlePainter.strokeWidth
-        color = shadowColor
-        maskFilter = shadowBlur
+        color = Palette.Halo.toArgb()
+        maskFilter = blurForSigma(HALO_SIGMA_DP * density)
     }
 
-    fun draw(c: Canvas, cx: Float, cy: Float, hit: Boolean, spinSeconds: Float) {
+    fun draw(c: Canvas, cx: Float, cy: Float, hit: Boolean, metric: Boolean, spinSeconds: Float) {
         val baseDeg = -90f + 360f * spinSeconds / RETICLE_PERIOD_S
         val ring = RING_RADIUS_DP * density
         val outerR = OUTER_DOT_RADIUS_DP * density
         val centreR = CENTRE_DOT_RADIUS_DP * density
-        val shadowDy = SHADOW_OFFSET_Y_DP * density
+        val haloR = HALO_WIDTH_DP * density
+        val unit = if (metric) cyan else amber
 
+        dotFill.color = unit
+        dotStroke.color = unit
+        dotStroke.alpha = SEARCHING_ALPHA
+        glow.color = unit
+        glow.alpha = GLOW_ALPHA
         val dot = if (hit) dotFill else dotStroke
-        val dotShadow = if (hit) shadowFill else shadowStroke
         centre.alpha = if (hit) 255 else SEARCHING_ALPHA
 
-        // Shadows first, under every dot.
+        // The halo under everything, then the glow (only once there's a surface), then the dots.
         for (k in 0..2) {
             val a = (baseDeg + k * 120f) * DEG_TO_RAD
-            c.drawCircle(cx + ring * cos(a), cy + ring * sin(a) + shadowDy, outerR, dotShadow)
+            c.drawCircle(cx + ring * cos(a), cy + ring * sin(a), outerR + haloR, halo)
         }
-        c.drawCircle(cx, cy + shadowDy, centreR, shadowFill)
-
+        c.drawCircle(cx, cy, centreR + haloR, halo)
+        if (hit) {
+            for (k in 0..2) {
+                val a = (baseDeg + k * 120f) * DEG_TO_RAD
+                c.drawCircle(cx + ring * cos(a), cy + ring * sin(a), GLOW_RADIUS_DP * density, glow)
+            }
+        }
         for (k in 0..2) {
             val a = (baseDeg + k * 120f) * DEG_TO_RAD
             c.drawCircle(cx + ring * cos(a), cy + ring * sin(a), outerR, dot)

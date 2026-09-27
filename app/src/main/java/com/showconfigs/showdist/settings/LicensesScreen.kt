@@ -37,11 +37,11 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
     var licenses by remember { mutableStateOf(Licenses.loaded) }
     LaunchedEffect(Unit) { if (licenses == null) licenses = Licenses.load(context) }
 
-    Scaffold(topBar = { ShowdistAppBar("LICENSES", onBack) }, containerColor = Palette.Ink) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("LICENSES", onBack) }, containerColor = Palette.Black) { padding ->
         val list = licenses
         if (list == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Palette.Peach)
+                CircularProgressIndicator(color = Palette.Green)
             }
             return@Scaffold
         }
@@ -54,7 +54,7 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
     }
 }
 
-/** License detail (SPEC.md §1.7): the component name in citrine, then its paragraphs. */
+/** License detail (SPEC.md §1.7): the component name in violet, then its paragraphs. */
 @Composable
 fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -62,7 +62,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
     LaunchedEffect(Unit) { if (licenses == null) licenses = Licenses.load(context) }
     val license = licenses?.getOrNull(index)
 
-    Scaffold(topBar = { ShowdistAppBar("LICENSE", onBack) }, containerColor = Palette.Ink) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("LICENSE", onBack) }, containerColor = Palette.Black) { padding ->
         if (license == null) return@Scaffold
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
@@ -71,7 +71,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
             item {
                 Text(
                     license.name,
-                    style = BaseText.copy(color = Palette.Citrine, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                    style = BaseText.copy(color = Palette.Violet, fontSize = 24.sp, fontWeight = FontWeight.Bold),
                 )
                 Spacer(Modifier.height(20.dp))
             }

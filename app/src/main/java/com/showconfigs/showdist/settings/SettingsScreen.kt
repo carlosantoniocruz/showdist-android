@@ -31,45 +31,60 @@ import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
 import com.showconfigs.showdist.ui.ShowdistIcons
 
-/** Settings (SPEC.md §1.5): the unit system, and a link to About. */
+/**
+ * Settings (SPEC.md §1.5): the unit system and the licenses.
+ * About lives in the main menu's header.
+ */
 @Composable
-fun SettingsScreen(unitSettings: UnitSettings, onAbout: () -> Unit, onBack: () -> Unit) {
-    Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Ink) { padding ->
+fun SettingsScreen(
+    unitSettings: UnitSettings,
+    onLicenses: () -> Unit,
+    onBack: () -> Unit,
+) {
+    Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Black) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
         ) {
-            Text(
-                "UNITS",
-                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 4.dp),
-                style = CaptionText.copy(textAlign = TextAlign.Start),
-            )
-            UnitOption("Imperial (ft, in)", unitSettings.units == UnitSystem.Imperial) {
-                unitSettings.select(UnitSystem.Imperial)
-            }
-            UnitOption("Metric (m, cm)", unitSettings.units == UnitSystem.Metric) {
-                unitSettings.select(UnitSystem.Metric)
-            }
-            Spacer(Modifier.height(24.dp))
+            SectionTitle("UNITS")
+            UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
+            UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+            Spacer(Modifier.height(16.dp))
             SettingsDivider(Modifier.padding(horizontal = 20.dp))
-            SettingsRow("About", onClick = onAbout) { Chevron() }
+            SectionTitle("ABOUT")
+            SettingsRow(
+                "Licenses",
+                subtitle = "ARCore, SceneView, AndroidX and JetBrains Mono (OFL-1.1)",
+                onClick = onLicenses,
+            ) { Chevron() }
         }
     }
 }
 
 @Composable
-private fun UnitOption(label: String, selected: Boolean, onSelect: () -> Unit) {
-    SettingsRow(label, role = Role.RadioButton, onClick = onSelect) {
+private fun SectionTitle(title: String) {
+    Text(
+        title,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 4.dp),
+        style = CaptionText.copy(textAlign = TextAlign.Start),
+    )
+}
+
+/** The selected radio is amber for imperial and cyan for metric, the unit colours (SPEC.md §5). */
+@Composable
+private fun UnitOption(label: String, value: UnitSystem, unitSettings: UnitSettings) {
+    val selected = unitSettings.units == value
+    SettingsRow(label, role = Role.RadioButton, onClick = { unitSettings.select(value) }) {
         Icon(
             if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Palette.OlympicBlue else Palette.WarmGrey,
+            tint = if (selected) Palette.unit(value) else Palette.TextMuted,
         )
     }
 }
 
 /**
- * A tappable list row: white 16 sp title, optional warmGrey 12 sp subtitle, trailing icon.
- * [horizontalPadding] is 16 dp like a standard list tile; About's licenses row uses 0.
+ * A tappable list row: near-white 16 sp title, optional muted 12 sp subtitle, trailing icon.
+ * [horizontalPadding] is 16 dp like a standard list tile.
  */
 @Composable
 internal fun SettingsRow(
@@ -90,20 +105,20 @@ internal fun SettingsRow(
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = BaseText.copy(fontSize = 16.sp))
-            if (subtitle != null) Text(subtitle, style = BaseText.copy(color = Palette.WarmGrey, fontSize = 12.sp))
+            if (subtitle != null) Text(subtitle, style = BaseText.copy(color = Palette.TextMuted, fontSize = 12.sp))
         }
         Spacer(Modifier.width(16.dp))
         trailing()
     }
 }
 
-/** 1 dp divider in white at 0.08 (SPEC.md §1.5–1.7). */
+/** 1 dp divider in the grid colour (SPEC.md §1.5, §1.7). */
 @Composable
 internal fun SettingsDivider(modifier: Modifier = Modifier) {
-    HorizontalDivider(modifier, thickness = 1.dp, color = Palette.White.copy(alpha = 0.08f))
+    HorizontalDivider(modifier, thickness = 1.dp, color = Palette.Grid)
 }
 
 @Composable
 internal fun Chevron() {
-    Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.WarmGrey)
+    Icon(ShowdistIcons.ChevronRight, contentDescription = null, tint = Palette.TextMuted)
 }

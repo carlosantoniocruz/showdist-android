@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -65,8 +66,8 @@ fun ControlBar(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().background(Palette.Ink)) {
-        Box(Modifier.fillMaxWidth().height(1.5.dp).background(Palette.Citrine))
+    Column(modifier.fillMaxWidth().background(Palette.Black)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Palette.Line))
         Row(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -91,7 +92,7 @@ private fun RowScope.BarColumn(content: @Composable () -> Unit) {
     }
 }
 
-/** Bare 24 dp icon in a 52×52 hit area; white at 0.9 enabled, 0.3 disabled. */
+/** Bare 24 dp icon in a 52×52 hit area; near-white at 0.9 enabled, 0.3 disabled. */
 @Composable
 private fun BarIconButton(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
@@ -105,7 +106,7 @@ private fun BarIconButton(icon: ImageVector, label: String, enabled: Boolean, on
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Palette.White,
+            tint = Palette.Text,
             modifier = Modifier.size(24.dp).alpha(if (enabled) 0.9f else 0.3f),
         )
     }
@@ -120,17 +121,17 @@ private fun RotatingSlot(rotation: () -> Float, content: @Composable () -> Unit)
     ) { content() }
 }
 
-/** "M" and "FT"; the active one is bold white, the other dimmed. */
+/** "M" and "FT"; the active one is bold in its unit colour (cyan, amber), the other dimmed. */
 @Composable
 private fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        UnitLabel("M", units == UnitSystem.Metric) { onUnits(UnitSystem.Metric) }
-        UnitLabel("FT", units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
+        UnitLabel("M", Palette.Cyan, units == UnitSystem.Metric) { onUnits(UnitSystem.Metric) }
+        UnitLabel("FT", Palette.Amber, units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
     }
 }
 
 @Composable
-private fun UnitLabel(label: String, active: Boolean, onClick: () -> Unit) {
+private fun UnitLabel(label: String, color: Color, active: Boolean, onClick: () -> Unit) {
     Text(
         label,
         modifier = Modifier
@@ -139,7 +140,7 @@ private fun UnitLabel(label: String, active: Boolean, onClick: () -> Unit) {
             .semantics { selected = active }
             .padding(horizontal = 7.dp, vertical = 16.dp),
         style = BaseText.copy(
-            color = if (active) Palette.White else Palette.White.copy(alpha = 0.5f),
+            color = if (active) color else Palette.TextMuted.copy(alpha = 0.6f),
             fontSize = 12.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
             letterSpacing = 1.5.sp,
@@ -163,14 +164,14 @@ private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
 }
 
 /**
- * The 96 dp main button: 46 dp ring (1.5 dp stroke) and a 14 dp centre dot in peach,
- * at 0.4 alpha when there's no reticle hit. While a save charges, a white arc sweeps
- * clockwise from 12 o'clock over the ring.
+ * The 96 dp main button: 46 dp ring (2 dp stroke) and a 16 dp centre dot in green, at 0.4
+ * alpha when there's no reticle hit. While a save charges, a white arc sweeps clockwise
+ * from 12 o'clock over the ring.
  */
 @Composable
 private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Unit) {
     val view = LocalView.current
-    val accent = if (enabled) Palette.Peach else Palette.Peach.copy(alpha = 0.4f)
+    val accent = if (enabled) Palette.Green else Palette.Green.copy(alpha = 0.4f)
     Canvas(
         Modifier
             .size(96.dp)
@@ -188,8 +189,8 @@ private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Uni
             .semantics { contentDescription = "Place point. Hold anywhere on screen to save measurement" },
     ) {
         val c = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(accent, radius = 46.dp.toPx(), center = c, style = Stroke(1.5.dp.toPx()))
-        drawCircle(accent, radius = 14.dp.toPx(), center = c)
+        drawCircle(accent, radius = 46.dp.toPx(), center = c, style = Stroke(2.dp.toPx()))
+        drawCircle(accent, radius = 16.dp.toPx(), center = c)
         val sweep = charge()
         if (sweep > 0f) {
             val r = 46.dp.toPx()

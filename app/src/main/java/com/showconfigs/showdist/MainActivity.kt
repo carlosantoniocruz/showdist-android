@@ -29,12 +29,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.showconfigs.showdist.history.HistoryScreen
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
+import com.showconfigs.showdist.history.rememberPdfExport
 import com.showconfigs.showdist.leveler.LevelerMode
-import com.showconfigs.showdist.leveler.LevelerPicker
 import com.showconfigs.showdist.leveler.LevelerScreen
 import com.showconfigs.showdist.measure.MeasureScreen
 import com.showconfigs.showdist.menu.MainMenu
-import com.showconfigs.showdist.settings.AboutScreen
 import com.showconfigs.showdist.settings.LicenseDetailScreen
 import com.showconfigs.showdist.settings.LicensesScreen
 import com.showconfigs.showdist.settings.SettingsScreen
@@ -68,7 +67,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, LevelerPicker, Leveler, History, Settings, About, Licenses, LicenseDetail }
+private enum class Screen { Menu, Measure, Leveler, History, Settings, Licenses, LicenseDetail }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail and the [LevelerMode]
@@ -122,6 +121,8 @@ private fun ShowdistApp() {
     val saved = RecordingStore.recordings.size
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbar) {
+        // Reads the snackbar host, so it's created inside the provider.
+        val exportPdf = rememberPdfExport(unitSettings.units)
         Box(Modifier.fillMaxSize()) {
             // A fixed slot, so History pushed from Measure doesn't recreate the AR session.
             if (stack.any { it.screen == Screen.Measure }) {
@@ -139,16 +140,16 @@ private fun ShowdistApp() {
                 Screen.Menu -> MainMenu(
                     savedCount = saved,
                     onMeasure = { push(Screen.Measure) },
-                    onLeveler = { push(Screen.LevelerPicker) },
+                    onTube = { push(Screen.Leveler, LevelerMode.Tube.ordinal) },
+                    onBullseye = { push(Screen.Leveler, LevelerMode.Bullseye.ordinal) },
                     onHistory = { push(Screen.History) },
+                    onExport = { exportPdf(RecordingStore.recordings.toList()) },
                     onSettings = { push(Screen.Settings) },
                 )
                 Screen.Measure -> Unit // Drawn in its slot above.
-                Screen.LevelerPicker -> LevelerPicker(onPick = { push(Screen.Leveler, it.ordinal) }, onBack = ::pop)
                 Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
                 Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
-                Screen.Settings -> SettingsScreen(unitSettings, onAbout = { push(Screen.About) }, onBack = ::pop)
-                Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
+                Screen.Settings -> SettingsScreen(unitSettings, onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
             }
