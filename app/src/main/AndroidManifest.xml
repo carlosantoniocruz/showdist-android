@@ -4,7 +4,10 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- AR-only app: Play Store hides it from devices without an ARCore-capable camera. -->
-    <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    <!-- Play filters on its own ARCore device list, so "true" is right there. F-Droid instead
+         asks the phone, and many ARCore phones don't report this feature; the F-Droid build
+         (-Pfdroid) sets it to "false" and relies on the ARCore check at startup. -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="${arFeatureRequired}" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
     <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 

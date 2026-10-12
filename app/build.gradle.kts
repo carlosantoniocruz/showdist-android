@@ -22,6 +22,8 @@ android {
         targetSdk = 37
         versionCode = 3
         versionName = "1.2"
+        // See the camera.ar comment in AndroidManifest.xml. Build for F-Droid with -Pfdroid.
+        manifestPlaceholders["arFeatureRequired"] = (!project.hasProperty("fdroid")).toString()
     }
 
     signingConfigs {
