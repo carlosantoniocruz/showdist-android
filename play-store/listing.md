@@ -60,18 +60,18 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 | Asset | Requirement | File |
 |---|---|---|
-| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (ink background, citrine dimension line, peach end points) |
-| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: wordmark, dimension line, tagline and the main-menu ruler |
-| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), scaled to fit 1080 × 2160 with the screen's edge colours extended to fill the sides. **Still missing: the AR measurement shot (1).** |
+| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (black background, sandstone dimension line, white end points) |
+| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: the main menu's orbital selector (sandstone sun with SHOWDIST, orbit, the three tool moons) and the tagline |
+| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), fitted to 1080 × 2160: system-bar strips painted over, then flat top/bottom bands cropped (full scale), or, where the bands aren't deep enough (About), scaled with the edge colours extended to fill the sides. **Still missing: the AR measurement shot (1).** |
 
 The graphics are rendered by `Render.java` (run with `java Render.java <out-dir> [in.png out.png]…`), so they can be regenerated after a palette change.
 
 Screenshot order for the listing (numbers match the file names):
 1. A measurement in progress: several placed points, segment labels, running total.
 2. Main menu.
-3. Tube level in landscape against a wall.
+3. Tube level, upright against a wall.
 4. Bullseye level.
-5. Leveler picker.
+5. About (usage guides).
 6. History with thumbnails.
 7. A saved measurement's detail sheet.
 
