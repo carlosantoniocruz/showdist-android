@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +28,7 @@ import com.showconfigs.showdist.ui.Type
 
 private const val DEVELOPER_NAME = "Carlos Cruz"
 private const val DEVELOPER_EMAIL = "sh.run.configs@gmail.com"
+private const val PRIVACY_POLICY_URL = "https://carlosantoniocruz.github.io/showdist-privacy/"
 
 /** A tool's usage guide in About: its name, then one line per task. */
 private class Guide(val title: String, val entries: List<Pair<String, String>>)
@@ -68,12 +70,13 @@ private val Guides = listOf(
 )
 
 /**
- * About (SPEC.md §1.6): what Showdist does, a usage guide per tool, credits, and the way
- * to the licenses.
+ * About (SPEC.md §1.6): what Showdist does, a usage guide per tool, credits, the ARCore
+ * notice, and the ways to the privacy policy (Play requires an in-app link) and the licenses.
  */
 @Composable
 fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     // Read from the installed package, so it can't drift from the build's versionName.
     val version = remember {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
@@ -105,8 +108,21 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
                 Text(DEVELOPER_EMAIL, style = Type.Secondary)
                 Spacer(Modifier.height(8.dp))
                 Text("Created with AI assistance", style = Type.Secondary.copy(fontStyle = FontStyle.Italic))
+                Spacer(Modifier.height(8.dp))
+                // Required by the ARCore terms of service.
+                Text(
+                    "This application runs on Google Play Services for AR (ARCore), which is provided " +
+                        "by Google LLC and governed by the Google Privacy Policy.",
+                    style = Type.Secondary,
+                )
             }
             Spacer(Modifier.height(8.dp))
+            SettingsRow(
+                "Privacy policy",
+                subtitle = "Opens in your browser",
+                // No browser to handle it: nothing to do.
+                onClick = { runCatching { uriHandler.openUri(PRIVACY_POLICY_URL) } },
+            ) { Chevron() }
             SettingsRow(
                 "Licenses",
                 subtitle = "ARCore, SceneView, AndroidX and JetBrains Mono",

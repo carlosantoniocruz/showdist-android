@@ -104,6 +104,8 @@ Opened from the menu's top row. A scrolling list:
 - "SHOWDIST" (Title, sandstone, letter-spacing 3), then "An AR tape measure and two levels: measure distances with the camera, and check walls, beams and flat surfaces for level." (Body), padding 20 × 12 dp.
 - For each guide, a sandstone divider (inset 20 dp), a section header (Caption, heading) and rows of a 104 dp bold white label and its text (Secondary). The guides are AR MEASURE (Start, Points, Edit, Save), HISTORY (Open, Share, View in AR), TUBE LEVEL (Use, Level, Zero) and BULLSEYE LEVEL (Use, Read, Zero); the wording is in `settings/AboutScreen.kt`.
 - A divider, then "CREDITS": "Version {versionName}" (read from the installed package), "Carlos Cruz", "sh.run.configs@gmail.com" (Secondary), and "Created with AI assistance" (Secondary, italic).
+- Below the credits, the ARCore notice (Secondary), required by the ARCore terms: "This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."
+- A "Privacy policy" row (subtitle "Opens in your browser", chevron) that opens https://carlosantoniocruz.github.io/showdist-privacy/ in the browser; Google Play requires the policy to be linked inside the app.
 - A "Licenses" row with subtitle "ARCore, SceneView, AndroidX and JetBrains Mono" and a chevron. It opens Licenses.
 
 ### 1.7 Licenses
