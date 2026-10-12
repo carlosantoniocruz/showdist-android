@@ -92,53 +92,58 @@ public class Render {
   /**
    * Paints over the status-bar strip (top 150 px) and the gesture handle (bottom 60 px) with
    * the colour just inside them, for screens (like a bottom sheet) that bring the bars back.
+   * Only where the row just inside is one flat colour, so a full-screen camera image is left alone.
    */
   static void hideSystemBars(BufferedImage im){
-    int w=im.getWidth(), h=im.getHeight(), top=im.getRGB(w/2,160), bottom=im.getRGB(w/2,h-62);
-    for(int y=0;y<150;y++) for(int x=0;x<w;x++) im.setRGB(x,y,top);
-    for(int y=h-60;y<h;y++) for(int x=0;x<w;x++) im.setRGB(x,y,bottom);
+    int w=im.getWidth(), h=im.getHeight();
+    if(flatRow(im,160)){ int top=im.getRGB(w/2,160); for(int y=0;y<150;y++) for(int x=0;x<w;x++) im.setRGB(x,y,top); }
+    if(flatRow(im,h-62)){ int bottom=im.getRGB(w/2,h-62); for(int y=h-60;y<h;y++) for(int x=0;x<w;x++) im.setRGB(x,y,bottom); }
+  }
+
+  static boolean flatRow(BufferedImage im,int y){
+    int c=im.getRGB(0,y); for(int x=1;x<im.getWidth();x++) if(im.getRGB(x,y)!=c) return false; return true;
   }
 
   /** How many rows from the top (or bottom) are one flat colour. */
   static int flatRows(BufferedImage im, boolean fromTop){
-    int w=im.getWidth(), h=im.getHeight(), n=0;
-    for(int i=0;i<h;i++){ int y=fromTop?i:h-1-i, c=im.getRGB(0,y);
-      for(int x=1;x<w;x++) if(im.getRGB(x,y)!=c) return n; n++; }
+    int h=im.getHeight(), n=0;
+    for(int i=0;i<h;i++){ if(!flatRow(im,fromTop?i:h-1-i)) return n; n++; }
     return n;
   }
 
   /**
-   * Fits a portrait screenshot into 2:1: by cropping flat bands off the top and bottom when
-   * they're deep enough, so it keeps full scale, else by scaling and extending each edge
-   * column outward.
+   * Fits a portrait screenshot into 2:1. First [cropTop] px are cut (for a camera shot, where
+   * nothing is flat), then flat bands off the top and bottom, as much as needed, so it keeps
+   * full scale; whatever's still too tall is scaled down, with each edge column extended
+   * outward to fill the width.
    */
-  static void frame(File in, File out) throws Exception {
+  static final int MARGIN=48;
+
+  static void frame(File in, File out, int cropTop) throws Exception {
     BufferedImage src=ImageIO.read(in); int w=src.getWidth(), h=src.getHeight();
-    if(h>w){
-      hideSystemBars(src);
-      int trim=h-2*w, top=flatRows(src,true), bottom=flatRows(src,false);
-      if(trim>0 && top+bottom>=trim){
-        int cutBottom=Math.min(bottom,trim/2), cutTop=Math.min(top,trim-cutBottom); cutBottom=trim-cutTop;
-        ImageIO.write(src.getSubimage(0,cutTop,w,h-trim),"png",out); return;
-      }
-    }
-    boolean portrait=h>w; int longS=Math.max(w,h), shortS=Math.min(w,h);
-    if(longS<=2*shortS){ ImageIO.write(src,"png",out); return; }
-    int newLong=2*shortS; double k=newLong/(double)longS; int newShort=(int)Math.round(shortS*k);
-    int OW=portrait?shortS:newLong, OH=portrait?newLong:shortS;
-    int sw=portrait?newShort:newLong, sh=portrait?newLong:newShort;
+    if(h<=w){ ImageIO.write(src,"png",out); return; }
+    hideSystemBars(src);
+    src=src.getSubimage(0,cropTop,w,h-cropTop); h-=cropTop;
+    // Each flat band keeps a margin, so nothing ends up flush against the edge.
+    int trim=Math.max(0,h-2*w), top=Math.max(0,flatRows(src,true)-MARGIN), bottom=Math.max(0,flatRows(src,false)-MARGIN);
+    int cutBottom=Math.min(bottom,trim/2), cutTop=Math.min(top,trim-cutBottom); cutBottom=Math.min(bottom,trim-cutTop);
+    src=src.getSubimage(0,cutTop,w,h-cutTop-cutBottom); h=src.getHeight();
+    if(h<=2*w){ ImageIO.write(src,"png",out); return; }
+    int OW=w, OH=2*w, sh=OH, sw=(int)Math.round(w*(OH/(double)h));
     BufferedImage im=new BufferedImage(OW,OH,BufferedImage.TYPE_INT_RGB); Graphics2D g=g(im);
-    int ox=(OW-sw)/2, oy=(OH-sh)/2; g.drawImage(src,ox,oy,sw,sh,null);
-    if(portrait){ for(int y=0;y<OH;y++){ int l=im.getRGB(ox+1,y), r=im.getRGB(ox+sw-2,y);
-        for(int x=0;x<=ox;x++) im.setRGB(x,y,l); for(int x=ox+sw-1;x<OW;x++) im.setRGB(x,y,r); } }
-    else { for(int x=0;x<OW;x++){ int t=im.getRGB(x,oy+1), b=im.getRGB(x,oy+sh-2);
-        for(int y=0;y<=oy;y++) im.setRGB(x,y,t); for(int y=oy+sh-1;y<OH;y++) im.setRGB(x,y,b); } }
+    int ox=(OW-sw)/2; g.drawImage(src,ox,0,sw,sh,null);
+    for(int y=0;y<OH;y++){ int l=im.getRGB(ox+1,y), r=im.getRGB(ox+sw-2,y);
+      for(int x=0;x<=ox;x++) im.setRGB(x,y,l); for(int x=ox+sw-1;x<OW;x++) im.setRGB(x,y,r); }
     ImageIO.write(im,"png",out);
   }
 
+  /** Args: out-dir, then pairs of in.png and out.png; "out.png:N" first crops N px off the top. */
   public static void main(String[] a) throws Exception {
     File dir=new File(a[0]); dir.mkdirs();
     icon(new File(dir,"icon-512.png")); feature(new File(dir,"feature-graphic-1024x500.png"));
-    for(int i=1;i<a.length;i+=2) frame(new File(a[i]),new File(dir,a[i+1]));
+    for(int i=1;i<a.length;i+=2){
+      String[] o=a[i+1].split(":");
+      frame(new File(a[i]),new File(dir,o[0]),o.length>1?Integer.parseInt(o[1]):0);
+    }
   }
 }

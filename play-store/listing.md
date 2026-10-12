@@ -62,9 +62,9 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 |---|---|---|
 | App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (black background, sandstone dimension line, white end points) |
 | Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: the main menu's orbital selector (sandstone sun with SHOWDIST, orbit, the three tool moons) and the tagline |
-| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), fitted to 1080 × 2160: system-bar strips painted over, then flat top/bottom bands cropped (full scale), or, where the bands aren't deep enough (About), scaled with the edge colours extended to fill the sides. **Still missing: the AR measurement shot (1).** |
+| Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), fitted to 1080 × 2160: system-bar strips painted over where they sit on a flat background, flat top/bottom bands cropped (keeping a 48 px margin), and any remaining height scaled with the edge colours extended to fill the sides. The AR shot first has 170 px of camera image cropped off the top (`screenshot-1-measure.png:170`). |
 
-The graphics are rendered by `Render.java` (run with `java Render.java <out-dir> [in.png out.png]…`), so they can be regenerated after a palette change.
+The graphics are rendered by `Render.java` (run with `java Render.java <out-dir> [in.png out.png[:crop-top]]…`), so they can be regenerated after a palette change.
 
 Screenshot order for the listing (numbers match the file names):
 1. A measurement in progress: several placed points, segment labels, running total.
