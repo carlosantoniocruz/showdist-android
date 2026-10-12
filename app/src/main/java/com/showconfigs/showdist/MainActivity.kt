@@ -98,6 +98,8 @@ private fun ShowdistApp() {
     // The recording "View in AR" projects in Measure (SPEC.md §2.11); cleared when Measure closes.
     var projectionId by rememberSaveable { mutableStateOf<String?>(null) }
     var projectionSerial by rememberSaveable { mutableIntStateOf(0) }
+    // The menu's front moon, kept here because the menu leaves composition while a tool is open.
+    var menuFocus by rememberSaveable { mutableStateOf(Tool.Measure) }
 
     fun push(screen: Screen, arg: Int = 0) = stack.add(Route(screen, arg))
     fun pop() {
@@ -138,6 +140,8 @@ private fun ShowdistApp() {
             when (top.screen) {
                 Screen.Menu -> MainMenu(
                     savedCount = saved,
+                    focused = menuFocus,
+                    onFocused = { menuFocus = it },
                     onTool = { tool ->
                         when (tool) {
                             Tool.Measure -> push(Screen.Measure)

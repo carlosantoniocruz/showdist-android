@@ -75,7 +75,7 @@ Plain black, no background graphics. Content sits inside the system safe area in
 - **Taps:** tapping a moon that isn't focused turns the orbit the shortest way until it's at the front. Tapping the focused moon once the orbit has settled opens its tool. First tap focuses, second tap launches.
 - **Reduced motion:** with the system's "Remove animations" on (animator duration scale 0), snaps and focus changes jump to the end, and the guide appears without sliding.
 - **Accessibility:** each moon is a button with content description "AR Measure" / "Tube Level" / "Bullseye Level", selected when focused, and click label "Show guide" (unfocused) or "Open" (focused). The selector also offers custom actions "Next tool" and "Previous tool".
-- The focused moon survives rotation and process death.
+- The focused moon is held by the app, not the menu, so the tool last used is still in front on return; it also survives rotation and process death.
 
 **Quick guide**, beneath the orbit in a reserved 236 dp (min) area so the orbit never jumps. Once the orbit settles it slides up a third of its height with a spring (damping 0.9, stiffness 300) and fades in over 220 ms; while the orbit turns it fades out (120 ms). It's a polite live region, so TalkBack reads it out. Padding L28 T8 R28 B24, scrolling if the text outgrows it, centred:
 - The tool's name in the Title style in sandstone, letter-spacing 2.

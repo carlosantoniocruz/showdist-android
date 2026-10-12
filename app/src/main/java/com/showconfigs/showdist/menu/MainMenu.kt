@@ -27,12 +27,8 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,10 +83,13 @@ enum class Tool(val title: String, val spoken: String, val purpose: String, val 
  * The main menu (SPEC.md §1.4): About on the left and History (once something is saved)
  * and Settings on the right of a slim top row, the orbital selector, and the focused tool's
  * quick guide sliding up beneath it. It never touches the camera or the AR session.
+ * [focused] is held by the caller, so the tool last used is still in front on return.
  */
 @Composable
 fun MainMenu(
     savedCount: Int,
+    focused: Tool,
+    onFocused: (Tool) -> Unit,
     onTool: (Tool) -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -98,9 +97,8 @@ fun MainMenu(
 ) {
     val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
-    var lastFocused by rememberSaveable { mutableIntStateOf(0) }
-    val orbit = remember { OrbitState(lastFocused, Tool.entries.size, scope, reduceMotion) }
-    LaunchedEffect(orbit.settled) { if (orbit.settled) lastFocused = orbit.focused }
+    val orbit = remember { OrbitState(focused.ordinal, Tool.entries.size, scope, reduceMotion) }
+    LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
 
     Column(Modifier.fillMaxSize().background(Palette.Black).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
