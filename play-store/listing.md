@@ -139,7 +139,7 @@ Expected result: Everyone / PEGI 3.
 
 ## Before you submit
 
-1. **Upload an App Bundle, not an APK.** Play requires `.aab` for new apps: `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/app-release.aab`, signed with the same release keystore. The 1.1 bundle is built and verified (same certificate as the installed APK, SHA-256 `43:B8:ED:39:…:7F:B2`); a copy is at `~/Showdist-1.1.aab`.
+1. **Upload an App Bundle, not an APK.** Play requires `.aab` for new apps: `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/app-release.aab`, signed with the same release keystore. The 1.2 bundle (version code 3, the sandstone redesign) is built and verified (same certificate as the installed APK, SHA-256 `43:B8:ED:39:…:7F:B2`); a copy is at `~/Showdist-1.2.aab`. `~/Showdist-1.1.aab` is the old design; don't upload it.
 2. **Play App Signing.** When you create the app, let Google manage the app signing key. The `showdist-release.jks` you already have becomes your **upload key**. Keep it and its password backed up.
 3. **Closed test first (new personal accounts).** Personal developer accounts created after November 2023 must run a closed test with at least 12 testers opted in for 14 consecutive days before they can apply for production access. Check the current requirement in Play Console; if it applies, plan to recruit testers early.
 4. **Device targeting.** The manifest requires `android.hardware.camera.ar`, so Play will only offer the app to ARCore-supported phones. That's intended.

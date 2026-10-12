@@ -12,7 +12,7 @@ All sizes are in density-independent pixels (dp; for text, sp). "Alpha" is opaci
 |---|---|
 | App name (launcher label) | Showdist |
 | Application ID / namespace | `com.showconfigs.showdist` |
-| Version | 1.1 (version code 2) |
+| Version | 1.2 (version code 3) |
 | Min SDK | 24 (ARCore requires 24+) |
 | Target / compile SDK | Latest stable (was Flutter's default, platform 36) |
 | JVM target | 17 |
