@@ -50,7 +50,7 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 **Contact email:** `sh.run.configs@gmail.com` (the address on the About screen)
 
-**Website:** optional. The code repo is private, so leave this blank or use the privacy-policy page.
+**Website:** https://github.com/carlosantoniocruz/showdist-android (public source).
 
 **Privacy policy URL:** https://carlosantoniocruz.github.io/showdist-privacy/ (GitHub Pages, from the public `carlosantoniocruz/showdist-privacy` repo; the page is the text below).
 

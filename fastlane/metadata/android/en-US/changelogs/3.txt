@@ -1,0 +1,1 @@
+Version 1.2: sandstone redesign, About screen links the privacy policy and shows the ARCore notice.

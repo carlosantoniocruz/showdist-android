@@ -1,0 +1,25 @@
+Showdist is a tape measure and a bubble level in your pocket. Point your camera at a floor, wall or table, tap to drop points, and read the distance as you go. When you need to hang a shelf straight, switch to the level.
+
+MEASURE IN AR
+• Aim the reticle and tap to place points. Each segment shows its length, and a running total adds them up.
+• Measure a single span or chain up to 24 points to trace a room, a counter or a garden bed.
+• Undo the last point or clear them all with one tap.
+• Metres and centimetres, or feet and inches to the nearest half inch. Switch any time, even mid-measurement.
+
+SAVE, REVISIT, SHARE
+• Hold anywhere on the screen to save a measurement to History.
+• Each saved measurement keeps its shape as a thumbnail and opens to show every segment length.
+• View in AR: project a saved measurement back into the room to check it against the real thing.
+• Export a clean PDF report of one or many measurements, with a scaled diagram of each shape, or copy and share them as text.
+
+LEVEL
+• Tube level: hold the phone against a wall, frame or shelf. Works in portrait and both landscape orientations.
+• Bullseye level: lay the phone flat to check a surface on two axes at once.
+• A readout to a tenth of a degree, a bubble that moves like the real thing, and a zero button to calibrate against a surface you trust.
+
+BUILT FOR THE JOB
+• High-contrast colours tuned to stay readable in direct sunlight.
+• The screen stays on while you work.
+• No account, no ads, no tracking. Your measurements stay on your phone.
+
+Showdist needs a phone that supports Google Play Services for AR (ARCore). AR measurements are estimates: for the best results, use good light, move the phone slowly to let it map the room, and aim at textured surfaces rather than blank white walls or glass. For work where fractions of an inch matter, confirm with a physical tape.
