@@ -25,7 +25,9 @@ ARCore is proprietary Google software; the app will not run without it.
 
 ## Install
 
-- **F-Droid (self-hosted repo):** see the repo URL in the Releases notes.
+- **F-Droid:** in the F-Droid app, add the repository
+  `https://carlosantoniocruz.github.io/fdroid/repo?fingerprint=0E388F97C5AA696BAC88483E8B9423590223E2AF06954483282951D970555554`
+  (or open that link on your phone), then search for Showdist.
 - **APK:** download from [Releases](https://github.com/carlosantoniocruz/showdist-android/releases).
 
 ## Build
