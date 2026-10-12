@@ -11,17 +11,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
 import com.showconfigs.showdist.ui.Palette
-import com.showconfigs.showdist.ui.drawDiamond
+import com.showconfigs.showdist.ui.Type
 import kotlin.math.abs
 
 /** Full scale: ±15° pushes the bubble to the end of the vial (SPEC.md §4.1). */
@@ -40,17 +38,17 @@ private val WallInset = 2.dp // the outline's inner edge, plus a hairline
 /** How far a pegged bubble may press into the wall, as a fraction of its radius. */
 const val PRESS_FRACTION = 0.3f
 
-/** Scale stars every degree; every 5th is larger and labelled. */
-private val ScaleGap = 16.dp // from the vial's outline to the row of stars
-private val MinorStar = 1.5.dp
-private val MajorStar = 3.5.dp
-private val LabelGap = 10.dp
+/** Scale ticks every degree; every 5th is longer and labelled. */
+private val ScaleGap = 16.dp // from the vial's outline to the scale line
+private val MinorTick = 4.dp // half-length
+private val MajorTick = 8.dp
+private val LabelGap = 14.dp
 
 /**
- * The bubble vial (SPEC.md §4.2), drawn as a constellation on black: a thin stadium outline
- * along the long axis of the space it's given, two centre marks, and a row of diamond stars
- * down each side, one per degree, joined by a faint line, with 5°, 10° and 15° labelled on
- * one side. The violet bubble carries a soft halo; it and the marks turn green when level.
+ * The bubble vial (SPEC.md §4.2), flat on black: a thin stadium outline along the long
+ * axis of the space it's given, two centre marks, and a ruled scale down each side, a tick
+ * per degree, with 5°, 10° and 15° labelled. The marks turn sandstone and the white bubble
+ * green when level.
  * [displayed] feeds the bubble's spring (SPEC.md §4.4), stepped once per display frame; the
  * vial redraws as it moves, without recomposing.
  */
@@ -58,11 +56,9 @@ private val LabelGap = 10.dp
 fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val outline = remember(density) { Stroke(with(density) { 1.5.dp.toPx() }) }
-    val glow = remember(density) { Stroke(with(density) { 8.dp.toPx() }) }
-    val star = remember { Path() }
     val measurer = rememberTextMeasurer()
     val labels = remember(measurer, density) {
-        val style = BaseText.copy(color = Palette.TextMuted, fontSize = 11.sp, fontFeatureSettings = FEATURES_TABULAR)
+        val style = Type.Secondary.copy(fontSize = 14.sp, fontFeatureSettings = FEATURES_TABULAR)
         arrayOf("5°", "10°", "15°").map { measurer.measure(it, style) }
     }
     val physics = remember { BubblePhysics() }
@@ -81,7 +77,7 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val d = displayed()
         val level = abs(d) <= LEVEL_THRESHOLD_DEG
-        val accent = if (level) Palette.Green else Palette.Violet
+        val accent = if (level) Palette.Sandstone else Palette.White
         val vertical = size.height >= size.width
         val thickness = Thickness.toPx()
         val length = (if (vertical) size.height else size.width) - 2 * EndMargin.toPx()
@@ -105,17 +101,18 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
         val halfThickness = thickness / 2f - inset
         val travel = halfLength - bubbleR
 
-        // The scale: a star per degree down both sides, where the bubble's centre sits at
-        // that reading, joined by a faint line; 5°, 10° and 15° are larger and labelled.
+        // The scale: a tick per degree down both sides, where the bubble's centre sits at
+        // that reading, on a faint line; 5°, 10° and 15° are longer and labelled.
         val side = thickness / 2f + ScaleGap.toPx()
         val hair = 1.dp.toPx()
         for (s in floatArrayOf(-side, side)) {
-            drawLine(Palette.Grid, at(-travel, s), at(travel, s), hair)
+            drawLine(Palette.Line, at(-travel, s), at(travel, s), hair)
             for (deg in -FULL_SCALE_DEG.toInt()..FULL_SCALE_DEG.toInt()) {
                 val major = deg % 5 == 0
-                val r = (if (major) MajorStar else MinorStar).toPx()
-                val color = if (deg == 0) accent else Palette.White.copy(alpha = if (major) 0.85f else 0.4f)
-                drawDiamond(star, color, at(deg / FULL_SCALE_DEG * travel, s), r)
+                val half = (if (major) MajorTick else MinorTick).toPx()
+                val color = if (deg == 0) accent else Palette.White.copy(alpha = if (major) 0.85f else 0.45f)
+                val along = deg / FULL_SCALE_DEG * travel
+                drawLine(color, at(along, s - half), at(along, s + half), (if (major) 2.dp else 1.dp).toPx())
             }
         }
         for (k in labels.indices) {
@@ -125,13 +122,13 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
                 val p = at(sign * deg / FULL_SCALE_DEG * travel, side + LabelGap.toPx())
                 val w = label.size.width
                 val h = label.size.height
-                // Beside the star in portrait, under it in landscape.
+                // Beside the tick in portrait, under it in landscape.
                 val origin = if (vertical) Offset(p.x, p.y - h / 2f) else Offset(p.x - w / 2f, p.y)
                 drawText(label, topLeft = origin)
             }
         }
 
-        val markColor = if (level) Palette.Green else Palette.Text.copy(alpha = 0.7f)
+        val markColor = if (level) Palette.Sandstone else Palette.Text.copy(alpha = 0.7f)
         val markWidth = (if (level) 3.dp else 1.5.dp).toPx()
         val mark = MarkOffset.toPx()
         val span = MarkHalfSpan.toPx()
@@ -148,7 +145,6 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
         bubbleOutline.ellipse(bx, by, bubbleR, ux, uy, abs(physics.vx) * travel)
         bubbleOutline.keepInsideStadium(cx, cy, halfLength, halfThickness, vertical)
         val bubble = bubbleOutline.toPath()
-        drawPath(bubble, accent.copy(alpha = 0.25f), style = glow)
-        drawPath(bubble, accent)
+        drawPath(bubble, if (level) Palette.Level else Palette.White)
     }
 }

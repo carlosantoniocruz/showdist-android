@@ -21,14 +21,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
+import com.showconfigs.showdist.ui.Type
 
 /** Licenses (SPEC.md §1.7): every shipped component, alphabetical. */
 @Composable
@@ -41,7 +39,7 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
         val list = licenses
         if (list == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Palette.Green)
+                CircularProgressIndicator(color = Palette.Sandstone)
             }
             return@Scaffold
         }
@@ -54,7 +52,7 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
     }
 }
 
-/** License detail (SPEC.md §1.7): the component name in violet, then its paragraphs. */
+/** License detail (SPEC.md §1.7): the component name in sandstone, then its paragraphs. */
 @Composable
 fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -71,7 +69,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
             item {
                 Text(
                     license.name,
-                    style = BaseText.copy(color = Palette.Violet, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                    style = Type.Title.copy(color = Palette.Sandstone, fontSize = 26.sp),
                 )
                 Spacer(Modifier.height(20.dp))
             }
@@ -80,11 +78,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
                 Text(
                     paragraph.text,
                     modifier = Modifier.fillMaxWidth(),
-                    style = BaseText.copy(
-                        fontSize = 13.sp,
-                        lineHeight = 1.5.em,
-                        textAlign = if (paragraph.centred) TextAlign.Center else TextAlign.Start,
-                    ),
+                    style = Type.Body.copy(textAlign = if (paragraph.centred) TextAlign.Center else TextAlign.Start),
                 )
                 Spacer(Modifier.height(16.dp))
             }

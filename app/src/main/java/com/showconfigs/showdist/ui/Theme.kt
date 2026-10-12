@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.R
 
@@ -31,36 +32,70 @@ val JetBrainsMono = FontFamily(
 /** Slashed zero on all text (SPEC.md §6.1). */
 const val FEATURES = "'zero'"
 
+/** How much larger than Material's defaults the type scale is set. */
+private const val TYPE_SCALE = 1.2f
+
 /** Slashed zero plus tabular figures, for live numbers. */
 const val FEATURES_TABULAR = "'zero', 'tnum'"
 
 /** Base for text drawn with BasicText outside the Material type scale. */
 val BaseText = TextStyle(fontFamily = JetBrainsMono, fontFeatureSettings = FEATURES, color = Palette.Text)
 
-/** Caption style (SPEC.md §6.3). App-bar titles override the colour to near-white. */
-val CaptionText = BaseText.copy(
-    color = Palette.TextMuted,
-    fontSize = 12.sp,
-    fontWeight = FontWeight.SemiBold,
-    letterSpacing = 3.sp,
-    textAlign = TextAlign.Center,
-)
+/**
+ * The app's named text styles (SPEC.md §6.3), about 20% larger than Material's defaults
+ * so everything reads at arm's length. Screens use these rather than raw sizes.
+ */
+object Type {
+    /** SHOWDIST on the sun. */
+    val Wordmark = BaseText.copy(color = Palette.Black, fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+
+    /** Section and app-bar captions: spaced capitals in grey. App bars override to white. */
+    val Caption = BaseText.copy(
+        color = Palette.TextMuted,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 3.sp,
+        textAlign = TextAlign.Center,
+    )
+
+    /** Headings: a tool's name, a license's name, a dialog title. */
+    val Title = BaseText.copy(fontSize = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, lineHeight = 1.3.em)
+
+    /** List-row titles and button labels. */
+    val Label = BaseText.copy(fontSize = 17.sp)
+
+    /** Running text. */
+    val Body = BaseText.copy(fontSize = 16.sp, lineHeight = 1.5.em)
+
+    /** Secondary and informational text, in grey. */
+    val Secondary = BaseText.copy(color = Palette.TextMuted, fontSize = 15.sp, lineHeight = 1.45.em)
+
+    /** A saved measurement's total in a list. */
+    val Value = BaseText.copy(fontSize = 24.sp, fontWeight = FontWeight.Light, fontFeatureSettings = FEATURES_TABULAR)
+
+    /** A measurement's total on its sheet. */
+    val ValueLarge = BaseText.copy(fontSize = 52.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR)
+
+    /** Leveler readouts, readable from a foot away; the bullseye's pair is set smaller. */
+    val Readout = BaseText.copy(fontSize = 96.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = FEATURES_TABULAR)
+}
 
 /**
- * One fixed scheme (SPEC.md §0, §5): true black screens, near-black raised surfaces, green
- * primary, with no tint. Every role is set so no Material baseline colour can appear.
+ * One fixed scheme (SPEC.md §0, §5): black screens, near-black raised surfaces, sandstone
+ * as the only accent, with no tint. Every role is set so no Material baseline colour can
+ * appear. Errors use sandstone too, beside an icon.
  */
 private val ShowdistColors = darkColorScheme(
-    primary = Palette.Green,
+    primary = Palette.Sandstone,
     onPrimary = Palette.Black,
     primaryContainer = Palette.SurfaceHigh,
     onPrimaryContainer = Palette.Text,
-    inversePrimary = Palette.Green,
-    secondary = Palette.Violet,
+    inversePrimary = Palette.Sandstone,
+    secondary = Palette.Sandstone,
     onSecondary = Palette.Black,
     secondaryContainer = Palette.SurfaceHigh,
     onSecondaryContainer = Palette.Text,
-    tertiary = Palette.Pink,
+    tertiary = Palette.Sandstone,
     onTertiary = Palette.Black,
     tertiaryContainer = Palette.SurfaceHigh,
     onTertiaryContainer = Palette.Text,
@@ -81,9 +116,9 @@ private val ShowdistColors = darkColorScheme(
     surfaceContainerHigh = Palette.SurfaceHigh,
     surfaceContainerHighest = Palette.SurfaceHigh,
     outline = Palette.Line,
-    outlineVariant = Palette.Grid,
+    outlineVariant = Palette.Divider,
     scrim = Palette.Scrim,
-    error = Palette.Pink,
+    error = Palette.Sandstone,
     onError = Palette.Black,
     errorContainer = Palette.SurfaceHigh,
     onErrorContainer = Palette.Text,
@@ -98,9 +133,17 @@ private val ShowdistShapes = Shapes(
     extraLarge = RoundedCornerShape(36.dp),
 )
 
-/** Material 3's type scale, set in JetBrains Mono with slashed zero (SPEC.md §6.1). */
+/**
+ * Material 3's type scale, 20% larger, set in JetBrains Mono with slashed zero (SPEC.md
+ * §6.1), so dialogs, menus, snackbars and tooltips match the app's own styles.
+ */
 private val ShowdistTypography = Typography().run {
-    fun TextStyle.mono() = copy(fontFamily = JetBrainsMono, fontFeatureSettings = FEATURES)
+    fun TextStyle.mono() = copy(
+        fontFamily = JetBrainsMono,
+        fontFeatureSettings = FEATURES,
+        fontSize = fontSize * TYPE_SCALE,
+        lineHeight = lineHeight * TYPE_SCALE,
+    )
     Typography(
         displayLarge = displayLarge.mono(),
         displayMedium = displayMedium.mono(),

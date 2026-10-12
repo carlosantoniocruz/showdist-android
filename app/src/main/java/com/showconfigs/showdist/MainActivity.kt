@@ -29,11 +29,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.showconfigs.showdist.history.HistoryScreen
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
-import com.showconfigs.showdist.history.rememberPdfExport
 import com.showconfigs.showdist.leveler.LevelerMode
 import com.showconfigs.showdist.leveler.LevelerScreen
 import com.showconfigs.showdist.measure.MeasureScreen
 import com.showconfigs.showdist.menu.MainMenu
+import com.showconfigs.showdist.menu.Tool
+import com.showconfigs.showdist.settings.AboutScreen
 import com.showconfigs.showdist.settings.LicenseDetailScreen
 import com.showconfigs.showdist.settings.LicensesScreen
 import com.showconfigs.showdist.settings.SettingsScreen
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Settings, Licenses, LicenseDetail }
+private enum class Screen { Menu, Measure, Leveler, History, Settings, About, Licenses, LicenseDetail }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail and the [LevelerMode]
@@ -77,7 +78,7 @@ private data class Route(val screen: Screen, val arg: Int = 0)
 
 /**
  * Every screen is a full-screen page on a back stack (SPEC.md §1.1). Only the top screen is
- * composed, so the menu's ruler stops drifting when covered, with one exception: Measure
+ * composed, with one exception: Measure
  * stays composed (session paused) under History opened from it, so its points survive.
  * Leaving Measure itself closes its AR session. Back on the menu (the root) exits the app.
  */
@@ -121,8 +122,6 @@ private fun ShowdistApp() {
     val saved = RecordingStore.recordings.size
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbar) {
-        // Reads the snackbar host, so it's created inside the provider.
-        val exportPdf = rememberPdfExport(unitSettings.units)
         Box(Modifier.fillMaxSize()) {
             // A fixed slot, so History pushed from Measure doesn't recreate the AR session.
             if (stack.any { it.screen == Screen.Measure }) {
@@ -139,17 +138,22 @@ private fun ShowdistApp() {
             when (top.screen) {
                 Screen.Menu -> MainMenu(
                     savedCount = saved,
-                    onMeasure = { push(Screen.Measure) },
-                    onTube = { push(Screen.Leveler, LevelerMode.Tube.ordinal) },
-                    onBullseye = { push(Screen.Leveler, LevelerMode.Bullseye.ordinal) },
+                    onTool = { tool ->
+                        when (tool) {
+                            Tool.Measure -> push(Screen.Measure)
+                            Tool.Tube -> push(Screen.Leveler, LevelerMode.Tube.ordinal)
+                            Tool.Bullseye -> push(Screen.Leveler, LevelerMode.Bullseye.ordinal)
+                        }
+                    },
                     onHistory = { push(Screen.History) },
-                    onExport = { exportPdf(RecordingStore.recordings.toList()) },
                     onSettings = { push(Screen.Settings) },
+                    onAbout = { push(Screen.About) },
                 )
                 Screen.Measure -> Unit // Drawn in its slot above.
                 Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
                 Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
-                Screen.Settings -> SettingsScreen(unitSettings, onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
+                Screen.Settings -> SettingsScreen(unitSettings, onBack = ::pop)
+                Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
             }

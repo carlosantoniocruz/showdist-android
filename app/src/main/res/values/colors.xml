@@ -2,6 +2,6 @@
 <resources>
     <!-- The palette colours XML resources need; ui/Palette.kt is the full set (SPEC.md §5). -->
     <color name="black">#000000</color>
-    <color name="green">#3DDC84</color>
-    <color name="pink">#FF6E9C</color>
+    <color name="white">#FFFFFF</color>
+    <color name="sandstone">#C8A97E</color>
 </resources>

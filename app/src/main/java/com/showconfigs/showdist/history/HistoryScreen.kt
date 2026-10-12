@@ -39,15 +39,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.measure.DistanceFormat
 import com.showconfigs.showdist.measure.UnitSystem
 import com.showconfigs.showdist.ui.AppBarAction
 import com.showconfigs.showdist.ui.AppBarInsets
-import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
 import com.showconfigs.showdist.ui.ShowdistIcons
+import com.showconfigs.showdist.ui.Type
 
 /** A pending delete: which ids, and the dialog wording for them. */
 private class DeleteRequest(val ids: Set<String>, val title: String, val confirm: String)
@@ -117,7 +116,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save.",
-                    style = BaseText.copy(color = Palette.TextMuted, fontSize = 14.sp, lineHeight = 1.5.em, textAlign = TextAlign.Center),
+                    style = Type.Secondary.copy(lineHeight = 1.5.em, textAlign = TextAlign.Center),
                 )
             }
             return@Scaffold
@@ -131,7 +130,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     HorizontalDivider(
                         Modifier.padding(start = 72.dp),
                         thickness = 1.dp,
-                        color = Palette.Grid,
+                        color = Palette.Divider,
                     )
                 }
                 HistoryRow(
@@ -169,11 +168,12 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             containerColor = Palette.Surface,
-            title = { Text(request.title, style = BaseText.copy(fontSize = 18.sp, fontWeight = FontWeight.Normal)) },
-            text = { Text("This can't be undone.", style = BaseText.copy(color = Palette.TextMuted, fontSize = 14.sp)) },
+            title = { Text(request.title, style = Type.Title.copy(fontWeight = FontWeight.Normal)) },
+            icon = { Icon(ShowdistIcons.DeleteOutline, contentDescription = null, tint = Palette.Sandstone) },
+            text = { Text("This can't be undone.", style = Type.Secondary) },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
-                    Text("Cancel", style = BaseText.copy(color = Palette.TextMuted, fontSize = 14.sp))
+                    Text("Cancel", style = Type.Label.copy(color = Palette.TextMuted))
                 }
             },
             confirmButton = {
@@ -182,7 +182,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     pendingDelete = null
                     exitSelection()
                 }) {
-                    Text(request.confirm, style = BaseText.copy(fontSize = 14.sp))
+                    Text(request.confirm, style = Type.Label.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
                 }
             },
         )
@@ -201,13 +201,13 @@ private fun HistoryRow(
     onShare: () -> Unit,
     onCopy: () -> Unit,
 ) {
-    val accent = if (isSelected) Palette.Green else Palette.Text
+    val accent = if (isSelected) Palette.Sandstone else Palette.Text
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (isSelected) Palette.Green.copy(alpha = 0.12f) else Palette.Black)
+            .background(if (isSelected) Palette.SurfaceHigh else Palette.Black)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .heightIn(min = 72.dp)
+            .heightIn(min = 80.dp)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -216,15 +216,15 @@ private fun HistoryRow(
         Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
             Text(
                 DistanceFormat.format(recording.total, units),
-                style = BaseText.copy(fontSize = 20.sp, fontWeight = FontWeight.Light),
+                style = Type.Value,
             )
-            Text("${recording.points.size} points", style = BaseText.copy(color = Palette.TextMuted, fontSize = 12.sp))
+            Text("${recording.points.size} points", style = Type.Secondary)
         }
         if (selecting) {
             Icon(
                 if (isSelected) ShowdistIcons.CheckCircle else ShowdistIcons.CircleOutlined,
                 contentDescription = if (isSelected) "Selected" else "Not selected",
-                tint = if (isSelected) Palette.Green else Palette.TextMuted,
+                tint = if (isSelected) Palette.Sandstone else Palette.TextMuted,
                 modifier = Modifier.padding(end = 12.dp),
             )
         } else {
@@ -245,7 +245,7 @@ private fun SelectionBar(
     onDelete: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text("$count selected", style = BaseText.copy(fontSize = 16.sp, fontWeight = FontWeight.Normal)) },
+        title = { Text("$count selected", style = Type.Label) },
         navigationIcon = { AppBarAction(ShowdistIcons.Close, "Cancel selection", onClick = onCancel) },
         windowInsets = AppBarInsets,
         actions = {
@@ -257,7 +257,7 @@ private fun SelectionBar(
                 ShowdistIcons.DeleteOutline,
                 "Delete selected",
                 enabled = count > 0,
-                tint = Palette.Pink,
+                tint = Palette.Sandstone,
                 onClick = onDelete,
             )
         },
@@ -277,11 +277,11 @@ private fun OverflowMenu(enabled: Boolean, onSelect: () -> Unit, onDeleteAll: ()
         AppBarAction(ShowdistIcons.MoreVert, "More", enabled = enabled) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
             DropdownMenuItem(
-                text = { Text("Select", style = BaseText.copy(fontSize = 14.sp)) },
+                text = { Text("Select", style = Type.Label) },
                 onClick = { open = false; onSelect() },
             )
             DropdownMenuItem(
-                text = { Text("Delete all", style = BaseText.copy(fontSize = 14.sp)) },
+                text = { Text("Delete all", style = Type.Label) },
                 onClick = { open = false; onDeleteAll() },
             )
         }

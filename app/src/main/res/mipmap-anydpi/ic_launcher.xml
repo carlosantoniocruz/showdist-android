@@ -15,12 +15,12 @@
             android:fillColor="@color/black"
             android:pathData="M18,54 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
         <path
-            android:strokeColor="@color/green"
+            android:strokeColor="@color/sandstone"
             android:strokeWidth="3.5"
             android:strokeLineCap="round"
             android:pathData="M34,54 H74 M34,43 V65 M74,43 V65" />
         <path
-            android:fillColor="@color/pink"
+            android:fillColor="@color/white"
             android:pathData="M28,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0
                               M68,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
     </group>

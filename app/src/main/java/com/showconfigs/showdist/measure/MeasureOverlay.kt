@@ -120,7 +120,7 @@ private class PointsPainter(private val density: Float) {
         style = Paint.Style.STROKE
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
-        color = Palette.Green.toArgb()
+        color = Palette.Ar.Segment.toArgb()
     }
     private val lineShadow = Paint(line).apply {
         strokeWidth = lineWidth + halo
@@ -140,13 +140,13 @@ private class PointsPainter(private val density: Float) {
 
     // A projected recording (SPEC.md §2.11): dashed violet while being placed, solid violet
     // once placed, with smaller dots than the user's own points.
-    private val projLine = Paint(line).apply { color = Palette.Violet.toArgb() }
+    private val projLine = Paint(line).apply { color = Palette.Ar.Projection.toArgb() }
     private val projPreviewLine = Paint(projLine).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Palette.Pink.toArgb()
+        color = Palette.Ar.Point.toArgb()
     }
-    private val projDot = Paint(dot).apply { color = Palette.Violet.toArgb() }
+    private val projDot = Paint(dot).apply { color = Palette.Ar.Projection.toArgb() }
     private val dotShadow = Paint(dot).apply {
         color = haloColor
         maskFilter = haloBlur
@@ -239,9 +239,9 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
     }
     // Border colours: green for a placed segment, white for the live label, violet for a
     // projected recording.
-    val green = Palette.Green.toArgb()
+    val green = Palette.Ar.Segment.toArgb()
     val white = Palette.White.toArgb()
-    val violet = Palette.Violet.toArgb()
+    val violet = Palette.Ar.Projection.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 

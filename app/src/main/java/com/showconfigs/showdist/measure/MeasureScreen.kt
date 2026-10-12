@@ -23,7 +23,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,10 +68,10 @@ import com.showconfigs.showdist.history.MeasurementSheet
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.ui.BaseText
-import com.showconfigs.showdist.ui.CaptionText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
+import com.showconfigs.showdist.ui.Type
 import io.github.sceneview.ar.ARSceneView
 
 /** Outcome of the start routine (SPEC.md §2.1). */
@@ -287,7 +286,7 @@ private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Mod
     }
 }
 
-/** The hint line (SPEC.md §2.3): 13 sp white on a scrim pill, cross-fading on change. */
+/** The hint line (SPEC.md §2.3): 15 sp white on a scrim pill, cross-fading on change. */
 @Composable
 private fun HintLine(hint: Hint) {
     Crossfade(hint, animationSpec = tween(250), label = "hint") { h ->
@@ -297,12 +296,12 @@ private fun HintLine(hint: Hint) {
                 .background(Palette.Scrim, RoundedCornerShape(50))
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             textAlign = TextAlign.Center,
-            style = BaseText.copy(color = Palette.White, fontSize = 13.sp, letterSpacing = 0.3.sp),
+            style = BaseText.copy(color = Palette.White, fontSize = 15.sp, letterSpacing = 0.3.sp),
         )
     }
 }
 
-/** Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 34 sp, pure white. */
+/** Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 40 sp, pure white. */
 @Composable
 private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier) {
     BasicText(
@@ -312,7 +311,7 @@ private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier =
             .padding(horizontal = 16.dp, vertical = 4.dp),
         style = BaseText.copy(
             color = Palette.White,
-            fontSize = 34.sp,
+            fontSize = 40.sp,
             fontWeight = FontWeight.ExtraLight,
             fontFeatureSettings = FEATURES_TABULAR,
         ),
@@ -365,7 +364,7 @@ private fun Activity.openAppSettings() {
 /** Caption style (SPEC.md §6.3). */
 @Composable
 private fun Caption(text: String, modifier: Modifier = Modifier) {
-    BasicText(text = text, modifier = modifier, style = CaptionText)
+    BasicText(text = text, modifier = modifier, style = Type.Caption)
 }
 
 /** Problem view (SPEC.md §2.1). */
@@ -376,13 +375,13 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Canvas(Modifier.size(40.dp)) { drawCircle(Palette.Pink) }
+        Icon(ShowdistIcons.ErrorOutline, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(48.dp))
         Spacer(Modifier.height(24.dp))
         BasicText(
             text = problem.title,
             style = BaseText.copy(
                 color = Palette.Text,
-                fontSize = 22.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Light,
                 textAlign = TextAlign.Center,
             ),
@@ -390,10 +389,9 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         BasicText(
             text = problem.body,
-            style = BaseText.copy(
-                color = Palette.TextMuted,
-                fontSize = 14.sp,
-                lineHeight = 1.4.em,
+            style = Type.Secondary.copy(
+                fontSize = 16.sp,
+                lineHeight = 1.45.em,
                 textAlign = TextAlign.Center,
             ),
         )
@@ -410,10 +408,10 @@ private fun OutlinedTextButton(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .border(BorderStroke(1.dp, Palette.Green), shape)
+            .border(BorderStroke(1.dp, Palette.Sandstone), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 10.dp),
     ) {
-        BasicText(label, style = BaseText.copy(color = Palette.Green, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+        BasicText(label, style = Type.Label.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
     }
 }

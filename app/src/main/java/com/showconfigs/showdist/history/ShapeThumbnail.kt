@@ -12,16 +12,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import com.showconfigs.showdist.ui.drawDiamond
 
 /**
  * The recording's shape in a 44×44 box (SPEC.md §2.8): the polyline flattened onto its two
- * widest axes, with world-up drawn as up, its points as diamond stars.
+ * widest axes, with world-up drawn as up, its points as dots.
  */
 @Composable
 fun ShapeThumbnail(recording: Recording, color: Color, modifier: Modifier = Modifier) {
     val unit = remember(recording.id) { flatten(recording.points) }
-    val star = remember { Path() }
     Canvas(modifier.size(44.dp)) {
         val pad = 7.dp.toPx()
         val side = size.minDimension - 2 * pad
@@ -39,7 +37,7 @@ fun ShapeThumbnail(recording: Recording, color: Color, modifier: Modifier = Modi
                 style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
             )
         }
-        for (i in 0 until n) drawDiamond(star, color, at(i), 3.2.dp.toPx())
+        for (i in 0 until n) drawCircle(color, 2.6.dp.toPx(), at(i))
     }
 }
 

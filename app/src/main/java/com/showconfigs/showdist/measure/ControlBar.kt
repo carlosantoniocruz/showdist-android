@@ -141,14 +141,14 @@ private fun UnitLabel(label: String, color: Color, active: Boolean, onClick: () 
             .padding(horizontal = 7.dp, vertical = 16.dp),
         style = BaseText.copy(
             color = if (active) color else Palette.TextMuted.copy(alpha = 0.6f),
-            fontSize = 12.sp,
+            fontSize = 15.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
             letterSpacing = 1.5.sp,
         ),
     )
 }
 
-/** History, with a count badge (white, 11 sp, bold) at the top-right once anything is saved. */
+/** History, with a count badge (white, 13 sp, bold) at the top-right once anything is saved. */
 @Composable
 private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
     Box {
@@ -157,21 +157,21 @@ private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
             Text(
                 "$savedCount",
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 4.dp),
-                style = BaseText.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                style = BaseText.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
             )
         }
     }
 }
 
 /**
- * The 96 dp main button: 46 dp ring (2 dp stroke) and a 16 dp centre dot in green, at 0.4
+ * The 96 dp main button: 46 dp ring (2 dp stroke) and a 16 dp centre dot in sandstone, at 0.4
  * alpha when there's no reticle hit. While a save charges, a white arc sweeps clockwise
  * from 12 o'clock over the ring.
  */
 @Composable
 private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Unit) {
     val view = LocalView.current
-    val accent = if (enabled) Palette.Green else Palette.Green.copy(alpha = 0.4f)
+    val accent = if (enabled) Palette.Sandstone else Palette.Sandstone.copy(alpha = 0.4f)
     Canvas(
         Modifier
             .size(96.dp)

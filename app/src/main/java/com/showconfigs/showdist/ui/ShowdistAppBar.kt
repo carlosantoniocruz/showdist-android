@@ -29,7 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 @Composable
 fun ShowdistAppBar(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -> Unit = {}) {
     CenterAlignedTopAppBar(
-        title = { Text(title, style = CaptionText.copy(color = Palette.Text)) },
+        title = { Text(title, style = Type.Caption.copy(color = Palette.Text)) },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(ShowdistIcons.ArrowBack, contentDescription = "Back", tint = Palette.Text)

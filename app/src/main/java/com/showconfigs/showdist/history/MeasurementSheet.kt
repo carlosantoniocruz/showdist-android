@@ -45,15 +45,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.measure.DistanceFormat
 import com.showconfigs.showdist.measure.UnitSystem
-import com.showconfigs.showdist.ui.BaseText
-import com.showconfigs.showdist.ui.CaptionText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
 import com.showconfigs.showdist.ui.LocalSnackbarHostState
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
+import com.showconfigs.showdist.ui.Type
 import kotlinx.coroutines.launch
 
 /** Runs Share / Copy text and reports the outcome in the app's snackbar. */
@@ -112,21 +110,21 @@ fun MeasurementSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 24.dp, end = 24.dp, bottom = 20.dp),
         ) {
-            Text(title, style = CaptionText.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Start))
+            Text(title, style = Type.Caption.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Start))
             Spacer(Modifier.height(10.dp))
             Text(
                 DistanceFormat.format(recording.total, units),
-                style = BaseText.copy(fontSize = 44.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
+                style = Type.ValueLarge,
             )
             Spacer(Modifier.height(4.dp))
-            Text(recording.countsLine(), style = BaseText.copy(color = Palette.TextMuted, fontSize = 13.sp))
+            Text(recording.countsLine(), style = Type.Secondary)
             Spacer(Modifier.height(18.dp))
             recording.segments.forEachIndexed { i, length ->
                 Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", Modifier.width(32.dp), style = BaseText.copy(color = Palette.TextMuted, fontSize = 13.sp))
+                    Text("${i + 1}", Modifier.width(40.dp), style = Type.Secondary.copy(fontFeatureSettings = FEATURES_TABULAR))
                     Text(
                         DistanceFormat.format(length, units),
-                        style = BaseText.copy(fontSize = 15.sp, fontFeatureSettings = FEATURES_TABULAR),
+                        style = Type.Label.copy(fontFeatureSettings = FEATURES_TABULAR),
                     )
                 }
             }
@@ -135,8 +133,8 @@ fun MeasurementSheet(
                 Button(
                     onClick = { closeThen(onViewInAr) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Green, contentColor = Palette.Black),
-                ) { Text("View in AR", style = BaseText.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold)) }
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Sandstone, contentColor = Palette.Black),
+                ) { Text("View in AR", style = Type.Label.copy(color = Palette.Black, fontWeight = FontWeight.Bold)) }
                 Spacer(Modifier.height(8.dp))
             }
             OutlinedButton(
@@ -149,7 +147,7 @@ fun MeasurementSheet(
                 IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.Text)
             }
             TextButton(onClick = { closeThen {} }, modifier = Modifier.fillMaxWidth()) {
-                Text("Done", style = BaseText.copy(color = Palette.TextMuted, fontSize = 14.sp))
+                Text("Done", style = Type.Label.copy(color = Palette.TextMuted))
             }
         }
     }
@@ -158,15 +156,15 @@ fun MeasurementSheet(
 @Composable
 private fun IconLabel(icon: ImageVector, label: String, color: androidx.compose.ui.graphics.Color) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text(label, style = BaseText.copy(color = color, fontSize = 14.sp))
+        Text(label, style = Type.Label.copy(color = color))
     }
 }
 
 /**
  * The share-menu button (SPEC.md §2.7): an ios_share icon opening "Share" and
- * "Copy text". White when enabled, warmGrey when disabled.
+ * "Copy text". White when enabled, grey when disabled.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,9 +197,9 @@ fun ShareMenuButton(enabled: Boolean, onShare: () -> Unit, onCopy: () -> Unit) {
 @Composable
 private fun MenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(label, style = BaseText.copy(fontSize = 14.sp)) },
+        text = { Text(label, style = Type.Label) },
         leadingIcon = {
-            Icon(icon, contentDescription = null, tint = Palette.Text.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(20.dp))
         },
         onClick = onClick,
     )
