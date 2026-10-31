@@ -121,12 +121,12 @@ private fun RotatingSlot(rotation: () -> Float, content: @Composable () -> Unit)
     ) { content() }
 }
 
-/** "M" and "FT"; the active one is bold in its unit colour (cyan, amber), the other dimmed. */
+/** "M" and "FT"; the active one is bold in its unit colour (cyan, crimson), the other dimmed. */
 @Composable
 private fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         UnitLabel("M", Palette.Cyan, units == UnitSystem.Metric) { onUnits(UnitSystem.Metric) }
-        UnitLabel("FT", Palette.Amber, units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
+        UnitLabel("FT", Palette.Crimson, units == UnitSystem.Imperial) { onUnits(UnitSystem.Imperial) }
     }
 }
 

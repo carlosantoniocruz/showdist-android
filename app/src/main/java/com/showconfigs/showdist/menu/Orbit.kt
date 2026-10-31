@@ -17,6 +17,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,10 +136,10 @@ class OrbitState(
  * shell ring and the wordmark across it, and a moon per tool on a tilted elliptical
  * orbit. The front moon sits low over the sun; moons further round are smaller, dimmer
  * and pass behind it. Swiping turns the orbit; tapping a moon brings it to the front, and
- * tapping the front moon, once settled, calls [onOpen].
+ * tapping the front moon, once settled, calls [onOpen]. Holding the sun runs the [egg].
  */
 @Composable
-fun Orbit(state: OrbitState, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier: Modifier = Modifier) {
+fun Orbit(state: OrbitState, egg: CollapseEgg, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier: Modifier = Modifier) {
     BoxWithConstraints(
         modifier.semantics {
             customActions = listOf(
@@ -159,6 +160,7 @@ fun Orbit(state: OrbitState, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier
         val cx = w / 2
         val density = LocalDensity.current
         val stepPx = with(density) { rx.toPx() }
+        val sparks = remember { BurstSparks() }
 
         Box(
             Modifier
@@ -183,14 +185,16 @@ fun Orbit(state: OrbitState, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier
                 drawCircle(Palette.Sandstone.copy(alpha = 0.45f), shellR.toPx(), c, style = Stroke(1.5.dp.toPx()))
                 drawOrbitHalf(c, rx.toPx(), ry.toPx(), back = true)
             }
-            Sun(sunR, Modifier.offset(cx - sunR, cy - sunR))
+            Sun(sunR, Modifier.offset(cx - sunR, cy - sunR).collapseOnHold(egg))
             // The orbit's near half, over the sun and under the front moon.
             Canvas(Modifier.fillMaxSize().zIndex(0.5f)) {
                 drawOrbitHalf(Offset(cx.toPx(), cy.toPx()), rx.toPx(), ry.toPx(), back = false)
             }
 
             tools.forEachIndexed { i, tool ->
-                val angle = (i - state.position) * (2 * PI.toFloat() / tools.size)
+                val angle = (i - state.position) * (2 * PI.toFloat() / tools.size) + egg.spin
+                // Drawn in towards the sun by the egg (SPEC.md §1.4).
+                val reach = 1f - egg.pull
                 val depth = cos(angle) // 1 at the front, -1 at the back
                 val near = (depth + 1f) / 2f
                 val focused = i == state.focused
@@ -201,20 +205,28 @@ fun Orbit(state: OrbitState, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier
                     modifier = Modifier
                         .offset {
                             IntOffset(
-                                (cx + rx * sin(angle) - moonR).roundToPx(),
-                                (cy + ry * depth - moonR).roundToPx(),
+                                (cx + rx * reach * sin(angle) - moonR).roundToPx(),
+                                (cy + ry * reach * depth - moonR).roundToPx(),
                             )
                         }
                         // In front of the sun on the near half of the orbit, behind it on the far half.
                         .zIndex(if (depth >= 0f) 1f + depth else depth - 1f)
                         .graphicsLayer {
-                            val scale = 0.6f + 0.4f * near
+                            val scale = (0.6f + 0.4f * near) * (1f - 0.6f * egg.pull)
                             scaleX = scale
                             scaleY = scale
-                            alpha = 0.5f + 0.5f * near
+                            alpha = if (egg.moonsHidden) 0f else 0.5f + 0.5f * near
                         },
-                    onClick = { if (focused && state.settled) onOpen(tool) else state.focus(i) },
+                    onClick = {
+                        if (egg.active) return@Moon
+                        if (focused && state.settled) onOpen(tool) else state.focus(i)
+                    },
                 )
+            }
+            if (egg.burst >= 0f) {
+                Canvas(Modifier.fillMaxSize().zIndex(10f)) {
+                    drawBurst(egg.burst, Offset(cx.toPx(), cy.toPx()), sunR.toPx(), sparks)
+                }
             }
         }
     }

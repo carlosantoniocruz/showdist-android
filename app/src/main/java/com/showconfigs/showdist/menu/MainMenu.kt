@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -32,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -80,8 +82,8 @@ enum class Tool(val title: String, val spoken: String, val purpose: String, val 
 }
 
 /**
- * The main menu (SPEC.md §1.4): About on the left and History (once something is saved)
- * and Settings on the right of a slim top row, the orbital selector, and the focused tool's
+ * The main menu (SPEC.md §1.4): History (once something is saved) and Settings on the
+ * right of a slim top row, with the fun facts scrolling just beneath it once unlocked, the orbital selector, and the focused tool's
  * quick guide sliding up beneath it. It never touches the camera or the AR session.
  * [focused] is held by the caller, so the tool last used is still in front on return.
  */
@@ -93,16 +95,17 @@ fun MainMenu(
     onTool: (Tool) -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
-    onAbout: () -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
     val orbit = remember { OrbitState(focused.ordinal, Tool.entries.size, scope, reduceMotion) }
+    val view = LocalView.current
+    val facts = rememberFunFactsUnlock()
+    val egg = remember { CollapseEgg(scope, view, reduceMotion, onBurst = facts::toggle) }
     LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
 
     Column(Modifier.fillMaxSize().background(Palette.Black).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            AppBarAction(ShowdistIcons.InfoOutlined, "About", tint = Palette.Sandstone, onClick = onAbout)
             Spacer(Modifier.weight(1f))
             if (savedCount > 0) {
                 BadgedBox(
@@ -116,7 +119,12 @@ fun MainMenu(
             }
             AppBarAction(ShowdistIcons.SettingsOutlined, "Settings", tint = Palette.Sandstone, onClick = onSettings)
         }
-        Orbit(orbit, Tool.entries, onOpen = onTool, modifier = Modifier.weight(1f).fillMaxWidth())
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.fillMaxSize())
+            // The collapse's prize (SPEC.md §1.4), just under the top row, over the orbit's
+            // empty top so the orbit doesn't move when it appears.
+            if (facts.unlocked) FunFactsTicker(Modifier.align(Alignment.TopCenter).offset(y = (-12).dp).fillMaxWidth())
+        }
         QuickGuide(
             tool = if (orbit.settled) Tool.entries[orbit.focused] else null,
             reduceMotion = reduceMotion,

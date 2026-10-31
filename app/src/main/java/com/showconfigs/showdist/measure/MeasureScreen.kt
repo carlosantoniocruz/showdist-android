@@ -49,7 +49,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.derivedStateOf
+import android.os.Build
+import android.view.RoundedCorner
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.abs
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -101,7 +117,6 @@ private enum class ProblemAction(val label: String) {
 @Composable
 fun MeasureScreen(
     units: UnitSystem,
-    scheme: ArScheme,
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
@@ -159,7 +174,7 @@ fun MeasureScreen(
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, scheme, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -179,7 +194,6 @@ fun MeasureScreen(
 @Composable
 private fun MeasureArea(
     units: UnitSystem,
-    scheme: ArScheme,
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
@@ -201,7 +215,10 @@ private fun MeasureArea(
     var saved by remember { mutableStateOf<Recording?>(null) }
     val holdToSave = rememberHoldToSave(tracker) { saved = it }
 
-    Column(Modifier.fillMaxSize().then(holdToSave.modifier)) {
+    val cornerRadiusPx = rememberScreenCornerRadius()
+    // The top info column's bottom edge, so the SAVING pill can sit below it.
+    var infoBottomPx by remember { mutableIntStateOf(0) }
+    Column(Modifier.fillMaxSize().then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx)) {
         Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
@@ -228,19 +245,26 @@ private fun MeasureArea(
             // Until real camera images arrive, the feed would show uninitialised texture memory.
             if (!tracker.cameraLive) Box(Modifier.fillMaxSize().background(Palette.Black))
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
-            MeasureOverlay(tracker, scheme, Modifier.fillMaxSize())
+            MeasureOverlay(tracker, ArScheme.forUnits(units), { barRotation.value }, Modifier.fillMaxSize())
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 60.dp, top = 16.dp, end = 60.dp), // clear of the menu button
+                    .padding(start = 60.dp, top = 16.dp, end = 60.dp) // clear of the menu button
+                    .onPlaced { infoBottomPx = it.boundsInParent().bottom.toInt() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HintLine(tracker.hint)
                 if (tracker.pointCount >= 2) {
                     Spacer(Modifier.height(6.dp))
-                    RunningTotal(tracker.totalMetres, units)
+                    RunningTotal(tracker.totalMetres, units, Modifier.turnWith { barRotation.value })
                 }
+            }
+            val saving by remember { derivedStateOf { holdToSave.charge() > 0f } }
+            if (saving) {
+                SavingPill(
+                    Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
+                )
             }
             MenuButton(
                 rotation = { barRotation.value },
@@ -321,6 +345,111 @@ private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier =
             fontFeatureSettings = FEATURES_TABULAR,
         ),
     )
+}
+
+/**
+ * Shown while a hold-to-save charges (SPEC.md §2.6): white "SAVING" on a white-bordered
+ * scrim pill. The progress itself runs round the screen's edge.
+ */
+@Composable
+private fun SavingPill(modifier: Modifier = Modifier) {
+    BasicText(
+        "SAVING",
+        modifier = modifier
+            .background(Palette.Scrim, RoundedCornerShape(50))
+            .border(BorderStroke(1.5.dp, Palette.White), RoundedCornerShape(50))
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        style = BaseText.copy(color = Palette.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp),
+    )
+}
+
+private val EDGE_WIDTH = 6.dp
+private val EDGE_HALO = 3.dp
+
+/**
+ * The hold-to-save progress (SPEC.md §2.6): while [charge] is above 0, a sandstone band runs clockwise round the screen's edge from top centre, following
+ * the display's rounded corners ([cornerRadiusPx]), over a dim track and a dark halo.
+ * The paths are built once per size; [charge] is read only while drawing.
+ */
+private fun Modifier.edgeProgress(charge: () -> Float, cornerRadiusPx: Float) = drawWithCache {
+    val stroke = EDGE_WIDTH.toPx()
+    val inset = stroke / 2f
+    val r = (cornerRadiusPx - inset).coerceAtLeast(0f)
+    val l = inset
+    val t = inset
+    val rt = size.width - inset
+    val b = size.height - inset
+    val outline = Path().apply {
+        moveTo(size.width / 2f, t)
+        lineTo(rt - r, t)
+        arcTo(Rect(rt - 2 * r, t, rt, t + 2 * r), -90f, 90f, false)
+        lineTo(rt, b - r)
+        arcTo(Rect(rt - 2 * r, b - 2 * r, rt, b), 0f, 90f, false)
+        lineTo(l + r, b)
+        arcTo(Rect(l, b - 2 * r, l + 2 * r, b), 90f, 90f, false)
+        lineTo(l, t + r)
+        arcTo(Rect(l, t, l + 2 * r, t + 2 * r), 180f, 90f, false)
+        close()
+    }
+    val measure = PathMeasure().apply { setPath(outline, false) }
+    val length = measure.length
+    val done = Path()
+    val bandStroke = Stroke(stroke, cap = StrokeCap.Round)
+    val haloStroke = Stroke(stroke + 2 * EDGE_HALO.toPx(), cap = StrokeCap.Round)
+    val track = Palette.White.copy(alpha = 0.2f)
+    onDrawWithContent {
+        drawContent()
+        val c = charge().coerceIn(0f, 1f)
+        if (c <= 0f) return@onDrawWithContent
+        done.reset()
+        measure.getSegment(0f, length * c, done, true)
+        drawPath(outline, track, style = bandStroke)
+        drawPath(done, Palette.Halo, style = haloStroke)
+        drawPath(done, Palette.Sandstone, style = bandStroke)
+    }
+}
+
+/** The display's top-left corner radius in pixels (API 31+), else 0 for square corners. */
+@Composable
+private fun rememberScreenCornerRadius(): Float {
+    val view = LocalView.current
+    return remember(view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            view.rootWindowInsets?.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)?.radius?.toFloat() ?: 0f
+        } else {
+            0f
+        }
+    }
+}
+
+/** Clearance kept above the reticle's centre: its 16 dp ring plus its dots and halo. */
+private val RETICLE_CLEARANCE = 28.dp
+
+/**
+ * Centres the content halfway between [infoBottom] (px) and the top of the reticle at the
+ * area's centre (SPEC.md §2.6). Read only while placing, so it never recomposes.
+ */
+private fun Modifier.belowInfo(infoBottom: () -> Int) = layout { measurable, constraints ->
+    val placeable = measurable.measure(Constraints())
+    layout(constraints.maxWidth, constraints.maxHeight) {
+        val reticleTop = constraints.maxHeight / 2 - RETICLE_CLEARANCE.roundToPx()
+        val centreY = (infoBottom() + reticleTop) / 2
+        placeable.place((constraints.maxWidth - placeable.width) / 2, centreY - placeable.height / 2)
+    }
+}
+
+/**
+ * Turns the content by [rotation] degrees about its centre so it reads upright however the
+ * phone is held (SPEC.md §2.9); turned sideways, it takes its rotated footprint in layout.
+ */
+private fun Modifier.turnWith(rotation: () -> Float) = layout { measurable, _ ->
+    val placeable = measurable.measure(Constraints())
+    val sideways = abs(rotation()) > 45f
+    val w = if (sideways) placeable.height else placeable.width
+    val h = if (sideways) placeable.width else placeable.height
+    layout(w, h) {
+        placeable.placeWithLayer((w - placeable.width) / 2, (h - placeable.height) / 2) { rotationZ = rotation() }
+    }
 }
 
 private fun problemFor(e: Exception): StartState.Problem = when (e) {

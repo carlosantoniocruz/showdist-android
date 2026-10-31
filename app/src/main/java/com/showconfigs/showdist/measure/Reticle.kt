@@ -26,12 +26,12 @@ fun blurForSigma(sigmaPx: Float) =
 
 /**
  * Draws the reticle (SPEC.md §3.1) at a fixed point, normally the centre of the camera area:
- * a small white centre dot and three smaller dots orbiting it, amber for imperial and cyan
+ * a small white centre dot and three smaller dots orbiting it, crimson for imperial and cyan
  * for metric, with a soft glow. A dark halo sits behind everything so it reads on bright
  * surfaces. All paints are created once per density; only their colour changes per frame.
  */
 class ReticlePainter(private val density: Float) {
-    private val amber = Palette.Amber.toArgb()
+    private val crimson = Palette.Crimson.toArgb()
     private val cyan = Palette.Cyan.toArgb()
 
     private val dotFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -59,7 +59,7 @@ class ReticlePainter(private val density: Float) {
         val outerR = OUTER_DOT_RADIUS_DP * density
         val centreR = CENTRE_DOT_RADIUS_DP * density
         val haloR = HALO_WIDTH_DP * density
-        val unit = if (metric) cyan else amber
+        val unit = if (metric) cyan else crimson
 
         dotFill.color = unit
         dotStroke.color = unit

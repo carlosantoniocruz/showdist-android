@@ -17,6 +17,9 @@ import androidx.core.content.res.ResourcesCompat
 import com.showconfigs.showdist.R
 import com.showconfigs.showdist.ui.ArScheme
 import com.showconfigs.showdist.ui.Palette
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 private const val POINT_RADIUS_DP = 6f
 private const val PROJ_POINT_RADIUS_DP = 4.5f
@@ -42,7 +45,7 @@ private const val LABEL_BORDER_DP = 1.5f
  * every image) and never recomposes.
  */
 @Composable
-fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, modifier: Modifier = Modifier) {
+fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Float, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val points = remember(density.density, scheme) { PointsPainter(density.density, scheme) }
@@ -60,6 +63,8 @@ fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, modifier: Modifier
         val projStage = tracker.projectionStage
         val projCount = tracker.projectionCount
         val projPlaced = projStage == ProjectionStage.Placed
+        // Labels turn with the bar controls so they read upright (SPEC.md §2.9).
+        labels.setRotation(rotation())
         drawIntoCanvas { canvas ->
             val c = canvas.nativeCanvas
             if (projCount > 0) points.drawProjection(c, w, h, projCount, projPlaced, tracker)
@@ -99,7 +104,7 @@ fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, modifier: Modifier
 
 /**
  * Placed points, segment lines and the live line (SPEC.md §3.2), in the [scheme]'s colours
- * (Aurora: pink points on green segments, as in the app icon, and a dashed white live line),
+ * (white points; red or cyan segments; a dashed pale live line),
  * each over a dark halo drawn first. Paints are created once per scheme.
  */
 private class PointsPainter(private val density: Float, scheme: ArScheme) {
@@ -245,18 +250,38 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 
+    private var rotationDeg = 0f
+    private var cosAbs = 1f
+    private var sinAbs = 0f
+
+    /** Degrees clockwise to turn every pill about its centre. */
+    fun setRotation(degrees: Float) {
+        if (degrees == rotationDeg) return
+        rotationDeg = degrees
+        val rad = Math.toRadians(degrees.toDouble())
+        cosAbs = abs(cos(rad)).toFloat()
+        sinAbs = abs(sin(rad)).toFloat()
+    }
+
     /** [nx], [ny] are the normalised midpoint; hidden if it's off-canvas. */
     fun draw(c: Canvas, w: Float, h: Float, nx: Float, ny: Float, chars: CharArray, length: Int, borderColor: Int) {
         if (length == 0 || nx < 0f || nx > 1f || ny < 0f || ny > 1f) return
         val pillWidth = text.measureText(chars, 0, length) + 2 * LABEL_PAD_H_DP * density
         val edge = LABEL_EDGE_DP * density
-        // Clamp the centre so the whole pill stays at least 8 dp inside the canvas.
-        val cx = clamp(nx * w, edge + pillWidth / 2f, w - edge - pillWidth / 2f)
-        val cy = clamp(ny * h, edge + pillHeight / 2f, h - edge - pillHeight / 2f)
+        // Clamp the centre so the whole (turned) pill stays at least 8 dp inside the canvas.
+        val boundsW = cosAbs * pillWidth + sinAbs * pillHeight
+        val boundsH = sinAbs * pillWidth + cosAbs * pillHeight
+        val cx = clamp(nx * w, edge + boundsW / 2f, w - edge - boundsW / 2f)
+        val cy = clamp(ny * h, edge + boundsH / 2f, h - edge - boundsH / 2f)
         val left = cx - pillWidth / 2f
         val top = cy - pillHeight / 2f
         val radius = pillHeight / 2f
 
+        val turned = rotationDeg != 0f
+        if (turned) {
+            c.save()
+            c.rotate(rotationDeg, cx, cy)
+        }
         c.drawRoundRect(left, top, left + pillWidth, top + pillHeight, radius, radius, scrim)
         border.color = borderColor
         val inset = border.strokeWidth / 2f
@@ -266,6 +291,7 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         )
         val baseline = cy - (metrics.ascent + metrics.descent) / 2f
         c.drawText(chars, 0, length, left + LABEL_PAD_H_DP * density, baseline, text)
+        if (turned) c.restore()
     }
 
     /** Like coerceIn, but keeps [lo] when the range is inverted (pill wider than the canvas). */

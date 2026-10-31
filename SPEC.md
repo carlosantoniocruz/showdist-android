@@ -40,15 +40,14 @@ Launch screen (black field)
        ├─ Bullseye Level (moon)
        ├─ History (top row; only shown once ≥1 measurement is saved) ──► Measurement detail sheet
        │        └─► "View in AR" ──► Measure, projecting it (§2.11)
-       ├─ About (top row, left)
-       │     └─ Licenses
-       │          └─ License detail (one package)
-       └─ Settings (top row, right)
+       └─ Settings (top row, right; About is part of it, §1.6)
+             └─ Licenses
+                  └─ License detail (one package)
 ```
 
 Every screen is a full-screen page pushed on a back stack. The system Back button/gesture and each app bar's back arrow (`arrow_back_rounded`, tooltip "Back") pop one level. The main menu is the root; Back there exits the app.
 
-### 1.2 Shared app-bar style (Settings, About, Licenses, License detail, History, Leveler)
+### 1.2 Shared app-bar style (Settings, Licenses, License detail, History, Leveler)
 
 - Background black, no elevation, no surface tint. Foreground (icons, title) white (text).
 - Title centred and set in the **Caption** style (§6.3) in white: "SETTINGS", "ABOUT", "LICENSES", "LICENSE", "HISTORY", "TUBE LEVELER", "BULLSEYE LEVELER".
@@ -64,7 +63,7 @@ Every screen is a full-screen page pushed on a back stack. The system Back butto
 
 Plain black, no background graphics. Content sits inside the system safe area in a column: a slim top row, the orbital selector filling the space, and the quick guide beneath it. The main menu never touches the camera or the AR session.
 
-**Top row** (4 dp padding), icon buttons in sandstone with tooltips: **About** (`info_outlined`) on the left; on the right **History** (`history_rounded`, only once ≥1 recording is saved, with a sandstone badge showing the count in black; content description "History, N saved") then **Settings** (`settings_outlined`). History is not a moon: it's saved data, not a tool. Export PDF is not on the menu; History exports any selection.
+**Top row** (4 dp padding), icon buttons in sandstone with tooltips on the right: **History** (`history_rounded`, only once ≥1 recording is saved, with a sandstone badge showing the count in black; content description "History, N saved") then **Settings** (`settings_outlined`). History is not a moon: it's saved data, not a tool. Export PDF is not on the menu; History exports any selection. Once switched on by the collapse (below), the **fun facts ticker** runs full width just under the top row, overlaying the empty top of the orbit area (raised 12 dp, so the orbit never moves): every fact in one line, separated by "✦", in the Secondary style in sandstone, scrolling right to left at 40 dp/s without end (`basicMarquee`, 600 ms initial delay); content description "Fun facts".
 
 **Orbital selector** (`menu/Orbit.kt`), sized from the space it's given (w × h):
 - **Sun**, a dying star, flat and minimal (no glow, gradient or particles): a sandstone disc of radius `sunR = min(0.27w, 0.30h, 124 dp)`, with one shed-shell ring at 1.22 × sunR (1.5 dp, sandstone at alpha 0.45). "SHOWDIST" sits across it in black, weight 700, letter-spacing 0.12 em, sized to span 1.5 × sunR and raised 0.12 × sunR above centre. It ignores the system font scale (it's the app's mark). TalkBack reads it as a heading, "Showdist".
@@ -75,6 +74,13 @@ Plain black, no background graphics. Content sits inside the system safe area in
 - **Taps:** tapping a moon that isn't focused turns the orbit the shortest way until it's at the front. Tapping the focused moon once the orbit has settled opens its tool. First tap focuses, second tap launches.
 - **Reduced motion:** with the system's "Remove animations" on (animator duration scale 0), snaps and focus changes jump to the end, and the guide appears without sliding.
 - **Accessibility:** each moon is a button with content description "AR Measure" / "Tube Level" / "Bullseye Level", selected when focused, and click label "Show guide" (unfocused) or "Open" (focused). The selector also offers custom actions "Next tool" and "Previous tool".
+- **The collapse** (Easter egg, `menu/CollapseEgg.kt`): pressing and holding the sun is timed like Android 16's own Easter egg (`PlatLogoActivity`: a 5 s warp ramp, launching 1 s later).
+  - Over the first **5 s** the moons spin ever faster, up to four turns a second (speed ∝ t²), and are drawn in towards the sun (smoothstep to 80% of the way), shrinking to 40% at the centre. Over the 6th second they're drawn the rest of the way in. Clock-tick haptics quicken from every 250 ms to every 40 ms.
+  - At **6 s** the sun bursts (confirm haptic; long-press before API 30): the moons vanish and, over 1.4 s, a white flash grows from the sun and fades in the first third, a sandstone shockwave ring (10 dp thinning to 1 dp) runs out past the screen's corners, and 56 sparks (40% white, the rest sandstone) fly outwards and fade. Then the moons re-form over 900 ms, flung back out with one last turn so each lands in its own place.
+  - Each burst **toggles the fun facts**: the first turns the ticker on, the next turns it off, and so on. The state is persisted under `showdist.fun_facts`.
+  - Lifting or sliding off (beyond touch slop) before 6 s lets go: over 700 ms the moons drift back out and the spin coasts on to the next whole turn. While any of this runs, taps on moons are ignored. A swipe that starts on the sun still turns the orbit.
+  - With reduced motion, holding 6 s gives the ticks and toggles the facts without the spin or burst.
+  - The facts (each checked to be true): the 1791 metre definition (one ten-millionth of the pole-to-equator distance along the Paris meridian); the 1983 light-based metre (1/299,792,458 s); the 1959 international foot (0.3048 m); the US survey foot retired at the end of 2022; Egypt's royal cubit (about 52 cm); Eratosthenes' circumference estimate from the noon Sun's angle at Syene and Alexandria (around 240 BC); Thévenot's bubble level (around 1661); the Mars Climate Orbiter lost to a unit mix-up (1999); the Apollo 11, 14 and 15 laser reflectors; the Moon receding about 3.8 cm a year; sunlight's 8 min 20 s trip; the astronomical unit fixed at 149,597,870,700 m (2012). The wording is in `menu/CollapseEgg.kt`.
 - The focused moon is held by the app, not the menu, so the tool last used is still in front on return; it also survives rotation and process death.
 
 **Quick guide**, beneath the orbit in a reserved 236 dp (min) area so the orbit never jumps. Once the orbit settles it slides up a third of its height with a spring (damping 0.9, stiffness 300) and fades in over 220 ms; while the orbit turns it fades out (120 ms). It's a polite live region, so TalkBack reads it out. Padding L28 T8 R28 B24, scrolling if the text outgrows it, centred:
@@ -98,14 +104,14 @@ A list with 8 dp vertical padding:
 
 Tapping an option sets the unit system immediately and persists it (§2.7).
 
-- Section header "LINE COLOURS" (same style), then one option row per AR colour scheme (§5): "Aurora", "Nebula", "Supernova". Before each radio, 16 dp from it, a 96 × 16 dp preview: a point dot (radius 6 dp) at each end of a short solid segment (2.5 dp), then a dashed run (3 dp, dash intervals 3 on / 9 off), in that scheme's colours.
-- Tapping one applies it to the AR view at once and persists it in SharedPreferences under `showdist.line_colours` (`aurora`, `nebula`, `supernova`); missing or unknown means Aurora.
+Below the units comes About (§1.6), then 24 dp of space.
+
 
 ### 1.6 About
 
-Opened from the menu's top row. A scrolling list:
+Part of Settings, below the units (`settings/AboutSections.kt`); there is no separate About screen. It starts with a sandstone divider (inset 20 dp) and the section header "ABOUT", then:
 - "SHOWDIST" (Title, sandstone, letter-spacing 3), then "An AR tape measure and two levels: measure distances with the camera, and check walls, beams and flat surfaces for level." (Body), padding 20 × 12 dp.
-- For each guide, a sandstone divider (inset 20 dp), a section header (Caption, heading) and rows of a 104 dp bold white label and its text (Secondary). The guides are AR MEASURE (Start, Points, Edit, Save), HISTORY (Open, Share, View in AR), TUBE LEVEL (Use, Level, Zero) and BULLSEYE LEVEL (Use, Read, Zero); the wording is in `settings/AboutScreen.kt`.
+- For each guide, a sandstone divider (inset 20 dp), a section header (Caption, heading) and rows of a 104 dp bold white label and its text (Secondary). The guides are AR MEASURE (Start, Points, Edit, Save), HISTORY (Open, Share, View in AR), TUBE LEVEL (Use, Level, Zero) and BULLSEYE LEVEL (Use, Read, Zero); the wording is in `settings/AboutSections.kt`.
 - A divider, then "CREDITS": "Version {versionName}" (read from the installed package), "Carlos Cruz", "sh.run.configs@gmail.com" (Secondary), and "Created with AI assistance" (Secondary, italic).
 - Below the credits, the ARCore notice (Secondary), required by the ARCore terms: "This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."
 - A "Privacy policy" row (subtitle "Opens in your browser", chevron) that opens https://carlosantoniocruz.github.io/showdist-privacy/ in the browser; Google Play requires the policy to be linked inside the app.
@@ -314,7 +320,7 @@ It is divided into **five equal-width columns**, each control centred in its own
 
 | # | Control | Details |
 |---|---|---|
-| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is weight 700 in its unit colour: **cyan** for M, **amber** for FT. The inactive one is textMuted at alpha 0.6, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
+| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is weight 700 in its unit colour: **cyan** for M, **crimson** for FT. The inactive one is textMuted at alpha 0.6, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
 | 2 | Undo | `undo_rounded`. Tooltip "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
 | 3 | Main button | 96×96. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
 | 4 | Clear | `close_rounded`. Tooltip "Clear all points". Also removes a projection. Disabled when there are no points and no projection. |
@@ -342,6 +348,10 @@ It is divided into **five equal-width columns**, each control centred in its own
 - A long press **anywhere on screen** starts a charge. The standard long-press recognition delay is about 500 ms, then charging begins.
 - The charge starts only with ≥2 points and plays a selection-click haptic.
 - It animates linearly from 0 to 1 over **800 ms**, filling the main button's ring.
+- While the charge is above 0:
+  - An **edge band** traces the screen's border: a 6 dp stroke with round caps in **sandstone** (§5), over a dark halo 3 dp wider each side, running clockwise from top centre to `charge` of the way round, on a full-perimeter track of white at alpha 0.2. It follows the display's rounded corners (the top-left `RoundedCorner` radius on API 31+, square before).
+  - A **SAVING pill** is centred horizontally, and vertically halfway between the bottom of the top info column (§2.2, so it moves down when the running total shows) and 28 dp above the camera area's centre (clear of the reticle): "SAVING" (18 sp, bold, letter-spacing 3, white) on a fully rounded scrim pill (§5), padding 20 × 8 dp, with a 1.5 dp white border. It turns with the bar controls (§2.9).
+  - Both disappear when the charge returns to 0 or the save completes.
 - If the finger lifts or the gesture is cancelled before completion, the charge animates back to 0 over 200 ms. Nothing is saved.
 - On completion:
   1. Play a medium haptic impact.
@@ -431,7 +441,7 @@ Drawing within the 44×44 box, with 7 dp padding:
 
 ### 2.9 Orientation handling in Measure (button rotation)
 
-The screen stays portrait. Only the four small bar controls rotate.
+The screen stays portrait. The four small bar controls rotate, and so do the readings over the camera: each distance label (about its own centre, §3.3), the running total and the SAVING pill (§2.6). Turned sideways, the running total and the pill take their rotated footprint in layout; a label's clamp to the canvas uses its rotated bounds.
 
 The accelerometer is read at about **5 Hz**. Using raw device-frame `x` and `y` in m/s²:
 - If `√(x² + y²) < 3.0` (the phone is roughly flat), keep the current value.
@@ -505,7 +515,7 @@ Everything is drawn on a transparent canvas over the camera feed. The canvas rep
 On this screen, legibility outdoors and indoors overrides the theme: strokes are brighter and thicker than elsewhere, and every mark sits on a dark halo.
 
 - **Position:** always the **fixed centre of the camera area**, not the projected hit point.
-- **Motif:** three small dots orbiting a **white** centre dot. The orbiting dots are in the **unit colour**: **amber** for imperial, **cyan** for metric (§5), following the current unit setting.
+- **Motif:** three small dots orbiting a **white** centre dot. The orbiting dots are in the **unit colour**: **crimson** for imperial, **cyan** for metric (§5), following the current unit setting.
   - Ring radius (centre to each dot): **16 dp**.
   - Orbiting dot radius: **3.5 dp**. Centre dot radius: **2 dp**.
 - **Rotation:**
@@ -521,12 +531,12 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
 ### 3.2 Placed points, segments, live line
 
 **Placed points and segment lines** (the icon's colours, §8.1):
-- Placed points are filled circles in the scheme's **point** colour (§5; Aurora pink), radius 6 dp. They are drawn only when visible.
-- Segment lines are the scheme's **segment** colour (§5; Aurora green), 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
+- Placed points are filled circles in the scheme's **point** colour (§5; white), radius 6 dp. They are drawn only when visible.
+- Segment lines are the scheme's **segment** colour (§5; red for imperial, cyan for metric), 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
 
 **Live line:**
 - A dashed line from the last point to the reticle hit's projected screen position.
-- It is the scheme's **live** colour (§5; Aurora white), 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
+- It is the scheme's **live** colour (§5; pale yellow or pale gold), 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
 - It is drawn only when there is a hit, ≥1 point, and the last point is visible.
 
 **Overlay halo** (for points and lines): a copy drawn first, centred (no offset), in the halo colour with blur sigma 1.2; lines 3 dp wider (1.5 dp each side), dots 1.5 dp larger in radius.
@@ -651,19 +661,18 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | **textMuted** | `#B8B8B8` | Secondary text: descriptions, captions, subtitles, guide steps, empty states, dialog bodies, cancel buttons; chevrons, unselected radios and moon rings. |
 | **white** | `#FFFFFF` | Over the camera: the reticle centre dot, live line, label text, hint, running total, charge arc. Leveler ticks (alpha variants). |
 | **sandstone** | `#C8A97E` | The only accent (the Material primary, secondary, tertiary and error): the sun and its shell, the focused moon's ring and every moon picture, top-row icons and the History badge, the guide's tool name and bullets, the main button, "View in AR", selection in History, "Delete", radios, "level" on the Leveler (marks, ring, readout, axis letters; not the bubble), headings in About and License detail, the Licenses spinner, the Problem view, the app-icon rule. |
-| **divider** | sandstone at 35% (`#59C8A97E`) | Dividers in Settings, About, Licenses and History. |
+| **divider** | sandstone at 35% (`#59C8A97E`) | Dividers in Settings (including About), Licenses and History. |
 | **line** | white at 30% (`#4DFFFFFF`) | Outlines that should read but stay quiet: the Leveler vial, dish, rings, crosshairs and scale lines, the orbit, the control bar's top rule, outlined-button borders. |
 | **level green** | `#3DDC84` | The Leveler bubble when level, and nothing else (11.8:1 on black). |
-| **amber** | `#FFB300` | **Reserved for unit state in Measure: imperial (ft, in).** Reticle dots, the FT label when active. Never a general accent. |
+| **crimson** | `#E71837` | **Reserved for unit state in Measure: imperial (ft, in).** Reticle dots, the FT label when active. Never a general accent. |
 | **cyan** | `#00E5FF` | **Reserved for unit state in Measure: metric (m, cm).** Reticle dots, the M label when active. Never a general accent. |
 
-**AR marks** (`ArScheme`, chosen in Settings §1.5): drawn into the camera view only, where outdoor readability comes first, so every scheme is bright and avoids the reticle's amber and cyan. Colours are point (placed dots) / segment (solid lines and their label borders) / live (the dashed live line and its label border) / projection (a projected recording, §2.11):
+**AR marks** (`ArScheme`): drawn into the camera view only, where outdoor readability comes first. The set follows the unit system, to go with the reticle's unit colour (§3.1); there is no setting. Colours are point (placed dots) / segment (solid lines and their label borders) / live (the dashed live line and its label border) / projection (a projected recording, §2.11):
 
-| Scheme | Point | Segment | Live | Projection |
-|---|---|---|---|---|
-| **Aurora** (default) | `#FF6E9C` pink | `#3DDC84` green | `#FFFFFF` white | `#B388FF` violet |
-| **Nebula** | `#FFF176` starlight | `#FF4FD8` magenta | `#B9F6CA` pale mint | `#82B1FF` periwinkle |
-| **Supernova** | `#FFFFFF` white | `#FF5252` flare red | `#FFF59D` pale yellow | `#EA80FC` orchid | The Measure screen's chrome (control bar, main button, Problem view) uses the app palette.
+| Scheme | Units | Point | Segment | Live | Projection |
+|---|---|---|---|---|---|
+| **Supernova** | imperial (FT) | `#FFFFFF` white | `#FF5252` flare red | `#FFF59D` pale yellow | `#EA80FC` orchid |
+| **Comet** | metric (M) | `#FFFFFF` white | `#18FFFF` bright cyan | `#FFE57F` pale gold | `#82B1FF` periwinkle |
 
 **Errors** use sandstone beside an icon (`error_outline`, `delete_outline`); there is no separate error colour.
 
@@ -674,7 +683,7 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | scrim | `#B8000000`, black 72% | Behind every piece of live text over the camera: distance labels, the running total, the hint, the menu button |
 | halo | `#99000000`, black 60% | Under the reticle (blur 2) and every point and line (blur 1.2), §3 |
 
-**Contrast** (on black): text 21:1, textMuted 10.6:1, sandstone 9.4:1 (black on sandstone the same), amber 11.7:1, cyan 13.7:1. On surface: text 18.7:1, textMuted 9.4:1, sandstone 8.4:1; on surfaceHigh the lowest pair is sandstone at 7.6:1. White on the scrim over a pure-white scene is 9.3:1.
+**Contrast** (on black): text 21:1, textMuted 10.6:1, sandstone 9.4:1 (black on sandstone the same), crimson 4.6:1, cyan 13.7:1. On surface: text 18.7:1, textMuted 9.4:1, sandstone 8.4:1; on surfaceHigh the lowest pair is sandstone at 7.6:1. White on the scrim over a pure-white scene is 9.3:1.
 
 ---
 
@@ -831,6 +840,6 @@ settings (outlined), info (outlined), error_outline, history, chevron_right, arr
 
 ## 13. Discrepancies noted while writing this spec
 
-- **Palette names:** the code's `Palette` tokens use the §5 names (`Palette.Surface`, `Palette.TextMuted`, …); `Palette.unit(units)` picks amber or cyan.
+- **Palette names:** the code's `Palette` tokens use the §5 names (`Palette.Surface`, `Palette.TextMuted`, …); `Palette.unit(units)` picks crimson or cyan.
 - **README's Leveler section is out of date:** it describes "the dot centres in the ring" and a seaGreen bubble when plumb. The code draws the flat vial and bullseye of §4.2–4.3, with a white bubble that turns green when level.
 - **About text:** the description and the licenses subtitle mention Flutter, and the subtitle claims ARCore's license is listed even though it isn't registered (§7.2). Both should be revised for the Kotlin build.

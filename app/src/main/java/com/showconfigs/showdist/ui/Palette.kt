@@ -5,7 +5,7 @@ import com.showconfigs.showdist.measure.UnitSystem
 
 /**
  * Fixed app palette (SPEC.md §5): black screens, white and light-grey text, and one accent,
- * sandstone. Every text/background pair clears WCAG AA. Amber and cyan are reserved for
+ * sandstone. Every text/background pair clears WCAG AA. Crimson and cyan are reserved for
  * unit state in Measure. The marks drawn into the camera view use [ArScheme].
  */
 object Palette {
@@ -37,7 +37,7 @@ object Palette {
     val Level = Color(0xFF3DDC84)
 
     /** Unit state only: imperial (ft, in). */
-    val Amber = Color(0xFFFFB300)
+    val Crimson = Color(0xFFE71837)
 
     /** Unit state only: metric (m, cm). */
     val Cyan = Color(0xFF00E5FF)
@@ -48,24 +48,22 @@ object Palette {
     /** The dark halo behind the reticle and other marks over the camera (SPEC.md §3.1). */
     val Halo = Color(0x99000000)
 
-    fun unit(units: UnitSystem) = if (units == UnitSystem.Metric) Cyan else Amber
+    fun unit(units: UnitSystem) = if (units == UnitSystem.Metric) Cyan else Crimson
 }
 
 /**
- * The colours of the marks drawn into the AR camera view (SPEC.md §3.2, §5), picked in
- * Settings: placed points (dots), segment lines (solid), the live line (dashed) and a
- * projected recording. Each set is bright enough to read on sunlit scenes over its halo,
- * and none uses the reticle's amber or cyan. [key] is what's persisted.
+ * The colours of the marks drawn into the AR camera view (SPEC.md §3.2, §5): placed points
+ * (dots), segment lines (solid), the live line (dashed) and a projected recording. The set
+ * follows the unit system, to go with the reticle's unit colour: [Supernova] (reds) for
+ * imperial, [Comet] (cyans) for metric. Each is bright enough to read on sunlit scenes
+ * over its halo.
  */
-enum class ArScheme(
-    val label: String,
-    val key: String,
-    val point: Color,
-    val segment: Color,
-    val live: Color,
-    val projection: Color,
-) {
-    Aurora("Aurora", "aurora", Color(0xFFFF6E9C), Color(0xFF3DDC84), Color(0xFFFFFFFF), Color(0xFFB388FF)),
-    Nebula("Nebula", "nebula", Color(0xFFFFF176), Color(0xFFFF4FD8), Color(0xFFB9F6CA), Color(0xFF82B1FF)),
-    Supernova("Supernova", "supernova", Color(0xFFFFFFFF), Color(0xFFFF5252), Color(0xFFFFF59D), Color(0xFFEA80FC)),
+enum class ArScheme(val point: Color, val segment: Color, val live: Color, val projection: Color) {
+    Supernova(Color(0xFFFFFFFF), Color(0xFFFF5252), Color(0xFFFFF59D), Color(0xFFEA80FC)),
+    Comet(Color(0xFFFFFFFF), Color(0xFF18FFFF), Color(0xFFFFE57F), Color(0xFF82B1FF)),
+    ;
+
+    companion object {
+        fun forUnits(units: UnitSystem) = if (units == UnitSystem.Metric) Comet else Supernova
+    }
 }
