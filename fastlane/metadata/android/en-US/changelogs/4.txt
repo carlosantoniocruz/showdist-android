@@ -1,0 +1,1 @@
+Version 1.3: steadier leveler readings; distance labels and total turn with the phone; SAVING indicator with progress round the screen edge; AR line colours follow the units; About moved into Settings; a hidden surprise on the menu; fix for camera static on startup on some phones.

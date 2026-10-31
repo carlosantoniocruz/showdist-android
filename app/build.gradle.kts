@@ -20,8 +20,8 @@ android {
         applicationId = "com.showconfigs.showdist"
         minSdk = 24 // ARCore requires API 24+
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
         // See the camera.ar comment in AndroidManifest.xml. Build for F-Droid with -Pfdroid.
         manifestPlaceholders["arFeatureRequired"] = (!project.hasProperty("fdroid")).toString()
     }
