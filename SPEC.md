@@ -558,6 +558,8 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
 - **Smoothing:** a one-pole low-pass filter on `x/g`, `y/g` and `z/g`, with g = 9.80665 m/s² and α = 0.15.
   - `est = est + (sample − est) × 0.15`
   - The estimate starts at (0, 0, 1).
+  - The **readouts** (and the readouts' level test, and Zero) use a second, slower filter of the same form with α = 0.05 (a time constant of about 0.4 s), so the numbers settle instead of flickering; the bubble keeps α = 0.15.
+  - **Readout hysteresis:** a shown tenth changes only once |displayed| × 10 is at least 0.75 away from it, so a reading sitting on a rounding boundary holds still.
 - **Roll (the tube's single axis)**, from the smoothed device-frame x and y. The z axis is ignored.
   - `θ = atan2(x, y)` in degrees
   - `roll = θ − round(θ / 90) × 90`
@@ -812,7 +814,7 @@ settings (outlined), info (outlined), error_outline, history, chevron_right, arr
 | Hint cross-fade | 250 ms |
 | Bar-button rotation | 250 ms, ease-out |
 | Orientation sensor | ~5 Hz |
-| Leveler sensor | ~50 Hz, low-pass α = 0.15 |
+| Leveler sensor | ~50 Hz, low-pass α = 0.15 (readouts α = 0.05, hysteresis 0.75 tenth) |
 | Plane recount | every 10 new camera frames |
 | Memory check | every 90 new camera frames |
 | Max points per measurement | 24 |

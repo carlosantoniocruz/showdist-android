@@ -71,9 +71,9 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
         topBar = {
             ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER", onBack) {
                 AppBarAction(ShowdistIcons.CenterFocusStrong, "Zero — null against an uneven surface") {
-                    offset = sensor.roll
-                    offsetX = sensor.tiltX
-                    offsetY = sensor.tiltY
+                    offset = sensor.readoutRoll
+                    offsetX = sensor.readoutTiltX
+                    offsetY = sensor.readoutTiltY
                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
                 AppBarAction(ShowdistIcons.RestartAlt, "Reset to true level", enabled = zeroed) {
@@ -98,7 +98,8 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                         Vial(displayed = { sensor.roll - offset }, modifier = Modifier.fillMaxSize())
                     }
                     // Recomposes only when the readout's tenth of a degree changes, not on every sample.
-                    val tenths by remember { derivedStateOf { tenthsOf(sensor.roll - offset) } }
+                    val settle = remember { SettledTenths() }
+                    val tenths by remember { derivedStateOf { settle.of(sensor.readoutRoll - offset) } }
                     val level = tenths <= LEVEL_TENTHS
                     TickOnLevel(level)
                     Readout(tenths, level, Modifier.padding(bottom = 16.dp))
@@ -111,10 +112,14 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    val xTenths by remember { derivedStateOf { tenthsOf(sensor.tiltX - offsetX) } }
-                    val yTenths by remember { derivedStateOf { tenthsOf(sensor.tiltY - offsetY) } }
+                    val settleX = remember { SettledTenths() }
+                    val settleY = remember { SettledTenths() }
+                    val xTenths by remember { derivedStateOf { settleX.of(sensor.readoutTiltX - offsetX) } }
+                    val yTenths by remember { derivedStateOf { settleY.of(sensor.readoutTiltY - offsetY) } }
                     val level by remember {
-                        derivedStateOf { hypot(sensor.tiltX - offsetX, sensor.tiltY - offsetY) <= LEVEL_THRESHOLD_DEG }
+                        derivedStateOf {
+                            hypot(sensor.readoutTiltX - offsetX, sensor.readoutTiltY - offsetY) <= LEVEL_THRESHOLD_DEG
+                        }
                     }
                     TickOnLevel(level)
                     // Stacked: two readouts this size don't fit side by side in portrait.
@@ -132,7 +137,21 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
     }
 }
 
-private fun tenthsOf(degrees: Float) = (abs(degrees) * 10).roundToInt()
+/**
+ * A readout in tenths of a degree, with hysteresis (SPEC.md §4.1): the shown tenth changes
+ * only once |degrees| is [HYSTERESIS_TENTHS] past it, so a reading on a boundary holds still.
+ */
+private class SettledTenths {
+    private var shown = -1
+
+    fun of(degrees: Float): Int {
+        val t = abs(degrees) * 10
+        if (shown < 0 || abs(t - shown) >= HYSTERESIS_TENTHS) shown = t.roundToInt()
+        return shown
+    }
+}
+
+private const val HYSTERESIS_TENTHS = 0.75f
 
 /** The tube's level test in readout tenths: |displayed| ≤ 0.3° (SPEC.md §4.1). */
 private const val LEVEL_TENTHS = 3
