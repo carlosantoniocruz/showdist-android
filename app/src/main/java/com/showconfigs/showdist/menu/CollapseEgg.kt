@@ -21,7 +21,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -196,18 +195,36 @@ class CollapseEgg(
     }
 }
 
-/** Hold-to-collapse on the sun: pressing starts the charge, lifting or dragging away ends it. */
+/** How far a finger may wander once the press is clearly a hold. */
+private val HOLD_DRIFT = 48.dp
+
+/**
+ * Hold-to-collapse on the sun: pressing starts the charge, lifting or dragging away ends it.
+ * Movement is measured as the finger's net distance from where it went down, not the sum of
+ * every report, since some touchscreens (Samsung's, for one) report a resting finger as a
+ * constant jitter that adds up past the touch slop within a second. Until the long-press
+ * timeout a move past the slop still hands the gesture to the orbit's swipe; after it, the
+ * hold takes every event so the orbit can't steal it, and allows [HOLD_DRIFT] of wander.
+ */
 fun Modifier.collapseOnHold(egg: CollapseEgg) = pointerInput(egg) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         egg.press()
-        var moved = 0f
+        val drift = HOLD_DRIFT.toPx()
+        var holding = false
         while (true) {
             val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
             if (!change.pressed) break
-            moved += change.positionChange().getDistance()
-            // A swipe that starts on the sun turns the orbit instead.
-            if (moved > viewConfiguration.touchSlop) break
+            val wander = (change.position - down.position).getDistance()
+            if (!holding) {
+                // A swipe that starts on the sun turns the orbit instead.
+                if (wander > viewConfiguration.touchSlop) break
+                holding = change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis
+            }
+            if (holding) {
+                if (wander > drift) break
+                change.consume()
+            }
         }
         egg.release()
     }
