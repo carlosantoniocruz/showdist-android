@@ -1,0 +1,1 @@
+Version 1.3.1: fixes the hidden menu surprise not starting on some phones, such as the Samsung Galaxy A17 and A25.
