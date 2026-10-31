@@ -8,6 +8,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -137,9 +140,17 @@ class OrbitState(
  * orbit. The front moon sits low over the sun; moons further round are smaller, dimmer
  * and pass behind it. Swiping turns the orbit; tapping a moon brings it to the front, and
  * tapping the front moon, once settled, calls [onOpen]. Holding the sun runs the [egg].
+ * [aboveSun] is centred in the space between the top of this area and the top of the sun.
  */
 @Composable
-fun Orbit(state: OrbitState, egg: CollapseEgg, tools: List<Tool>, onOpen: (Tool) -> Unit, modifier: Modifier = Modifier) {
+fun Orbit(
+    state: OrbitState,
+    egg: CollapseEgg,
+    tools: List<Tool>,
+    onOpen: (Tool) -> Unit,
+    modifier: Modifier = Modifier,
+    aboveSun: @Composable () -> Unit = {},
+) {
     BoxWithConstraints(
         modifier.semantics {
             customActions = listOf(
@@ -186,32 +197,47 @@ fun Orbit(state: OrbitState, egg: CollapseEgg, tools: List<Tool>, onOpen: (Tool)
                 drawOrbitHalf(c, rx.toPx(), ry.toPx(), back = true)
             }
             Sun(sunR, Modifier.offset(cx - sunR, cy - sunR).collapseOnHold(egg))
+            Box(Modifier.fillMaxWidth().height(cy - sunR), contentAlignment = Alignment.Center) { aboveSun() }
             // The orbit's near half, over the sun and under the front moon.
             Canvas(Modifier.fillMaxSize().zIndex(0.5f)) {
                 drawOrbitHalf(Offset(cx.toPx(), cy.toPx()), rx.toPx(), ry.toPx(), back = false)
             }
 
+            // The moving values (position, spin, pull) are read only in the layout and draw
+            // lambdas below, so turning the orbit doesn't recompose it every frame.
+            val step = 2 * PI.toFloat() / tools.size
+            val angleOf = { i: Int -> (i - state.position) * step + egg.spin }
+            val focusedIndex by remember { derivedStateOf { state.focused } }
             tools.forEachIndexed { i, tool ->
-                val angle = (i - state.position) * (2 * PI.toFloat() / tools.size) + egg.spin
-                // Drawn in towards the sun by the egg (SPEC.md §1.4).
-                val reach = 1f - egg.pull
-                val depth = cos(angle) // 1 at the front, -1 at the back
-                val near = (depth + 1f) / 2f
-                val focused = i == state.focused
+                // In front of the sun on the near half of the orbit, behind it on the far half,
+                // and ordered by depth among the moons. Discrete, so it only changes (and
+                // recomposes) when a moon passes another or the sun.
+                val layer by remember(i, tools.size) {
+                    derivedStateOf {
+                        val depth = cos(angleOf(i))
+                        var below = 0
+                        for (j in tools.indices) if (j != i && cos(angleOf(j)) < depth) below++
+                        (if (depth >= 0f) 1f else -2f) + below * 0.1f
+                    }
+                }
+                val focused = i == focusedIndex
                 Moon(
                     tool = tool,
                     radius = moonR,
                     focused = focused,
                     modifier = Modifier
                         .offset {
+                            val angle = angleOf(i)
+                            // Drawn in towards the sun by the egg (SPEC.md §1.4).
+                            val reach = 1f - egg.pull
                             IntOffset(
                                 (cx + rx * reach * sin(angle) - moonR).roundToPx(),
-                                (cy + ry * reach * depth - moonR).roundToPx(),
+                                (cy + ry * reach * cos(angle) - moonR).roundToPx(),
                             )
                         }
-                        // In front of the sun on the near half of the orbit, behind it on the far half.
-                        .zIndex(if (depth >= 0f) 1f + depth else depth - 1f)
+                        .zIndex(layer)
                         .graphicsLayer {
+                            val near = (cos(angleOf(i)) + 1f) / 2f // 1 at the front, 0 at the back
                             val scale = (0.6f + 0.4f * near) * (1f - 0.6f * egg.pull)
                             scaleX = scale
                             scaleY = scale
@@ -223,7 +249,8 @@ fun Orbit(state: OrbitState, egg: CollapseEgg, tools: List<Tool>, onOpen: (Tool)
                     },
                 )
             }
-            if (egg.burst >= 0f) {
+            val bursting by remember { derivedStateOf { egg.burst >= 0f } }
+            if (bursting) {
                 Canvas(Modifier.fillMaxSize().zIndex(10f)) {
                     drawBurst(egg.burst, Offset(cx.toPx(), cy.toPx()), sunR.toPx(), sparks)
                 }

@@ -119,11 +119,10 @@ fun MainMenu(
             }
             AppBarAction(ShowdistIcons.SettingsOutlined, "Settings", tint = Palette.Sandstone, onClick = onSettings)
         }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.fillMaxSize())
-            // The collapse's prize (SPEC.md §1.4), just under the top row, over the orbit's
-            // empty top so the orbit doesn't move when it appears.
-            if (facts.unlocked) FunFactsTicker(Modifier.align(Alignment.TopCenter).offset(y = (-12).dp).fillMaxWidth())
+        Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // The collapse's prize (SPEC.md §1.4), between the top row and the sun, a little
+            // above centre.
+            if (facts.unlocked) FunFactsTicker(Modifier.offset(y = (-24).dp).fillMaxWidth())
         }
         QuickGuide(
             tool = if (orbit.settled) Tool.entries[orbit.focused] else null,

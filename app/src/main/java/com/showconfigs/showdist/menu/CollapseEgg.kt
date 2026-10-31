@@ -134,18 +134,25 @@ class CollapseEgg(
         )
         onBurst()
         if (reduceMotion) return
+        // Marked as bursting before the first frame, so a finger lifting now can't cancel it
+        // halfway (that once left the moons hidden for good).
+        burst = 0f
         moonsHidden = true
         pull = 1f
         speed = 0f
-        val start = withFrameNanos { it }
-        while (true) {
-            val t = (withFrameNanos { it } - start) / 1e6f
-            burst = (t / BURST_MS).coerceAtMost(1f)
-            if (burst >= 1f) break
+        try {
+            val start = withFrameNanos { it }
+            while (true) {
+                val t = (withFrameNanos { it } - start) / 1e6f
+                burst = (t / BURST_MS).coerceAtMost(1f)
+                if (burst >= 1f) break
+            }
+        } finally {
+            // However the burst ends, the moons come back.
+            burst = -1f
+            moonsHidden = false
         }
-        burst = -1f
         // The moons re-form, flung back out to their orbit with one last turn.
-        moonsHidden = false
         val fromSpin = spin
         val toSpin = nextWholeTurn(spin + 2f * PI.toFloat())
         val reform = withFrameNanos { it }
@@ -264,6 +271,18 @@ private val FunFacts = listOf(
     "Those lunar lasers show the Moon drifting about 3.8 cm farther from Earth every year.",
     "Sunlight takes about 8 minutes 20 seconds to reach Earth.",
     "Since 2012 the astronomical unit has been exactly 149,597,870,700 metres.",
+    "From 1889 to 1960 the metre was the length of a platinum-iridium bar kept near Paris.",
+    "In 1960 the metre was redefined as 1,650,763.73 wavelengths of light from krypton-86.",
+    "Since 1959 the inch has been exactly 2.54 centimetres.",
+    "The international nautical mile is exactly 1,852 metres, close to one minute of latitude.",
+    "The mile comes from the Roman mille passus: a thousand paces, each pace two steps.",
+    "The furlong, 220 yards, takes its name from the length of a furrow in a ploughed field.",
+    "Edmund Gunter's 1620 surveying chain is 66 feet long; ten square chains make an acre.",
+    "In 1615 Willebrord Snellius began measuring the Earth by triangulation across the Netherlands.",
+    "In 2019 the kilogram was redefined by the Planck constant, retiring a metal cylinder kept since 1889.",
+    "Light travels about 30 cm in a nanosecond; Grace Hopper handed out wires that long to show it.",
+    "A light-year is about 9.46 trillion kilometres; a parsec is about 3.26 light-years.",
+    "In 2020 China and Nepal jointly measured Mount Everest at 8,848.86 metres.",
 )
 
 /**
