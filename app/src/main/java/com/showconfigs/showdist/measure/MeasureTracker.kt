@@ -49,6 +49,9 @@ private const val WARM_UP_M = 0.08f
 
 private const val TAG = "ShowdistMeasure"
 
+/** Camera images to wait for before uncovering the feed; the first may not be drawn yet. */
+private const val LIVE_AFTER_IMAGES = 2
+
 /** Which kind of surface a hit came from, in order of preference (SPEC.md §2.4). */
 private enum class HitKind { Plane, Depth, Point, Snap }
 
@@ -105,6 +108,14 @@ class MeasureTracker {
 
     var pointCount by mutableIntStateOf(0)
         private set
+
+    /**
+     * False until ARCore has delivered [LIVE_AFTER_IMAGES] camera images. Before that the
+     * camera texture holds uninitialised memory, which slow devices show as static.
+     */
+    var cameraLive by mutableStateOf(false)
+        private set
+    private var imagesSeen = 0
 
     /** Only changes when the hint's text would, so it recomposes rarely. */
     var hint by mutableStateOf(Hint.Starting)
@@ -305,6 +316,7 @@ class MeasureTracker {
         val timestamp = frame.timestamp
         if (timestamp == 0L || timestamp == lastImageTimestamp) return
         lastImageTimestamp = timestamp
+        if (!cameraLive && ++imagesSeen >= LIVE_AFTER_IMAGES) cameraLive = true
 
         // Modulo in Long/Double keeps Float precision stable however long the screen is open.
         val periodNanos = (RETICLE_PERIOD_S * 1_000_000_000L).toLong()

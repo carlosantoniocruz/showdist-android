@@ -6,8 +6,7 @@ import com.showconfigs.showdist.measure.UnitSystem
 /**
  * Fixed app palette (SPEC.md §5): black screens, white and light-grey text, and one accent,
  * sandstone. Every text/background pair clears WCAG AA. Amber and cyan are reserved for
- * unit state in Measure; [Ar] holds the marks drawn into the camera view, which keep their
- * outdoor-readability colours.
+ * unit state in Measure. The marks drawn into the camera view use [ArScheme].
  */
 object Palette {
     val Black = Color(0xFF000000)
@@ -50,11 +49,23 @@ object Palette {
     val Halo = Color(0x99000000)
 
     fun unit(units: UnitSystem) = if (units == UnitSystem.Metric) Cyan else Amber
+}
 
-    /** Marks drawn into the AR camera view (SPEC.md §3.2), chosen to read on bright scenes. */
-    object Ar {
-        val Segment = Color(0xFF3DDC84)
-        val Point = Color(0xFFFF6E9C)
-        val Projection = Color(0xFFB388FF)
-    }
+/**
+ * The colours of the marks drawn into the AR camera view (SPEC.md §3.2, §5), picked in
+ * Settings: placed points (dots), segment lines (solid), the live line (dashed) and a
+ * projected recording. Each set is bright enough to read on sunlit scenes over its halo,
+ * and none uses the reticle's amber or cyan. [key] is what's persisted.
+ */
+enum class ArScheme(
+    val label: String,
+    val key: String,
+    val point: Color,
+    val segment: Color,
+    val live: Color,
+    val projection: Color,
+) {
+    Aurora("Aurora", "aurora", Color(0xFFFF6E9C), Color(0xFF3DDC84), Color(0xFFFFFFFF), Color(0xFFB388FF)),
+    Nebula("Nebula", "nebula", Color(0xFFFFF176), Color(0xFFFF4FD8), Color(0xFFB9F6CA), Color(0xFF82B1FF)),
+    Supernova("Supernova", "supernova", Color(0xFFFFFFFF), Color(0xFFFF5252), Color(0xFFFFF59D), Color(0xFFEA80FC)),
 }

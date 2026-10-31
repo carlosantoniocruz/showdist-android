@@ -35,6 +35,7 @@ import com.showconfigs.showdist.measure.MeasureScreen
 import com.showconfigs.showdist.menu.MainMenu
 import com.showconfigs.showdist.menu.Tool
 import com.showconfigs.showdist.settings.AboutScreen
+import com.showconfigs.showdist.settings.ArSchemeSettings
 import com.showconfigs.showdist.settings.LicenseDetailScreen
 import com.showconfigs.showdist.settings.LicensesScreen
 import com.showconfigs.showdist.settings.SettingsScreen
@@ -86,6 +87,7 @@ private data class Route(val screen: Screen, val arg: Int = 0)
 private fun ShowdistApp() {
     val context = LocalContext.current
     val unitSettings = remember { UnitSettings(context) }
+    val schemeSettings = remember { ArSchemeSettings(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
@@ -129,6 +131,7 @@ private fun ShowdistApp() {
             if (stack.any { it.screen == Screen.Measure }) {
                 MeasureScreen(
                     units = unitSettings.units,
+                    scheme = schemeSettings.scheme,
                     projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
                     projectionSerial = projectionSerial,
                     covered = top.screen != Screen.Measure,
@@ -156,7 +159,7 @@ private fun ShowdistApp() {
                 Screen.Measure -> Unit // Drawn in its slot above.
                 Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
                 Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
-                Screen.Settings -> SettingsScreen(unitSettings, onBack = ::pop)
+                Screen.Settings -> SettingsScreen(unitSettings, schemeSettings, onBack = ::pop)
                 Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)

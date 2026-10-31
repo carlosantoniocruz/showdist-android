@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.content.res.ResourcesCompat
 import com.showconfigs.showdist.R
+import com.showconfigs.showdist.ui.ArScheme
 import com.showconfigs.showdist.ui.Palette
 
 private const val POINT_RADIUS_DP = 6f
@@ -41,13 +42,13 @@ private const val LABEL_BORDER_DP = 1.5f
  * every image) and never recomposes.
  */
 @Composable
-fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
+fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val points = remember(density.density) { PointsPainter(density.density) }
+    val points = remember(density.density, scheme) { PointsPainter(density.density, scheme) }
     val reticle = remember(density.density) { ReticlePainter(density.density) }
-    val labels = remember(density.density, density.fontScale) {
-        LabelPainter(context, density.density, density.fontScale)
+    val labels = remember(density.density, density.fontScale, scheme) {
+        LabelPainter(context, density.density, density.fontScale, scheme)
     }
 
     Canvas(modifier) {
@@ -74,7 +75,7 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
                     c, w, h,
                     tracker.projMidXY[i * 2], tracker.projMidXY[i * 2 + 1],
                     tracker.projText[i], tracker.projTextLength[i],
-                    labels.violet,
+                    labels.projection,
                 )
             }
             for (i in 1 until count) {
@@ -82,14 +83,14 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
                 labels.draw(
                     c, w, h,
                     tracker.segmentMidXY[i * 2], tracker.segmentMidXY[i * 2 + 1],
-                    tracker.segmentText[i], tracker.segmentTextLength[i], labels.green,
+                    tracker.segmentText[i], tracker.segmentTextLength[i], labels.segment,
                 )
             }
             if (tracker.liveVisible && tracker.liveMidInFront) {
                 labels.draw(
                     c, w, h,
                     tracker.liveMidXY[0], tracker.liveMidXY[1],
-                    tracker.liveText, tracker.liveTextLength, labels.white,
+                    tracker.liveText, tracker.liveTextLength, labels.live,
                 )
             }
         }
@@ -97,11 +98,11 @@ fun MeasureOverlay(tracker: MeasureTracker, modifier: Modifier = Modifier) {
 }
 
 /**
- * Placed points, segment lines and the live line (SPEC.md §3.2): pink points on green
- * segments, as in the app icon, and a dashed white live line, each over a dark halo drawn
- * first. Paints are created once.
+ * Placed points, segment lines and the live line (SPEC.md §3.2), in the [scheme]'s colours
+ * (Aurora: pink points on green segments, as in the app icon, and a dashed white live line),
+ * each over a dark halo drawn first. Paints are created once per scheme.
  */
-private class PointsPainter(private val density: Float) {
+private class PointsPainter(private val density: Float, scheme: ArScheme) {
     private val haloColor = Palette.Halo.toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
     private val halo = 2 * HALO_DP * density
@@ -120,7 +121,7 @@ private class PointsPainter(private val density: Float) {
         style = Paint.Style.STROKE
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
-        color = Palette.Ar.Segment.toArgb()
+        color = scheme.segment.toArgb()
     }
     private val lineShadow = Paint(line).apply {
         strokeWidth = lineWidth + halo
@@ -129,7 +130,7 @@ private class PointsPainter(private val density: Float) {
     }
     private val liveLine = Paint(line).apply {
         strokeWidth = liveLineWidth
-        color = Palette.White.toArgb()
+        color = scheme.live.toArgb()
         pathEffect = liveDash
     }
     private val liveLineShadow = Paint(lineShadow).apply {
@@ -138,15 +139,15 @@ private class PointsPainter(private val density: Float) {
     }
     private val dashedShadow = Paint(lineShadow).apply { pathEffect = dash }
 
-    // A projected recording (SPEC.md §2.11): dashed violet while being placed, solid violet
-    // once placed, with smaller dots than the user's own points.
-    private val projLine = Paint(line).apply { color = Palette.Ar.Projection.toArgb() }
+    // A projected recording (SPEC.md §2.11): dashed while being placed, solid once placed,
+    // with smaller dots than the user's own points.
+    private val projLine = Paint(line).apply { color = scheme.projection.toArgb() }
     private val projPreviewLine = Paint(projLine).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Palette.Ar.Point.toArgb()
+        color = scheme.point.toArgb()
     }
-    private val projDot = Paint(dot).apply { color = Palette.Ar.Projection.toArgb() }
+    private val projDot = Paint(dot).apply { color = scheme.projection.toArgb() }
     private val dotShadow = Paint(dot).apply {
         color = haloColor
         maskFilter = haloBlur
@@ -222,7 +223,7 @@ private class PointsPainter(private val density: Float) {
  * slashed zero, on the dark Palette.Scrim, so they stay legible outdoors.
  * Text is drawn straight from the tracker's char buffers, so nothing is allocated.
  */
-private class LabelPainter(context: Context, private val density: Float, fontScale: Float) {
+private class LabelPainter(context: Context, private val density: Float, fontScale: Float, scheme: ArScheme) {
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_bold)
         textSize = LABEL_TEXT_SP * density * fontScale
@@ -237,11 +238,10 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         style = Paint.Style.STROKE
         strokeWidth = LABEL_BORDER_DP * density
     }
-    // Border colours: green for a placed segment, white for the live label, violet for a
-    // projected recording.
-    val green = Palette.Ar.Segment.toArgb()
-    val white = Palette.White.toArgb()
-    val violet = Palette.Ar.Projection.toArgb()
+    // Border colours: the scheme's segment, live-line and projection colours.
+    val segment = scheme.segment.toArgb()
+    val live = scheme.live.toArgb()
+    val projection = scheme.projection.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 

@@ -69,6 +69,7 @@ import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
+import com.showconfigs.showdist.ui.ArScheme
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
@@ -100,6 +101,7 @@ private enum class ProblemAction(val label: String) {
 @Composable
 fun MeasureScreen(
     units: UnitSystem,
+    scheme: ArScheme,
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
@@ -157,7 +159,7 @@ fun MeasureScreen(
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(units, scheme, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -177,6 +179,7 @@ fun MeasureScreen(
 @Composable
 private fun MeasureArea(
     units: UnitSystem,
+    scheme: ArScheme,
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
@@ -222,8 +225,10 @@ private fun MeasureArea(
                 arCoreAvailabilityOverlay = {},
                 lifecycle = sessionLifecycle,
             )
+            // Until real camera images arrive, the feed would show uninitialised texture memory.
+            if (!tracker.cameraLive) Box(Modifier.fillMaxSize().background(Palette.Black))
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
-            MeasureOverlay(tracker, Modifier.fillMaxSize())
+            MeasureOverlay(tracker, scheme, Modifier.fillMaxSize())
             Column(
                 Modifier
                     .align(Alignment.TopCenter)

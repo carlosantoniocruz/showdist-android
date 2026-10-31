@@ -98,6 +98,9 @@ A list with 8 dp vertical padding:
 
 Tapping an option sets the unit system immediately and persists it (§2.7).
 
+- Section header "LINE COLOURS" (same style), then one option row per AR colour scheme (§5): "Aurora", "Nebula", "Supernova". Before each radio, 16 dp from it, a 96 × 16 dp preview: a point dot (radius 6 dp) at each end of a short solid segment (2.5 dp), then a dashed run (3 dp, dash intervals 3 on / 9 off), in that scheme's colours.
+- Tapping one applies it to the AR view at once and persists it in SharedPreferences under `showdist.line_colours` (`aurora`, `nebula`, `supernova`); missing or unknown means Aurora.
+
 ### 1.6 About
 
 Opened from the menu's top row. A scrolling list:
@@ -203,7 +206,7 @@ The ARCore install prompt is shown only on the first attempt. Later attempts don
 The screen is a vertical column:
 
 1. **Camera area** fills all the height above the control bar, so nothing measured is ever hidden behind the bar. It is a stack of layers, bottom to top:
-   1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping.
+   1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping. Until ARCore has delivered two camera images, the feed is covered in black: before then the texture holds uninitialised memory, which slower phones (e.g. Galaxy A17) show as coloured static.
    2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total each sit on their own scrim pill.
    3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L60 T16 R60 so it stays clear of the menu button:
       - The **hint** line (§2.3).
@@ -463,7 +466,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
   1. **Aiming:** the shape's first point follows the reticle hit, turned so that its reference line points away from the camera. A tap anchors the first point there (a session anchor).
   2. **Aligning:** the shape turns about its first point so that its reference line points at the reticle hit, once the hit is more than 5 cm away horizontally. A tap freezes that heading.
   - The **reference line** runs from the first point to the first later point that is more than 1 cm away horizontally. A recording with no such point (straight up and down) skips aligning.
-- **Drawn** before the user's own points and labels (§3.2), in **AR violet** (§5): lines 2.5 dp, dots radius 4.5 dp, with the usual overlay halos. While aiming or aligning the lines are dashed (dash 6 dp, gap 6 dp); once placed, solid. Each drawn segment gets a label with the recording's saved length and a violet border.
+- **Drawn** before the user's own points and labels (§3.2), in the scheme's **projection** colour (§5): lines 2.5 dp, dots radius 4.5 dp, with the usual overlay halos. While aiming or aligning the lines are dashed (dash 6 dp, gap 6 dp); once placed, solid. Each drawn segment gets a label with the recording's saved length and a border in the projection colour.
 - **Measuring continues** as normal once placed: taps add the user's own AR-pink points, and hold-to-save saves only those.
 - **Undo** with no user points left steps back: placed → aligning → aiming. **Clear** removes the projection as well. Leaving Measure ends it.
 
@@ -518,12 +521,12 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
 ### 3.2 Placed points, segments, live line
 
 **Placed points and segment lines** (the icon's colours, §8.1):
-- Placed points are filled circles in **AR pink** (§5), radius 6 dp. They are drawn only when visible.
-- Segment lines are **AR green** (§5), 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
+- Placed points are filled circles in the scheme's **point** colour (§5; Aurora pink), radius 6 dp. They are drawn only when visible.
+- Segment lines are the scheme's **segment** colour (§5; Aurora green), 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
 
 **Live line:**
 - A dashed line from the last point to the reticle hit's projected screen position.
-- It is **white**, 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
+- It is the scheme's **live** colour (§5; Aurora white), 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
 - It is drawn only when there is a hit, ≥1 point, and the last point is visible.
 
 **Overlay halo** (for points and lines): a copy drawn first, centred (no offset), in the halo colour with blur sigma 1.2; lines 3 dp wider (1.5 dp each side), dots 1.5 dp larger in radius.
@@ -545,7 +548,7 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
   - Text size plus 20 dp horizontal and 10 dp vertical (10 dp side padding, 5 dp top/bottom).
   - Fully rounded, with radius half the pill's height.
   - Filled with **scrim** (§5).
-- Each label has a 1.5 dp border: **AR green** on a placed segment's label, **white** on the live label, **AR violet** on a projected recording's label.
+- Each label has a 1.5 dp border: the scheme's segment colour on a placed segment's label, its live colour on the live label, its projection colour on a projected recording's label.
 
 ---
 
@@ -654,7 +657,13 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | **amber** | `#FFB300` | **Reserved for unit state in Measure: imperial (ft, in).** Reticle dots, the FT label when active. Never a general accent. |
 | **cyan** | `#00E5FF` | **Reserved for unit state in Measure: metric (m, cm).** Reticle dots, the M label when active. Never a general accent. |
 
-**AR marks** (`Palette.Ar`): drawn into the camera view only, where outdoor readability comes first, so they keep bright colours: **AR green** `#3DDC84` (segment lines and their label borders), **AR pink** `#FF6E9C` (placed points), **AR violet** `#B388FF` (a projected recording, §2.11). The Measure screen's chrome (control bar, main button, Problem view) uses the app palette.
+**AR marks** (`ArScheme`, chosen in Settings §1.5): drawn into the camera view only, where outdoor readability comes first, so every scheme is bright and avoids the reticle's amber and cyan. Colours are point (placed dots) / segment (solid lines and their label borders) / live (the dashed live line and its label border) / projection (a projected recording, §2.11):
+
+| Scheme | Point | Segment | Live | Projection |
+|---|---|---|---|---|
+| **Aurora** (default) | `#FF6E9C` pink | `#3DDC84` green | `#FFFFFF` white | `#B388FF` violet |
+| **Nebula** | `#FFF176` starlight | `#FF4FD8` magenta | `#B9F6CA` pale mint | `#82B1FF` periwinkle |
+| **Supernova** | `#FFFFFF` white | `#FF5252` flare red | `#FFF59D` pale yellow | `#EA80FC` orchid | The Measure screen's chrome (control bar, main button, Problem view) uses the app palette.
 
 **Errors** use sandstone beside an icon (`error_outline`, `delete_outline`); there is no separate error colour.
 
