@@ -48,7 +48,7 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 **Tags** (pick up to 5 in Console): Measuring, Tools, Augmented reality, Home improvement, Productivity
 
-**Contact email:** `sh.run.configs@gmail.com` (the address on the About screen)
+**Contact email:** `sh.run.configs@gmail.com` (the address in Settings, under About)
 
 **Website:** https://github.com/carlosantoniocruz/showdist-android (public source).
 
