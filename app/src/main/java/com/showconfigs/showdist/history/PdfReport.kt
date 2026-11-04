@@ -309,8 +309,11 @@ object PdfReport {
         paints.minY = top + 4f
         paints.maxY = top + h - CELL_PAD - CAPTION_H
 
-        // The list, right-aligned in the cell, in as many columns as it needs.
-        val entries = groupListEntries(g, units)
+        // The list, right-aligned in the cell, in as many columns as it needs; then, after a
+        // gap, the area and volume in smaller type (SPEC.md §2.14).
+        val lineEntries = groupListEntries(g, units)
+        val results = g.resultLines(units)
+        val entries = if (results.isEmpty()) lineEntries else lineEntries + "" + results
         val fm = paints.text.fontMetrics
         val lineH = (fm.descent - fm.ascent) * 1.3f
         val listT = top + CELL_PAD
@@ -321,9 +324,12 @@ object PdfReport {
         val listL = maxOf(left + w - CELL_PAD - columns * columnW + LIST_GAP, left + w * 0.45f)
         val shown = minOf(entries.size, rows)
         val firstY = (listT + listB) / 2f - shown * lineH / 2f - fm.ascent
+        val listSize = paints.text.textSize
         for (k in entries.indices) {
+            paints.text.textSize = if (k >= lineEntries.size) listSize * 0.85f else listSize
             c.drawText(entries[k], listL + (k / rows) * columnW, firstY + (k % rows) * lineH, paints.text)
         }
+        paints.text.textSize = listSize
         paints.maxX = listL - LIST_GAP
 
         // The outline, to the left of the list.
@@ -356,9 +362,12 @@ object PdfReport {
         }
     }
 
-    /** "1  North wall  3′ 4″" per line (SPEC.md §2.13); results are appended in §2.14. */
+    /** "1  North wall (Length)  3′ 4″" per line (SPEC.md §2.13, §2.14). */
     private fun groupListEntries(g: MeasureGroup, units: UnitSystem): List<String> =
-        g.lines.mapIndexed { i, l -> "${i + 1}  ${g.lineName(i)}  ${DistanceFormat.format(l.metres, units)}" }
+        g.lines.mapIndexed { i, l ->
+            val tag = l.tag?.let { " (${it.label})" }.orEmpty()
+            "${i + 1}  ${g.lineName(i)}$tag  ${DistanceFormat.format(l.metres, units)}"
+        }
 
     /** The diagram's page positions (x at 2i, y at 2i+1) at one uniform scale, centred in the box. */
     private fun fitDiagram(xy: FloatArray, n: Int, boxL: Float, boxT: Float, boxR: Float, boxB: Float): FloatArray {

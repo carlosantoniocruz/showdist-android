@@ -64,6 +64,17 @@ class MeasureGroup(
 
     fun copy(name: String = this.name, lines: List<GroupLine> = this.lines) = MeasureGroup(id, name, createdAt, lines, unit)
 
+    /** The group with line [index] tagged [tag] (null clears it), taken off any other line. */
+    fun withTag(index: Int, tag: LineTag?): MeasureGroup = copy(
+        lines = lines.mapIndexed { j, l ->
+            when {
+                j == index -> l.with(tag = tag)
+                tag != null && l.tag == tag -> l.with(tag = null)
+                else -> l
+            }
+        },
+    )
+
     /** "Line 3" when it has no label. */
     fun lineName(index: Int): String = lines[index].label ?: "Line ${index + 1}"
 
@@ -92,7 +103,11 @@ class MeasureGroup(
 fun MeasureGroup.toShareText(units: UnitSystem): String = buildString {
     append("$name · $headingTime\n")
     append("Group of ${lines.size} line${if (lines.size == 1) "" else "s"}\n")
-    lines.forEachIndexed { i, l -> append("${i + 1}. ${lineName(i)}: ${DistanceFormat.format(l.metres, units)}\n") }
+    lines.forEachIndexed { i, l ->
+        val tag = l.tag?.let { " (${it.label})" }.orEmpty()
+        append("${i + 1}. ${lineName(i)}$tag: ${DistanceFormat.format(l.metres, units)}\n")
+    }
+    resultLines(units).forEach { append("$it\n") }
 }.trimEnd()
 
 private const val TAG = "GroupStore"

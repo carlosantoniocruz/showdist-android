@@ -1,5 +1,7 @@
 package com.showconfigs.showdist.history
 
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.showconfigs.showdist.ui.DialogText
 import com.showconfigs.showdist.ui.ShowdistDialog
 import androidx.compose.foundation.BorderStroke
@@ -116,10 +118,25 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Un
                         name = group.lineName(i),
                         labelled = line.label != null,
                         length = DistanceFormat.format(line.metres, units),
+                        tag = line.tag,
+                        onTag = { tag -> GroupStore.update(group.withTag(i, tag)) },
                         onRename = { edit = GroupEdit.Label(i) },
                         onDelete = { edit = GroupEdit.Delete(i) },
                     )
                     HorizontalDivider(Modifier.padding(start = 56.dp), thickness = 1.dp, color = Palette.Divider)
+                }
+                // Area and volume, at the bottom, smaller than the lines (SPEC.md §2.14).
+                val results = group.resultLines(units)
+                if (results.isNotEmpty()) {
+                    item {
+                        Column(Modifier.padding(start = 56.dp, end = 20.dp, top = 14.dp)) {
+                            for (line in results.dropLast(1)) {
+                                Text(line, style = Type.Label.copy(fontSize = 15.sp, fontFeatureSettings = FEATURES_TABULAR))
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(results.last(), style = Type.Secondary.copy(fontSize = 13.sp))
+                        }
+                    }
                 }
                 if (onAddLines != null) {
                     item {
@@ -176,7 +193,16 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Un
 }
 
 @Composable
-private fun LineRow(number: Int, name: String, labelled: Boolean, length: String, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun LineRow(
+    number: Int,
+    name: String,
+    labelled: Boolean,
+    length: String,
+    tag: LineTag?,
+    onTag: (LineTag?) -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -190,8 +216,45 @@ private fun LineRow(number: Int, name: String, labelled: Boolean, length: String
             Text(name, style = Type.Label.copy(color = if (labelled) Palette.Text else Palette.TextMuted))
             Text(length, style = Type.Value.copy(fontSize = 20.sp, fontFeatureSettings = FEATURES_TABULAR))
         }
+        TagButton(tag, onTag)
         IconButton(onClick = onDelete) {
             Icon(ShowdistIcons.DeleteOutline, contentDescription = "Delete $name", tint = Palette.TextMuted)
+        }
+    }
+}
+
+/** The line's tag, or "Tag" when it has none; tapping offers Length, Width, Height or None. */
+@Composable
+private fun TagButton(tag: LineTag?, onTag: (LineTag?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            Modifier
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(50))
+                .clickable(role = Role.Button, onClickLabel = "Change tag") { open = true }
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                tag?.label?.uppercase() ?: "TAG",
+                style = Type.Caption.copy(
+                    color = if (tag != null) Palette.Sandstone else Palette.Hint,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.5.sp,
+                ),
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
+            for (t in listOf(LineTag.Length, LineTag.Width, LineTag.Height, null)) {
+                DropdownMenuItem(
+                    text = { Text(t?.label ?: "None", style = Type.Label.copy(color = if (t == tag) Palette.Sandstone else Palette.Text)) },
+                    onClick = {
+                        open = false
+                        onTag(t)
+                    },
+                )
+            }
         }
     }
 }

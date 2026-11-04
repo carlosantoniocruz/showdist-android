@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.history.GroupLine
+import com.showconfigs.showdist.history.LineTag
 import com.showconfigs.showdist.history.GroupStore
 import com.showconfigs.showdist.history.MeasureGroup
 import com.showconfigs.showdist.ui.BaseText
@@ -66,6 +68,33 @@ class GroupSession internal constructor(
 ) {
     /** Labels by line index; lines past the current count (after an undo) are ignored. */
     val labels = mutableStateMapOf<Int, String>()
+
+    /** Length, Width or Height by line index (SPEC.md §2.14); each tag on one line at most. */
+    val tags = mutableStateMapOf<Int, LineTag>()
+
+    /** Lines whose tag the user has chosen (or cleared), so no suggestion overrides it. */
+    private val tagChosen = mutableStateMapOf<Int, Boolean>()
+
+    /**
+     * Suggests a tag for a just-finished line: the first three lines get Length, Width and
+     * Height, in that order, skipping any already used. Applied unless the user picks.
+     */
+    fun suggestTag(line: Int) {
+        if (line >= 3 || tagChosen[line] == true || tags.containsKey(line)) return
+        val next = LineTag.entries.firstOrNull { it !in tags.values } ?: return
+        tags[line] = next
+    }
+
+    /** Sets (or clears, with null) a line's tag, taking it off any other line. */
+    fun setTag(line: Int, tag: LineTag?) {
+        tagChosen[line] = true
+        if (tag == null) {
+            tags.remove(line)
+        } else {
+            tags.entries.filter { it.value == tag && it.key != line }.map { it.key }.forEach { tags.remove(it) }
+            tags[line] = tag
+        }
+    }
 
     var naming by mutableStateOf(false)
         private set
@@ -122,19 +151,26 @@ class GroupSession internal constructor(
         scope.launch { notify("Saved $clean · ${lines.size} line${if (lines.size == 1) "" else "s"}") }
     }
 
+    internal fun dropTagsFrom(line: Int) {
+        tags.keys.filter { it >= line }.forEach { tags.remove(it) }
+        tagChosen.keys.filter { it >= line }.forEach { tagChosen.remove(it) }
+    }
+
     fun defaultName(): String = "Group ${GroupStore.groups.size + 1}"
 
     /** The finished lines, re-read from their anchors (a half-drawn line is left out). */
     private fun lines(): List<GroupLine> {
         val pts = tracker.snapshotPoints()
         return List(tracker.completedLines) { i ->
-            GroupLine(MeasureGroup.newLineId(), pts[i * 2], pts[i * 2 + 1], tracker.scale, labels[i])
+            GroupLine(MeasureGroup.newLineId(), pts[i * 2], pts[i * 2 + 1], tracker.scale, labels[i], tags[i])
         }
     }
 
     private fun reset() {
         tracker.clear()
         labels.clear()
+        tags.clear()
+        tagChosen.clear()
     }
 }
 
@@ -147,9 +183,13 @@ fun rememberGroupSession(tracker: MeasureTracker, units: UnitSystem, appendTo: S
     val session = remember(tracker, appendTo) {
         GroupSession(tracker, { currentUnits }, appendTo, { currentOnAppended() }, scope) { snackbar.showSnackbar(it) }
     }
-    // Labels belong to finished lines: an undo or clear drops those of lines no longer there.
+    // Labels and tags belong to finished lines: an undo or clear drops those of lines no
+    // longer there; a newly finished line gets its suggested tag.
     LaunchedEffect(tracker.pointCount) {
-        session.labels.keys.filter { it >= tracker.completedLines }.forEach { session.labels.remove(it) }
+        val done = tracker.completedLines
+        session.labels.keys.filter { it >= done }.forEach { session.labels.remove(it) }
+        session.dropTagsFrom(done)
+        if (done >= 1 && tracker.pointCount % 2 == 0) session.suggestTag(done - 1)
     }
     return session
 }
@@ -180,30 +220,69 @@ fun GroupBar(lines: Int, onDone: () -> Unit) {
 }
 
 /**
- * After a line is finished: its number, length and label, with a way to name it (SPEC.md
- * §2.13). Gone as soon as the next line starts.
+ * After a line is finished: its number, length and label, with a way to name it, and its
+ * tag chips (SPEC.md §2.13, §2.14). Gone as soon as the next line starts.
  */
 @Composable
 fun LineCard(group: GroupSession, units: UnitSystem, length: Double, modifier: Modifier = Modifier) {
     val line = group.justFinished ?: return
     val label = group.labels[line]
-    val shape = RoundedCornerShape(50)
-    Row(
+    Column(
         modifier
-            .clip(shape)
-            .background(Palette.Scrim, shape)
-            .clickable(role = Role.Button, onClickLabel = "Label this line") { group.editLabel(line) }
+            .background(Palette.Scrim, RoundedCornerShape(24.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .clickable(role = Role.Button, onClickLabel = "Label this line") { group.editLabel(line) }
+                .heightIn(min = 44.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                "${label ?: "Line ${line + 1}"} · ${DistanceFormat.format(length, units)}",
+                style = BaseText.copy(color = Palette.White, fontSize = 15.sp),
+            )
+            BasicText(
+                if (label == null) "   Add label" else "   Edit",
+                style = BaseText.copy(color = Palette.Sandstone, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            val current = group.tags[line]
+            for (t in LineTag.entries) TagChip(t.label, selected = current == t) { group.setTag(line, if (current == t) null else t) }
+            TagChip("None", selected = current == null) { group.setTag(line, null) }
+        }
+    }
+}
+
+/** A tag choice: a 48 dp target around a small pill, sandstone when selected. */
+@Composable
+fun TagChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        Modifier
             .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .clip(shape)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 2.dp),
+        contentAlignment = Alignment.Center,
     ) {
         BasicText(
-            "${label ?: "Line ${line + 1}"} · ${DistanceFormat.format(length, units)}",
-            style = BaseText.copy(color = Palette.White, fontSize = 15.sp),
-        )
-        BasicText(
-            if (label == null) "   Add label" else "   Edit",
-            style = BaseText.copy(color = Palette.Sandstone, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            text,
+            Modifier
+                .then(
+                    if (selected) Modifier.background(Palette.Sandstone, shape)
+                    else Modifier.border(BorderStroke(1.dp, Palette.Sandstone.copy(alpha = 0.6f)), shape),
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            style = BaseText.copy(
+                color = if (selected) Palette.Black else Palette.Sandstone,
+                fontSize = 13.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            ),
         )
     }
 }

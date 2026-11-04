@@ -591,6 +591,25 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 
 **Share text** for a group: "Name · YYYY-MM-DD HH:MM", "Group of N lines", then "n. Label: length" per line.
 
+
+### 2.14 Area and volume for groups (v1.4, `history/GroupResults.kt`)
+
+**Tags.** A group line can be tagged **Length**, **Width** or **Height** (each tag on one line at most; giving it to another line takes it off the first).
+- While measuring: the line card (§2.13) has a row of chips, Length · Width · Height · None (13 sp, 48 dp targets; the selected one filled sandstone with black text, the others outlined). When each of the first three lines is finished it's given the first tag not yet used, in that order (so normally Length, Width, Height); the user can accept it, pick another, or choose None, and a choice is never overridden. Later lines start untagged. Undo and Clear drop the tags of lines no longer there.
+- On the group's screen: each line shows its tag in sandstone capitals ("LENGTH"), or a grey "TAG"; tapping it opens Length / Width / Height / None.
+- Stored per line as `tag` in `groups.json`.
+
+**Results**, from the tagged lines' lengths (each already including its calibration):
+- Length and Width tagged → **floor area** = length × width.
+- Length, Width and Height tagged → floor area and **volume** = length × width × height.
+- Anything less (no Width, or only one tagged line) → nothing is shown, never a wrong number.
+- Full precision throughout; rounded only for display: two decimals below 100, one decimal from 100 (thousands separated). Imperial: square feet ("120.0 sq ft") and cubic feet ("960.0 cu ft"), using 1 ft = 0.3048 m exactly; metric: m² and m³.
+
+**Where they show:**
+- The group's screen: at the **bottom**, after the last line, indented like the lines: "Floor area: …" and "Volume: …" (Label at 15 sp, tabular; smaller than the 20 sp line lengths), then 4 dp and, in grey 13 sp, "Assumes a rectangular space." (rectangular rooms only for now; no L-shaped or multi-section rooms).
+- The PDF (§2.12): after the group's line list (which shows each line's tag in brackets), a blank row, then the same lines at 85% of the list's size, monochrome.
+- Share and Copy text: after the lines, with each line's tag in brackets.
+
 ## 3. AR reticle and overlay drawing
 
 Everything is drawn on a transparent canvas over the camera feed, with the reticle (§3.1) as its own layer on top. **v1.4:** the canvas repaints only when a new AR frame arrives *and* there are marks to move (points, a projection, or marks just removed), so with nothing placed it doesn't repaint at all; never on display frames alone, and nothing repaints while the session is paused. Screen positions are the normalised coordinates × canvas size.
