@@ -1,0 +1,6 @@
+Version 1.4:
+- Group mode: measure separate lines for a room or table, label them, and get floor area and volume.
+- Steadier AR tracking, lighter on low-end phones, with a clear status pill.
+- Calibrate the measuring scale and level zero in Settings.
+- Haptics that build as you save, with a Vibration switch.
+- One-handed menu, Handy formulas, and a new About screen.
