@@ -273,6 +273,13 @@ private fun MeasureArea(
                     Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
                 )
             }
+            TrackingPill(
+                tracker.status,
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .turnWith { barRotation.value },
+            )
             MenuButton(
                 rotation = { barRotation.value },
                 onClick = onBack,
@@ -322,14 +329,18 @@ private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Mod
     }
 }
 
-/** The hint line (SPEC.md §2.3): 15 sp white on a scrim pill, cross-fading on change. */
+/**
+ * The hint line (SPEC.md §2.3): 15 sp white on a scrim pill, cross-fading on change. Tracking
+ * hints are left to the status pill; for those it keeps its height, empty, so the running
+ * total below it doesn't jump.
+ */
 @Composable
 private fun HintLine(hint: Hint) {
     Crossfade(hint, animationSpec = tween(250), label = "hint") { h ->
         Text(
-            h.text,
+            if (h.tracking) " " else h.text,
             modifier = Modifier
-                .background(Palette.Scrim, RoundedCornerShape(50))
+                .then(if (h.tracking) Modifier else Modifier.background(Palette.Scrim, RoundedCornerShape(50)))
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             textAlign = TextAlign.Center,
             style = BaseText.copy(color = Palette.White, fontSize = 15.sp, letterSpacing = 0.3.sp),

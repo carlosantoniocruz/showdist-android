@@ -36,6 +36,9 @@ object Palette {
     /** The Leveler's bubble once level, and nothing else: 11.8:1 on black. */
     val Level = Color(0xFF3DDC84)
 
+    /** The tracking pill's dot while tracking is lost or too dark: soft coral, apart from [Crimson]. */
+    val Attention = Color(0xFFFF8A65)
+
     /** Unit state only: imperial (ft, in). */
     val Crimson = Color(0xFFE71837)
 

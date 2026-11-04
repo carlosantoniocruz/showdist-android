@@ -244,6 +244,27 @@ The hint is 13 sp pure white, letter-spacing 0.3, on a fully rounded scrim pill 
 | tracking, 1 point | Place the next point |
 | tracking, ≥2 points | Tap to add · hold anywhere to save |
 
+**v1.4:** the hint line shows only the last five kinds of hint (what to do next). For every row about tracking, scanning, warm-up or aiming, the line stays empty but keeps its height, so the running total doesn't jump, and the status pill (§2.3a) says what's wrong instead.
+
+### 2.3a Tracking status pill (v1.4)
+
+A small pill centred at the bottom of the camera area, 16 dp above the control bar, turning with the bar controls (§2.9). Palette.Scrim, fully rounded, 12 dp start / 14 dp end × 6 dp v padding; an 8 dp dot, 8 dp gap, then 14 sp white JetBrains Mono, letter-spacing 0.3. It's a polite live region for TalkBack.
+
+| State (first match) | Text | Dot |
+|---|---|---|
+| not tracking, too dark | Too dark | Attention (#FF8A65) |
+| not tracking, excessive motion | Move phone slowly | sandstone |
+| not tracking, insufficient features | Aim at more detail | sandstone |
+| not tracking, camera unavailable | Camera unavailable | Attention |
+| not tracking, other reason, after tracking once | Tracking lost | Attention |
+| not tracking, other reason, never tracked yet | Move phone slowly | sandstone |
+| a tap would place (the main button is enabled) | Ready | Level green |
+| 0 planes and no reticle hit | Scanning surface | sandstone |
+| not warmed up (§2.4) for a first point | Scanning surface (0 planes) / Move phone slowly | sandstone |
+| otherwise (no reticle hit) | Aim at a surface | sandstone |
+
+Motion: the text cross-fades over 250 ms and the dot's colour over 300 ms. "Ready" stays for 1.2 s, then the pill fades out over 600 ms. Any other state brings it back over 250 ms, but only after lasting 400 ms, so a flickering hit can't blink it. Only the pill's own layer alpha animates.
+
 ### 2.4 Per-frame data & hit testing
 
 Work runs only when ARCore delivers a **new camera image**, about 30 per second. The GL view itself redraws continuously at the display rate, drawing only the camera background on frames with no new image. For each new image:

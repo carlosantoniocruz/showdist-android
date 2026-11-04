@@ -62,22 +62,40 @@ private const val LIVE_AFTER_IMAGES = 2
 /** Which kind of surface a hit came from, in order of preference (SPEC.md §2.4). */
 private enum class HitKind { Plane, Point, Snap }
 
-/** The hint line's text (SPEC.md §2.3). */
-enum class Hint(val text: String) {
-    Starting("Starting camera…"),
-    TooDark("Too dark. Find some light"),
-    SlowDown("Slow down"),
-    NeedTexture("Point at a textured surface"),
-    CameraUnavailable("Camera unavailable"),
-    TrackingLost("Tracking lost. Move slowly"),
-    Scan("Move slowly to scan surfaces"),
-    Aim("Aim at a surface"),
+/**
+ * The hint line's text (SPEC.md §2.3). Hints about tracking or aiming ([tracking] true) are
+ * left to the status pill ([TrackingStatus]), so the hint line shows only what to do next.
+ */
+enum class Hint(val text: String, val tracking: Boolean = false) {
+    Starting("Starting camera…", tracking = true),
+    TooDark("Too dark. Find some light", tracking = true),
+    SlowDown("Slow down", tracking = true),
+    NeedTexture("Point at a textured surface", tracking = true),
+    CameraUnavailable("Camera unavailable", tracking = true),
+    TrackingLost("Tracking lost. Move slowly", tracking = true),
+    Scan("Move slowly to scan surfaces", tracking = true),
+    Aim("Aim at a surface", tracking = true),
     PlaceFirst("Tap to place a point"),
     PlaceNext("Place the next point"),
     AddOrSave("Tap to add · hold anywhere to save"),
-    WarmUp("Move the phone slowly to get started"),
+    WarmUp("Move the phone slowly to get started", tracking = true),
     ProjectAim("Tap where its first point goes"),
     ProjectAlign("Turn it to line up, then tap"),
+}
+
+/**
+ * The tracking status pill's state (SPEC.md §2.3a). Everything but [Ready] means a tap
+ * can't place a point yet, and says why.
+ */
+enum class TrackingStatus(val text: String) {
+    MoveSlowly("Move phone slowly"),
+    Scanning("Scanning surface"),
+    AimAtSurface("Aim at a surface"),
+    NeedDetail("Aim at more detail"),
+    TooDark("Too dark"),
+    Lost("Tracking lost"),
+    CameraUnavailable("Camera unavailable"),
+    Ready("Ready"),
 }
 
 /**
@@ -123,6 +141,11 @@ class MeasureTracker {
     var cameraLive by mutableStateOf(false)
         private set
     private var imagesSeen = 0
+
+    /** Only changes when the status does, so it recomposes rarely. */
+    var status by mutableStateOf(TrackingStatus.MoveSlowly)
+        private set
+    private var everTracked = false
 
     /** Only changes when the hint's text would, so it recomposes rarely. */
     var hint by mutableStateOf(Hint.Starting)
@@ -480,7 +503,10 @@ class MeasureTracker {
 
         // The plane count only feeds the hint, so it's recounted every 10th image (~3 Hz).
         if (imageCount++ % 10 == 0) planeCount = countPlanes(session)
-        hint = hintFor(state, camera.trackingFailureReason, hit != null, anchors.size)
+        val reason = camera.trackingFailureReason
+        hint = hintFor(state, reason, hit != null, anchors.size)
+        if (tracking) everTracked = true
+        status = statusFor(state, reason, hit != null, needsWarmUp)
     }
 
     /**
@@ -652,6 +678,22 @@ class MeasureTracker {
             points == 0 -> Hint.PlaceFirst
             points == 1 -> Hint.PlaceNext
             else -> Hint.AddOrSave
+        }
+
+    /** SPEC.md §2.3a, in table order. */
+    private fun statusFor(state: TrackingState, reason: TrackingFailureReason, hasHit: Boolean, needsWarmUp: Boolean) =
+        when {
+            state != TrackingState.TRACKING -> when (reason) {
+                TrackingFailureReason.INSUFFICIENT_LIGHT -> TrackingStatus.TooDark
+                TrackingFailureReason.EXCESSIVE_MOTION -> TrackingStatus.MoveSlowly
+                TrackingFailureReason.INSUFFICIENT_FEATURES -> TrackingStatus.NeedDetail
+                TrackingFailureReason.CAMERA_UNAVAILABLE -> TrackingStatus.CameraUnavailable
+                else -> if (everTracked) TrackingStatus.Lost else TrackingStatus.MoveSlowly
+            }
+            canPlace -> TrackingStatus.Ready
+            planeCount == 0 && !hasHit -> TrackingStatus.Scanning
+            needsWarmUp && !warmedUp -> if (planeCount == 0) TrackingStatus.Scanning else TrackingStatus.MoveSlowly
+            else -> TrackingStatus.AimAtSurface
         }
 
     /** Planes that are tracking and not merged into another plane. */
