@@ -1,19 +1,14 @@
 package com.showconfigs.showdist.menu
 
-import android.content.Context
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.View
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -21,13 +16,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import com.showconfigs.showdist.ui.Palette
-import com.showconfigs.showdist.ui.Type
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -52,13 +42,9 @@ private const val BURST_MS = 1_400f
 private const val REFORM_MS = 900f
 private const val RELAX_MS = 700f
 
-private const val PREFS = "showdist"
-private const val KEY_UNLOCKED = "showdist.fun_facts"
-
 /**
  * The menu's hidden collapse (SPEC.md §1.4): hold the sun and the moons spin faster and
- * faster as they're drawn into it, until it bursts and the fun facts turn on (or, if
- * they're already on, off). Lifting early
+ * faster as they're drawn into it, until it bursts and the fun facts play. Lifting early
  * lets them drift back out. [spin] (radians, added to every moon's angle), [pull] (0 on the
  * orbit, 1 at the sun's centre) and [burst] (explosion progress 0..1, below 0 when none)
  * are snapshot state, read while laying out and drawing.
@@ -272,68 +258,4 @@ fun DrawScope.drawBurst(burst: Float, c: Offset, sunR: Float, sparks: BurstSpark
             Offset(c.x + sparks.dx[i] * d, c.y + sparks.dy[i] * d),
         )
     }
-}
-
-/** Historical fun facts the collapse unlocks, scrolling along the menu's top row. */
-private val FunFacts = listOf(
-    "In 1791 France defined the metre as one ten-millionth of the distance from the North Pole to the equator, along the meridian through Paris.",
-    "Since 1983 the metre has been the distance light travels in a vacuum in 1/299,792,458 of a second.",
-    "In 1959 the international foot was fixed at exactly 0.3048 metres.",
-    "The US survey foot, two parts per million longer, was retired at the end of 2022.",
-    "Ancient Egypt's royal cubit, based on the forearm, measured about 52 cm.",
-    "Around 240 BC Eratosthenes estimated Earth's circumference by comparing the noon Sun's angle at Syene and Alexandria.",
-    "Melchisédech Thévenot is credited with inventing the bubble level around 1661.",
-    "In 1999 the Mars Climate Orbiter was lost when one team used pound-force seconds and another newton-seconds.",
-    "Apollo 11, 14 and 15 left mirrors on the Moon; lasers bounced off them measure its distance to the millimetre.",
-    "Those lunar lasers show the Moon drifting about 3.8 cm farther from Earth every year.",
-    "Sunlight takes about 8 minutes 20 seconds to reach Earth.",
-    "Since 2012 the astronomical unit has been exactly 149,597,870,700 metres.",
-    "From 1889 to 1960 the metre was the length of a platinum-iridium bar kept near Paris.",
-    "In 1960 the metre was redefined as 1,650,763.73 wavelengths of light from krypton-86.",
-    "Since 1959 the inch has been exactly 2.54 centimetres.",
-    "The international nautical mile is exactly 1,852 metres, close to one minute of latitude.",
-    "The mile comes from the Roman mille passus: a thousand paces, each pace two steps.",
-    "The furlong, 220 yards, takes its name from the length of a furrow in a ploughed field.",
-    "Edmund Gunter's 1620 surveying chain is 66 feet long; ten square chains make an acre.",
-    "In 1615 Willebrord Snellius began measuring the Earth by triangulation across the Netherlands.",
-    "In 2019 the kilogram was redefined by the Planck constant, retiring a metal cylinder kept since 1889.",
-    "Light travels about 30 cm in a nanosecond; Grace Hopper handed out wires that long to show it.",
-    "A light-year is about 9.46 trillion kilometres; a parsec is about 3.26 light-years.",
-    "In 2020 China and Nepal jointly measured Mount Everest at 8,848.86 metres.",
-)
-
-/**
- * Whether the fun facts are shown, persisted so they stay once found. Each completed
- * collapse [toggle]s them: the first turns them on, the next off again.
- */
-class FunFactsUnlock(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    var unlocked by mutableStateOf(prefs.getBoolean(KEY_UNLOCKED, false))
-        private set
-
-    fun toggle() {
-        unlocked = !unlocked
-        prefs.edit { putBoolean(KEY_UNLOCKED, unlocked) }
-    }
-}
-
-@Composable
-fun rememberFunFactsUnlock(): FunFactsUnlock {
-    val context = LocalContext.current
-    return remember { FunFactsUnlock(context) }
-}
-
-/** The facts, one after another, scrolling right to left without end. */
-@Composable
-fun FunFactsTicker(modifier: Modifier = Modifier) {
-    val text = remember { FunFacts.joinToString(separator = "     ✦     ", postfix = "     ✦     ") }
-    Text(
-        text,
-        modifier = modifier
-            .semantics { contentDescription = "Fun facts" }
-            .basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, repeatDelayMillis = 0, velocity = 40.dp),
-        maxLines = 1,
-        style = Type.Secondary.copy(color = Palette.Sandstone),
-    )
 }

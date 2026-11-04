@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -28,7 +27,10 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -83,7 +85,7 @@ enum class Tool(val title: String, val spoken: String, val purpose: String, val 
 
 /**
  * The main menu (SPEC.md §1.4): History (once something is saved) and Settings on the
- * right of a slim top row, with the fun facts scrolling just beneath it once unlocked, the orbital selector, and the focused tool's
+ * right of a slim top row, the orbital selector, and the focused tool's
  * quick guide sliding up beneath it. It never touches the camera or the AR session.
  * [focused] is held by the caller, so the tool last used is still in front on return.
  */
@@ -100,10 +102,12 @@ fun MainMenu(
     val scope = rememberCoroutineScope()
     val orbit = remember { OrbitState(focused.ordinal, Tool.entries.size, scope, reduceMotion) }
     val view = LocalView.current
-    val facts = rememberFunFactsUnlock()
-    val egg = remember { CollapseEgg(scope, view, reduceMotion, onBurst = facts::toggle) }
+    val deck = rememberFactDeck()
+    var factsShowing by remember { mutableStateOf(false) }
+    val egg = remember { CollapseEgg(scope, view, reduceMotion, onBurst = { factsShowing = true }) }
     LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(Palette.Black).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
@@ -119,16 +123,15 @@ fun MainMenu(
             }
             AppBarAction(ShowdistIcons.SettingsOutlined, "Settings", tint = Palette.Sandstone, onClick = onSettings)
         }
-        Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.weight(1f).fillMaxWidth()) {
-            // The collapse's prize (SPEC.md §1.4), between the top row and the sun, a little
-            // above centre.
-            if (facts.unlocked) FunFactsTicker(Modifier.offset(y = (-24).dp).fillMaxWidth())
-        }
+        Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.weight(1f).fillMaxWidth())
         QuickGuide(
             tool = if (orbit.settled) Tool.entries[orbit.focused] else null,
             reduceMotion = reduceMotion,
             modifier = Modifier.fillMaxWidth().heightIn(min = GuideHeight),
         )
+    }
+    // The collapse's prize (SPEC.md §1.4), over everything.
+    if (factsShowing) FunFactsScene(deck, reduceMotion, onClose = { factsShowing = false })
     }
 }
 
