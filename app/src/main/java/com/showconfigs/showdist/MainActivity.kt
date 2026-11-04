@@ -1,5 +1,6 @@
 package com.showconfigs.showdist
 
+import com.showconfigs.showdist.settings.AboutScreen
 import com.showconfigs.showdist.measure.MeasureMode
 import com.showconfigs.showdist.settings.Calibration
 import com.showconfigs.showdist.settings.CalibrateLevelScreen
@@ -72,7 +73,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Settings, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
+private enum class Screen { Menu, Measure, Leveler, History, Settings, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail, the [LevelerMode]
@@ -171,9 +172,10 @@ private fun ShowdistApp() {
                     onCalibrateScale = { push(Screen.CalibrateScale) },
                     onWarmUp = { push(Screen.Measure, MeasureMode.WarmUp.ordinal) },
                     onLevelZero = { push(Screen.CalibrateLevel) },
-                    onLicenses = { push(Screen.Licenses) },
+                    onAbout = { push(Screen.About) },
                     onBack = ::pop,
                 )
+                Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.CalibrateScale -> CalibrateScaleScreen(
                     unitSettings.units,
                     onMeasure = { push(Screen.Measure, MeasureMode.CalibrateScale.ordinal) },

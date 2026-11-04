@@ -1,5 +1,8 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.BackBar
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.platform.LocalContext
@@ -35,44 +38,64 @@ import com.showconfigs.showdist.ui.ShowdistAppBar
 import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
 
-/** Settings (SPEC.md §1.5): the unit system, then About and the way to the licenses. */
+/**
+ * Settings (SPEC.md §1.5), kept short: units, calibration, feedback, and Additional Info,
+ * which leads to About (and from there the licenses).
+ */
 @Composable
 fun SettingsScreen(
     unitSettings: UnitSettings,
     onCalibrateScale: () -> Unit,
     onWarmUp: () -> Unit,
     onLevelZero: () -> Unit,
-    onLicenses: () -> Unit,
+    onAbout: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Black) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("SETTINGS") }, bottomBar = { BackBar(onBack) }, containerColor = Palette.Black) { padding ->
         // Scrolls edge to edge; the rows sit in a centred column on wide screens (SPEC.md §6.5).
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            Column(Modifier.readingColumn().padding(vertical = 8.dp)) {
-                SectionTitle("UNITS")
-                UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
-                UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
-                SettingsDivider()
-                SectionTitle("CALIBRATE")
-                SettingsRow(
-                    "Measurement scale",
-                    subtitle = if (Calibration.hasScale) "${correctionText(Calibration.scale)} applied" else "Measure something you know",
-                    onClick = onCalibrateScale,
-                ) { Chevron() }
-                SettingsRow("Tracking warm-up", subtitle = "Move your phone slowly", onClick = onWarmUp) { Chevron() }
-                SettingsRow(
-                    "Level zero",
-                    subtitle = if (Calibration.hasLevelZero) "Zero set" else "Set zero on a surface you trust",
-                    onClick = onLevelZero,
-                ) { Chevron() }
-                SettingsDivider()
-                SectionTitle("FEEDBACK")
-                VibrationOption()
-                AboutSections(onLicenses)
+        // A compact list; every divider has the same gap above and below, so the sections are
+        // evenly spaced without stretching to fill the screen.
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Column(Modifier.readingColumn().padding(top = 8.dp, bottom = 24.dp)) {
+                    Column {
+                        SectionTitle("UNITS")
+                        UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
+                        UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+                    }
+                    SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
+                    Column {
+                        SectionTitle("CALIBRATE")
+                        SettingsRow(
+                            "Measurement scale",
+                            subtitle = if (Calibration.hasScale) "${correctionText(Calibration.scale)} applied" else "Measure something you know",
+                            onClick = onCalibrateScale,
+                        ) { Chevron() }
+                        SettingsRow("Tracking warm-up", subtitle = "Move your phone slowly", onClick = onWarmUp) { Chevron() }
+                        SettingsRow(
+                            "Level zero",
+                            subtitle = if (Calibration.hasLevelZero) "Zero set" else "Set zero on a surface you trust",
+                            onClick = onLevelZero,
+                        ) { Chevron() }
+                    }
+                    SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
+                    Column {
+                        SectionTitle("FEEDBACK")
+                        VibrationOption()
+                    }
+                    SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
+                    Column {
+                        SectionTitle("ADDITIONAL INFO")
+                        SettingsRow("About", subtitle = "Showdist, the developer and licenses", onClick = onAbout) { Chevron() }
+                    }
+                }
             }
         }
     }
 }
+
+/** The gap above and below each divider between Settings sections. */
+private val SECTION_GAP = 8.dp
 
 /** The app-wide Vibration switch (SPEC.md §1.5); the system's touch feedback still applies. */
 @Composable

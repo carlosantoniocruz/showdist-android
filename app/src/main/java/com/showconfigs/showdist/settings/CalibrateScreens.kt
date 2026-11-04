@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.BackBar
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -211,7 +212,7 @@ private class FlatSampler(context: Context) : SensorEventListener {
 
 @Composable
 private fun CalibrateScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Scaffold(topBar = { ShowdistAppBar(title, onBack) }, containerColor = Palette.Black) { padding ->
+    Scaffold(topBar = { ShowdistAppBar(title) }, bottomBar = { BackBar(onBack) }, containerColor = Palette.Black) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Column(Modifier.readingColumn().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 content()

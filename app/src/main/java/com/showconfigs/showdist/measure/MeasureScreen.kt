@@ -301,7 +301,7 @@ private fun MeasureArea(
                 Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 60.dp, top = 16.dp, end = 60.dp) // clear of the menu button
+                    .padding(start = 24.dp, top = 16.dp, end = 24.dp)
                     .onPlaced { infoBottomPx = it.boundsInParent().bottom.toInt() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -354,13 +354,15 @@ private fun MeasureArea(
                     .padding(bottom = 16.dp)
                     .turnWith { barRotation.value },
             )
+            // Back to the menu at the bottom-left of the camera area, within thumb reach, just
+            // above the control bar (SPEC.md §2.2).
             MenuButton(
                 rotation = { barRotation.value },
                 onClick = onBack,
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 8.dp, top = 8.dp),
+                    .align(Alignment.BottomStart)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                    .padding(start = 8.dp, bottom = 8.dp),
             )
         }
         ControlBar(

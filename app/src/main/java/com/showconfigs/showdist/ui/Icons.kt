@@ -154,6 +154,19 @@ object ShowdistIcons {
             "S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z",
     )
 
+    /** The X (formerly Twitter) logo, from its published path data (SPEC.md §1.6). */
+    val XLogo = ImageVector.Builder("XLogo", 24.dp, 24.dp, 1200f, 1227f)
+        .addPath(
+            addPathNodes(
+                "M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37" +
+                    "H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163Z" +
+                    "M569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579" +
+                    "L1055.08 1150.3H892.476L569.165 687.854V687.828Z",
+            ),
+            fill = SolidColor(Color.Black),
+        )
+        .build()
+
     private fun icon(name: String, pathData: String): ImageVector =
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)
             .addPath(addPathNodes(pathData), fill = SolidColor(Color.Black))

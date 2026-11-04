@@ -1,5 +1,14 @@
 package com.showconfigs.showdist.leveler
 
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import com.showconfigs.showdist.ui.BackButton
+import com.showconfigs.showdist.ui.BackBar
 import com.showconfigs.showdist.ui.rememberHaptics
 import android.content.Context
 import android.content.pm.ActivityInfo
@@ -58,6 +67,7 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
     var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
     val zeroed = if (mode == LevelerMode.Tube) offset != 0f else offsetX != 0f || offsetY != 0f
 
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // The tube rotates with the phone; the bullseye lies flat, where rotation can't be sensed.
     if (mode == LevelerMode.Tube) AllowLandscapeWhileShown()
     // The sensor runs only while the screen is visible and the app is in the foreground.
@@ -68,7 +78,7 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER", onBack) {
+            ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER") {
                 AppBarAction(ShowdistIcons.CenterFocusStrong, "Zero — null against an uneven surface") {
                     offset = sensor.readoutRoll
                     offsetX = sensor.readoutTiltX
@@ -83,9 +93,13 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                 }
             }
         },
+        // Back at the bottom (SPEC.md §1.2). In landscape (the tube rotates) a bar would take
+        // the height the vial and readout need, so back floats in the corner instead.
+        bottomBar = { if (!landscape) BackBar(onBack) },
         containerColor = Palette.Black,
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = if (mode == LevelerMode.Tube) "HOLD FLAT AGAINST THE SURFACE" else "LAY FLAT ON THE SURFACE",
                 modifier = Modifier.fillMaxWidth().padding(start = 32.dp, top = 16.dp, end = 32.dp),
@@ -132,6 +146,16 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                     }
                 }
             }
+        }
+        if (landscape) {
+            BackButton(
+                onBack,
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start))
+                    .padding(8.dp),
+            )
+        }
         }
     }
 }

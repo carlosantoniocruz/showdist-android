@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.BackBar
 import com.showconfigs.showdist.ui.ReadingSides
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,7 +37,7 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
     var licenses by remember { mutableStateOf(Licenses.loaded) }
     LaunchedEffect(Unit) { if (licenses == null) licenses = Licenses.load(context) }
 
-    Scaffold(topBar = { ShowdistAppBar("LICENSES", onBack) }, containerColor = Palette.Black) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("LICENSES") }, bottomBar = { BackBar(onBack) }, containerColor = Palette.Black) { padding ->
         val list = licenses
         if (list == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -71,7 +72,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
     LaunchedEffect(Unit) { if (licenses == null) licenses = Licenses.load(context) }
     val license = licenses?.getOrNull(index)
 
-    Scaffold(topBar = { ShowdistAppBar("LICENSE", onBack) }, containerColor = Palette.Black) { padding ->
+    Scaffold(topBar = { ShowdistAppBar("LICENSE") }, bottomBar = { BackBar(onBack) }, containerColor = Palette.Black) { padding ->
         if (license == null) return@Scaffold
         ReadingSides(Modifier.fillMaxSize().padding(padding)) { side ->
         LazyColumn(

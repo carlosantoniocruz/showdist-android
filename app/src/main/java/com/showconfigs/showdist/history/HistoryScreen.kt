@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.history
 
+import com.showconfigs.showdist.ui.BackBar
 import com.showconfigs.showdist.ui.ReadingSides
 import com.showconfigs.showdist.ui.ReadingWidth
 import androidx.compose.foundation.layout.widthIn
@@ -98,7 +99,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     },
                 )
             } else {
-                ShowdistAppBar("HISTORY", onBack) {
+                ShowdistAppBar("HISTORY") {
                     OverflowMenu(
                         enabled = recordings.isNotEmpty(),
                         onSelect = { selecting = true },
@@ -113,6 +114,8 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                 }
             }
         },
+        // Back at the bottom (SPEC.md §1.2); while selecting it leaves selection first.
+        bottomBar = { BackBar(onBack = { if (selecting) exitSelection() else onBack() }) },
         containerColor = Palette.Black,
     ) { padding ->
         if (recordings.isEmpty()) {

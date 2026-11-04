@@ -47,11 +47,11 @@ Launch screen (black field)
 
 Every screen is a full-screen page pushed on a back stack. The system Back button/gesture and each app bar's back arrow (`arrow_back_rounded`, tooltip "Back") pop one level. The main menu is the root; Back there exits the app.
 
-### 1.2 Shared app-bar style (Settings, Licenses, License detail, History, Leveler)
+### 1.2 Shared app-bar style (Settings, About, Licenses, License detail, History, Leveler, calibration screens)
 
 - Background black, no elevation, no surface tint. Foreground (icons, title) white (text).
 - Title centred and set in the **Caption** style (§6.3) in white: "SETTINGS", "ABOUT", "LICENSES", "LICENSE", "HISTORY", "TUBE LEVELER", "BULLSEYE LEVELER".
-- Leading: back arrow.
+- No back arrow at the top (v1.4). **Back lives at the bottom** (`BackBar`, a Scaffold bottom bar): a bare sandstone `arrow_back_rounded` (30 dp) centred in a 56 dp round touch target with a ripple, content description "Back", on black, above the bottom safe-drawing and mandatory-gesture insets with 4 dp above and below, so it sits where the menu's History and Settings icons do. In History's selection mode it leaves selection first. On the Tube level in landscape (the only screen that rotates, §4.1) a bottom bar would take the height the vial and readout need, so the same back button floats in the bottom-start corner instead (8 dp in from the safe-drawing insets). The system back gesture works everywhere as before. Actions (History's menu, the Leveler's Zero and Reset, selection actions) stay in the top bar.
 
 ### 1.3 Launch screen
 
@@ -120,7 +120,7 @@ Tapping an option sets the unit system immediately and persists it (§2.7).
 
 **FEEDBACK** (v1.4), after a divider: a "Vibration" row (subtitle "Taps and pulses as you measure and level") with a Material switch (sandstone track when on). On by default, persisted as `showdist.haptics`. Off silences every haptic in the app (§11).
 
-Below the units comes About (§1.6), then 24 dp of space.
+Settings stays short and compact (v1.4; it doesn't stretch to fill the screen): UNITS, CALIBRATE (§1.5a), FEEDBACK, then **ADDITIONAL INFO**, each pair of sections separated by a divider with the same 8 dp above and below it, with an "About" row (subtitle "Showdist, the developer and licenses", chevron) that opens About (§1.6), then 24 dp of space.
 
 
 **CALIBRATE** (v1.4), after a divider, before FEEDBACK: three rows with chevrons, each opening a screen with one instruction and one button.
@@ -144,12 +144,12 @@ All values are persisted (`showdist.calibration.scale`, `.level_x`, `.level_y`) 
 
 ### 1.6 About
 
-Part of Settings, below the units (`settings/AboutSections.kt`); there is no separate About screen. It starts with a sandstone divider (inset 20 dp) and the section header "ABOUT", then:
-- "SHOWDIST" (Title, sandstone, letter-spacing 3), then "An AR tape measure and two levels: measure distances with the camera, and check walls, beams and flat surfaces for level." (Body), padding 20 × 12 dp.
-- For each guide, a sandstone divider (inset 20 dp), a section header (Caption, heading) and rows of a 104 dp bold white label and its text (Secondary). The guides are AR MEASURE (Start, Points, Edit, Save), HISTORY (Open, Share, View in AR), TUBE LEVEL (Use, Level, Zero) and BULLSEYE LEVEL (Use, Read, Zero); the wording is in `settings/AboutSections.kt`.
-- A divider, then "CREDITS": "Version {versionName}" (read from the installed package), "Carlos Cruz", "sh.run.configs@gmail.com" (Secondary), and "Created with AI assistance" (Secondary, italic).
-- Below the credits, the ARCore notice (Secondary), required by the ARCore terms: "This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."
-- A "Privacy policy" row (subtitle "Opens in your browser", chevron) that opens https://carlosantoniocruz.github.io/showdist-privacy/ in the browser; Google Play requires the policy to be linked inside the app.
+Its own screen (v1.4, `settings/AboutScreen.kt`), reached **only from Settings** (Additional Info → About); nothing about the app, the developer or licences is on the main menu. App bar "ABOUT" with the standard back arrow; back (arrow or system gesture) returns to Settings. Content scrolls, in the centred reading column on wide screens (§6.5):
+- "SHOWDIST" (Title, sandstone, letter-spacing 3), then "An AR tape measure and two levels: measure distances with the camera, and check walls, beams and flat surfaces for level." (Body), then "Created with AI assistance" (Secondary, italic); padding 20 × 12 dp.
+- A divider, then "DEVELOPER": "Carlos Cruz" (Body), "Version {versionName}" (Secondary, read from the installed package), then the **only contact**: the official **X logo** (its published path data, as a vector, 18 dp, sandstone) with the handle **@shcarlosconfigs** beside it (Label style, JetBrains Mono, sandstone). Icon and handle are one tappable row, at least 48 dp tall, with a ripple when pressed and the accessibility label "Developer on X, @shcarlosconfigs" (click label "Open on X"). It opens https://x.com/shcarlosconfigs in the X app or the browser. **No email address appears anywhere in the app.**
+- For each tool guide, a sandstone divider (inset 20 dp), a section header (Caption, heading) and rows of a 104 dp bold white label and its text (Secondary). The guides are AR MEASURE (Start, Points, Edit, Save), HISTORY (Open, Share, View in AR), TUBE LEVEL (Use, Level, Zero) and BULLSEYE LEVEL (Use, Read, Zero).
+- A divider, then the ARCore notice (Secondary), required by the ARCore terms: "This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."
+- A "Privacy policy" row (subtitle "Opens in your browser", chevron) that opens https://carlosantoniocruz.github.io/showdist-privacy/; Google Play requires the policy to be linked inside the app.
 - A "Licenses" row with subtitle "ARCore, SceneView, AndroidX and JetBrains Mono" and a chevron. It opens Licenses.
 
 ### 1.7 Licenses
@@ -250,10 +250,10 @@ The screen is a vertical column:
 1. **Camera area** fills all the height above the control bar, so nothing measured is ever hidden behind the bar. It is a stack of layers, bottom to top:
    1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping. Until ARCore has delivered two camera images, the feed is covered in black: before then the texture holds uninitialised memory, which slower phones (e.g. Galaxy A17) show as coloured static.
    2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total each sit on their own scrim pill.
-   3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L60 T16 R60 so it stays clear of the menu button:
+   3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L24 T16 R24 (v1.4: the menu button is no longer at the top):
       - The **hint** line (§2.3).
       - When there are ≥2 points: a 6 dp gap, then the **running total** as a pill. The pill is scrim (§5), fully rounded, with 16 h × 4 v padding. The total text is 34 sp, weight 200, pure white, with tabular figures, formatted per §2.5.
-   5. The **menu button**, top-left inside the safe area, 8 dp from the top and left: a 48 dp tap target around a 40 dp scrim disc holding a white `arrow_back_rounded` (22 dp, alpha 0.9). It returns to the main menu, closing the session like Back. Its content description is "Back to menu". It sits as far as possible from the control bar so it isn't hit by accident, and it turns with the bar icons (§2.9). A quick tap is needed; a long press still charges hold-to-save.
+   5. The **menu button**, **bottom-left of the camera area** (v1.4, within thumb reach, just above the control bar), inside the horizontal safe area, 8 dp from the bottom and left: a 48 dp tap target around a 40 dp scrim disc holding a white `arrow_back_rounded` (22 dp, alpha 0.9). It returns to the main menu, closing the session like Back. Its content description is "Back to menu". It sits as far as possible from the control bar so it isn't hit by accident, and it turns with the bar icons (§2.9). A quick tap is needed; a long press still charges hold-to-save.
 2. **Control bar** (§2.6).
 
 The whole screen, camera area and bar alike, is covered by one **long-press** detector that drives hold-to-save (§2.6). It does not block taps on child controls.
@@ -794,7 +794,7 @@ Text-heavy content sits in a **horizontally centred column at most 520 dp wide**
 ### 7.1 About text (verbatim)
 
 In About (§1.6):
-- `Version 1.1`, `Carlos Cruz`, `sh.run.configs@gmail.com` (version from the installed package)
+- `Carlos Cruz`, `Version {versionName}` (from the installed package), and the X row `@shcarlosconfigs` (no email address)
 - `Created with AI assistance` (italic)
 - `Licenses`, with subtitle `ARCore, SceneView, AndroidX and JetBrains Mono`.
 
