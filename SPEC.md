@@ -531,7 +531,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 
 ## 3. AR reticle and overlay drawing
 
-Everything is drawn on a transparent canvas over the camera feed. The canvas repaints when a new AR frame arrives, about 30 fps, not on every display frame, and nothing repaints while the session is paused. Screen positions are the normalised coordinates × canvas size.
+Everything is drawn on a transparent canvas over the camera feed, with the reticle (§3.1) as its own layer on top. **v1.4:** the canvas repaints only when a new AR frame arrives *and* there are marks to move (points, a projection, or marks just removed), so with nothing placed it doesn't repaint at all; never on display frames alone, and nothing repaints while the session is paused. Screen positions are the normalised coordinates × canvas size.
 
 ### 3.1 Reticle
 
@@ -550,6 +550,7 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
   - **On a surface** (reticle hit): the orbiting dots are **filled** at alpha 1, each with a soft **glow**: a 6 dp disc in the unit colour at alpha 0.55, Gaussian blur sigma 3. The centre dot is white at alpha 1.
   - **Searching** (no hit): the orbiting dots are **hollow** rings with a 1.4 dp stroke at alpha 0.6, with no glow. The centre dot is white at alpha 0.6.
 - **Halo**, drawn first under every dot: a disc 1.5 dp larger than the dot, halo colour (§5), blur sigma 2. It keeps the reticle visible against bright surfaces.
+- **Rendering (v1.4):** each look (crimson or cyan × on a surface or searching) is drawn once, blurs included, into a bitmap the first time it's needed, then reused. The spin is a single rotation of the reticle's own layer, set from `t` above, so turning it re-records nothing and never repaints the rest of the overlay. It turns only as camera frames arrive, so it stops while paused or hidden. Changing units or the surface state swaps the bitmap. Measured on a Pixel 10a with nothing placed (gfxinfo framestats, 120 frames): the old live-drawn reticle cost about 0.67 ms on the UI thread, 2.3–2.9 ms on the RenderThread and 2.2–4.2 ms of GPU per frame; the cached layer costs about 0.01 ms, 0.8 ms and 1.3–1.8 ms.
 
 ### 3.2 Placed points, segments, live line
 

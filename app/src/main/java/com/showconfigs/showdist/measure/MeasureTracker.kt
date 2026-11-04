@@ -127,6 +127,14 @@ class MeasureTracker {
     var canPlace by mutableStateOf(false)
         private set
 
+    /**
+     * Bumped on each new camera image while the overlay has marks to move (points, a
+     * projection, or ones just removed), so the overlay redraws then and only then.
+     */
+    var drawSerial by mutableIntStateOf(0)
+        private set
+    private var hadMarks = false
+
     /** Seconds into the current reticle turn, sampled once per new camera image. */
     var spinSeconds by mutableFloatStateOf(0f)
         private set
@@ -503,6 +511,10 @@ class MeasureTracker {
 
         // The plane count only feeds the hint, so it's recounted every 10th image (~3 Hz).
         if (imageCount++ % 10 == 0) planeCount = countPlanes(session)
+        val marks = anchors.isNotEmpty() || projectionCount > 0
+        if (marks || hadMarks) drawSerial++
+        hadMarks = marks
+
         val reason = camera.trackingFailureReason
         hint = hintFor(state, reason, hit != null, anchors.size)
         if (tracking) everTracked = true

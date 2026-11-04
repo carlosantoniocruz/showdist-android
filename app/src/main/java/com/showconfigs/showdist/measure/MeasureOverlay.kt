@@ -39,24 +39,22 @@ private const val LABEL_BORDER_DP = 1.5f
 
 /**
  * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): a projected
- * recording (§2.11), segment lines, the dashed live line, point dots, the reticle, then
- * labels (projected ones first). Reads [tracker] only
- * inside the draw lambda, so it redraws once per new camera image (spinSeconds changes
- * every image) and never recomposes.
+ * recording (§2.11), segment lines, the dashed live line, point dots, then labels
+ * (projected ones first); the [Reticle] is its own layer on top. Reads [tracker] only
+ * inside the draw lambda, so it never recomposes, and redraws only when
+ * [MeasureTracker.drawSerial] moves: on new camera images while there are marks to draw.
  */
 @Composable
 fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Float, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val points = remember(density.density, scheme) { PointsPainter(density.density, scheme) }
-    val reticle = remember(density.density) { ReticlePainter(density.density) }
     val labels = remember(density.density, density.fontScale, scheme) {
         LabelPainter(context, density.density, density.fontScale, scheme)
     }
 
     Canvas(modifier) {
-        val hit = tracker.hasHit
-        val spin = tracker.spinSeconds
+        tracker.drawSerial // subscribes the draw to new camera images with marks
         val count = tracker.pointCount
         val w = size.width
         val h = size.height
@@ -71,7 +69,6 @@ fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Fl
             points.drawSegments(c, w, h, count, tracker)
             if (tracker.liveVisible) points.drawLiveLine(c, w, h, count, tracker)
             points.drawDots(c, w, h, count, tracker)
-            reticle.draw(c, w / 2f, h / 2f, hit, tracker.units == UnitSystem.Metric, spin)
 
             // One label per drawn projected segment, one per drawn segment, plus the live label.
             for (i in 1 until projCount) {

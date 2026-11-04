@@ -260,6 +260,7 @@ private fun MeasureArea(
             if (!tracker.cameraLive) Box(Modifier.fillMaxSize().background(Palette.Black))
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
             MeasureOverlay(tracker, ArScheme.forUnits(units), { barRotation.value }, Modifier.fillMaxSize())
+            Reticle(tracker, metric = units == UnitSystem.Metric, Modifier.align(Alignment.Center))
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
