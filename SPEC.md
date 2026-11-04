@@ -112,6 +112,25 @@ Tapping an option sets the unit system immediately and persists it (§2.7).
 Below the units comes About (§1.6), then 24 dp of space.
 
 
+**CALIBRATE** (v1.4), after a divider, before FEEDBACK: three rows with chevrons, each opening a screen with one instruction and one button.
+- "Measurement scale", subtitle "Measure something you know" (or "+2.0% applied" once set).
+- "Tracking warm-up", subtitle "Move your phone slowly".
+- "Level zero", subtitle "Set zero on a surface you trust" (or "Zero set").
+
+### 1.5a Calibration (v1.4, `settings/Calibration.kt`, `settings/CalibrateScreens.kt`)
+
+All values are persisted (`showdist.calibration.scale`, `.level_x`, `.level_y`) and loaded at start.
+
+- **Measurement scale** (app bar "MEASUREMENT SCALE"): "Measure something you know." Choose Letter paper, long edge (11 in = 279.4 mm); A4 paper, long edge (297 mm); US dollar bill, long edge (156 mm); credit card, long edge (85.6 mm, ISO/IEC 7810 ID-1); or "Something else I've measured" with a length field in cm (metric) or inches (imperial), 5 cm to 10 m. **Measure** opens AR Measure in calibration mode: no correction applied, hold-to-save off, and the hint reads "Place a point at each end of the sheet's long edge" (or the bill's, the card's, the object). 400 ms after the second point, the raw distance between the two anchors is compared with the true length and Measure closes, back to this screen, which shows the outcome:
+  - factor = true ÷ measured. Accepted if within **0.85–1.15**: stored, and the screen says "Your measurements were 2% short. Fixed." (or "long"; under 0.5% off: "Your measurements were already spot on.").
+  - Otherwise nothing changes: "That reading was 35% off, too far to be right. Check the two ends and try again." (coral).
+  - **Reset** (shown while a correction is set, with "(+2.0% now applied)") returns the factor to 1.
+  - The factor multiplies every **new** length: live labels, the live line and running total, and each saved Recording, which stores it (`scale` in the JSON, absent = 1). A recording's segments and total include its own factor, so History, sharing and PDF exports agree with what was shown when it was measured; its points stay raw, so "View in AR" lines up with the scene, and its projected labels use its factor. Older recordings are unchanged.
+- **Tracking warm-up**: an overlay in AR Measure, centred on a scrim card (24 dp corners, max 320 dp): "Move your phone slowly side to side over a textured surface", an 88 dp ring (6 dp, white 20% track, sandstone fill, level green when full) and **Done** (enabled once full; back also closes). The fill is the tracker's warm-up quality, from each new camera image without allocation: 45% camera travel while tracking (full at 60 cm, each image's step capped at 5 cm), 35% planes found (full at 2), 20% seconds of steady tracking (full at 4 s); losing tracking halves the travel and restarts the steady time. It counts as full from 97%.
+  - Opened from Settings, it's Measure in warm-up mode, and Done goes back to Settings.
+  - **Automatic prompt:** in Measure, when the status pill (§2.3a) has shown Tracking lost, Aim at more detail, or Move phone slowly with points placed, for **5 s**, a "Warm up tracking" button (sandstone outline, ≥48 dp) appears 64 dp above the bottom of the camera area. It opens the same overlay over the running session, so points are kept; Done closes it. Hold-to-save is off while it's open.
+- **Level zero** (app bar "LEVEL ZERO"): "Place your phone flat on a surface you trust, then tap Set zero." **Set zero** averages one second of the accelerometer (x/g, y/g, z/g); if the phone is face up and tilted under about 5° (√(x²+y²) < 0.09) it stores x and y as the zero ("Zero set. Both levels now read 0 here."), otherwise "Lay the phone flat, screen up, then try again." **Reset** clears it. Both levels subtract the stored x and y from every accelerometer reading before filtering (§4.1), so the offset applies to the bubble, readouts and the tube level alike. The levelers' own Zero (§4) still works on top, as a temporary relative zero.
+
 ### 1.6 About
 
 Part of Settings, below the units (`settings/AboutSections.kt`); there is no separate About screen. It starts with a sandstone divider (inset 20 dp) and the section header "ABOUT", then:

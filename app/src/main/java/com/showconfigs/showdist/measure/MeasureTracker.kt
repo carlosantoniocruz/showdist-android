@@ -179,6 +179,31 @@ class MeasureTracker {
             formatProjectionText()
         }
 
+    /**
+     * Measurement calibration (SPEC.md §1.5a): every displayed length is the anchors' distance
+     * times this. 1 while calibrating, so the raw reading is what's compared.
+     */
+    var scale = 1.0
+        set(value) {
+            if (field == value) return
+            field = value
+            totalKey = Long.MIN_VALUE
+            segmentKey.fill(Long.MIN_VALUE)
+            liveKey = Long.MIN_VALUE
+        }
+
+    /**
+     * How settled tracking is, 0..1 (SPEC.md §1.5a warm-up): camera travel while tracking,
+     * planes found and seconds of steady tracking. Read only while drawing the warm-up ring.
+     */
+    var warmQuality by mutableFloatStateOf(0f)
+        private set
+    private var warmTravel = 0f
+    private var warmSeconds = 0f
+    private val lastCam = FloatArray(3)
+    private var hasLastCam = false
+    private var lastQualityTimestamp = 0L
+
     // Screen positions below are normalised (0..1, top-left origin): x at 2i, y at 2i+1.
 
     /** Each point's screen position. */
@@ -341,7 +366,8 @@ class MeasureTracker {
      * Starts projecting a saved measurement (SPEC.md §2.11), replacing any current one. Its
      * shape and heights are kept; where it sits and which way it faces are set by two taps.
      */
-    fun startProjection(points: List<DoubleArray>) {
+    fun startProjection(points: List<DoubleArray>, recordingScale: Double) {
+        projScale = recordingScale
         projAnchor?.detach()
         projAnchor = null
         val n = minOf(points.size, MAX_POINTS)
@@ -372,8 +398,10 @@ class MeasureTracker {
         projectionStage = ProjectionStage.Aim
     }
 
+    private var projScale = 1.0
+
     private fun formatProjectionText() {
-        for (i in 1 until projectionCount) projTextLength[i] = DistanceFormat.formatInto(projMetres[i], units, projText[i])
+        for (i in 1 until projectionCount) projTextLength[i] = DistanceFormat.formatInto(projMetres[i] * projScale, units, projText[i])
     }
 
     /**
@@ -413,6 +441,7 @@ class MeasureTracker {
             cameraPosition()
             updateWarmUp()
         }
+        updateWarmQuality(tracking, timestamp)
 
         var hit = if (tracking) centreSurfaceHit(frame) else null
         if (hit != null) {
@@ -479,7 +508,7 @@ class MeasureTracker {
             val o = i * 3
             visible[i] = tracking && anchorTracking && project(world[o], world[o + 1], world[o + 2], screenXY, i * 2)
             if (i > 0) {
-                val d = distance(world, o - 3, world, o)
+                val d = distance(world, o - 3, world, o) * scale
                 total += d
                 segmentMidInFront[i] = tracking && projectMidpoint(world, o - 3, world, o, segmentMidXY, i * 2)
                 val key = DistanceFormat.displayKey(d, units)
@@ -498,7 +527,7 @@ class MeasureTracker {
         val last = anchors.lastIndex
         liveVisible = hit != null && last >= 0 && visible[last]
         if (liveVisible) {
-            val d = distance(world, last * 3, smoothHit, 0)
+            val d = distance(world, last * 3, smoothHit, 0) * scale
             liveMidInFront = projectMidpoint(world, last * 3, smoothHit, 0, liveMidXY, 0)
             val key = DistanceFormat.displayKey(d, units)
             if (key != liveKey) {
@@ -591,6 +620,48 @@ class MeasureTracker {
         camPos[0] = -(m[0] * m[12] + m[1] * m[13] + m[2] * m[14])
         camPos[1] = -(m[4] * m[12] + m[5] * m[13] + m[6] * m[14])
         camPos[2] = -(m[8] * m[12] + m[9] * m[13] + m[10] * m[14])
+    }
+
+    /**
+     * The warm-up ring's fill (SPEC.md §1.5a): 45% from camera travel while tracking (full at
+     * 60 cm, each image's step capped at 5 cm so a jump can't cheat it), 35% from planes found
+     * (full at 2), 20% from steady tracking (full at 4 s). Losing tracking halves the travel
+     * and restarts the steady time.
+     */
+    private fun updateWarmQuality(tracking: Boolean, timestamp: Long) {
+        val dt = if (lastQualityTimestamp == 0L) 0f else ((timestamp - lastQualityTimestamp) / 1e9f).coerceIn(0f, 0.2f)
+        lastQualityTimestamp = timestamp
+        if (!tracking) {
+            if (hasLastCam) warmTravel *= 0.5f
+            hasLastCam = false
+            warmSeconds = 0f
+        } else {
+            if (hasLastCam) {
+                val dx = camPos[0] - lastCam[0]
+                val dy = camPos[1] - lastCam[1]
+                val dz = camPos[2] - lastCam[2]
+                warmTravel += sqrt(dx * dx + dy * dy + dz * dz).coerceAtMost(0.05f)
+            }
+            System.arraycopy(camPos, 0, lastCam, 0, 3)
+            hasLastCam = true
+            warmSeconds += dt
+        }
+        val q = if (!tracking) 0f else
+            0.45f * (warmTravel / 0.6f).coerceAtMost(1f) +
+                0.35f * (planeCount / 2f).coerceAtMost(1f) +
+                0.20f * (warmSeconds / 4f).coerceAtMost(1f)
+        // Rounded to whole percent, so the state only changes when the ring would move.
+        val rounded = (q * 100f).toInt() / 100f
+        if (rounded != warmQuality) warmQuality = rounded
+    }
+
+    /** Straight-line distance between points [a] and [b], uncorrected, from their live anchors. */
+    fun rawDistance(a: Int, b: Int): Double {
+        if (a >= anchors.size || b >= anchors.size) return 0.0
+        for (i in intArrayOf(a, b)) {
+            if (anchors[i].trackingState == TrackingState.TRACKING) anchors[i].pose.getTranslation(world, i * 3)
+        }
+        return distance(world, a * 3, world, b * 3)
     }
 
     /** Moves [smoothHit] toward this image's raw hit (SPEC.md §2.4); see [SMOOTH_ALPHA]. */

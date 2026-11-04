@@ -7,6 +7,7 @@ import android.hardware.SensorManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
+import com.showconfigs.showdist.settings.Calibration
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
@@ -69,8 +70,11 @@ class LevelSensor(private val sensorManager: SensorManager) : SensorEventListene
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        estX += (event.values[0] / GRAVITY - estX) * ALPHA
-        estY += (event.values[1] / GRAVITY - estY) * ALPHA
+        // The calibrated level zero (SPEC.md §1.5a): the sensor's own offset, read lying flat.
+        val x = event.values[0] / GRAVITY - Calibration.levelX
+        val y = event.values[1] / GRAVITY - Calibration.levelY
+        estX += (x - estX) * ALPHA
+        estY += (y - estY) * ALPHA
         estZ += (event.values[2] / GRAVITY - estZ) * ALPHA
         // The accelerometer reads +g along whichever axis points up, so a raised right (or top)
         // edge gives a positive x (or y).
@@ -79,8 +83,8 @@ class LevelSensor(private val sensorManager: SensorManager) : SensorEventListene
         val theta = atan2(estX, estY) * RAD_TO_DEG
         roll = theta - (theta / 90f).roundToInt() * 90f
 
-        slowX += (event.values[0] / GRAVITY - slowX) * READOUT_ALPHA
-        slowY += (event.values[1] / GRAVITY - slowY) * READOUT_ALPHA
+        slowX += (x - slowX) * READOUT_ALPHA
+        slowY += (y - slowY) * READOUT_ALPHA
         slowZ += (event.values[2] / GRAVITY - slowZ) * READOUT_ALPHA
         readoutTiltX = atan2(slowX, slowZ) * RAD_TO_DEG
         readoutTiltY = atan2(slowY, slowZ) * RAD_TO_DEG

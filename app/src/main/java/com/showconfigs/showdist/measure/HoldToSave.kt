@@ -97,7 +97,8 @@ class HoldToSaveState internal constructor(private val animatable: Animatable<Fl
  * Haptics run in the gesture's coroutines, never in the render loop.
  */
 @Composable
-fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): HoldToSaveState {
+fun rememberHoldToSave(tracker: MeasureTracker, enabled: Boolean, onSaved: (Recording) -> Unit): HoldToSaveState {
+    val currentEnabled by rememberUpdatedState(enabled)
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
     val currentOnSaved by rememberUpdatedState(onSaved)
@@ -107,8 +108,8 @@ fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): H
         var pulses: Job? = null
         var completed = false
         val gesture = Modifier.holdToSave(
-            canCharge = { tracker.pointCount >= 2 && tracker.tracking },
-            onRefused = { if (tracker.pointCount >= 2) haptics.notReady() },
+            canCharge = { currentEnabled && tracker.pointCount >= 2 && tracker.tracking },
+            onRefused = { if (currentEnabled && tracker.pointCount >= 2) haptics.notReady() },
             onChargeStart = {
                 completed = false
                 pulses = scope.launch {
@@ -124,7 +125,7 @@ fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): H
                     completed = true
                     pulses?.cancel()
                     haptics.confirm()
-                    val recording = Recording.create(tracker.snapshotPoints(), tracker.units)
+                    val recording = Recording.create(tracker.snapshotPoints(), tracker.units, tracker.scale)
                     tracker.clear()
                     RecordingStore.add(recording)
                     charge.snapTo(0f)

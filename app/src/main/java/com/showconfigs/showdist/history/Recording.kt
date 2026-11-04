@@ -13,6 +13,9 @@ import kotlin.math.sqrt
  * epoch; [createdAt] is an ISO-8601 local timestamp such as `2026-09-23T17:31:05.123456`.
  * [unit] is the unit setting when it was saved (null for recordings saved before v1.1).
  * [storedTotal] is the total from the file, used only when there are no points to measure.
+ * [scale] is the measurement calibration in force when it was saved (SPEC.md §1.5a): the
+ * points stay as ARCore placed them (so "View in AR" lines up), and every length is
+ * multiplied by it. Recordings saved before calibration existed have 1.
  */
 class Recording(
     val id: String,
@@ -20,8 +23,9 @@ class Recording(
     val points: List<DoubleArray>,
     val unit: UnitSystem? = null,
     storedTotal: Double? = null,
+    val scale: Double = 1.0,
 ) {
-    val segments: List<Double> = (1 until points.size).map { i -> distance(points[i - 1], points[i]) }
+    val segments: List<Double> = (1 until points.size).map { i -> distance(points[i - 1], points[i]) * scale }
     val total: Double = if (points.size >= 2 || storedTotal == null) segments.sum() else storedTotal
 
     /** "YYYY-MM-DD HH:MM", shown in shared text and the PDF report. */
@@ -30,11 +34,11 @@ class Recording(
 
     companion object {
         /** A new recording stamped with the current time and the current [unit] setting. */
-        fun create(points: List<DoubleArray>, unit: UnitSystem): Recording {
+        fun create(points: List<DoubleArray>, unit: UnitSystem, scale: Double): Recording {
             val micros = System.currentTimeMillis() * 1000 + (System.nanoTime() / 1000) % 1000
             val base = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date(micros / 1000))
             val createdAt = base + (micros % 1000).toString().padStart(3, '0')
-            return Recording(micros.toString(), createdAt, points, unit)
+            return Recording(micros.toString(), createdAt, points, unit, scale = scale)
         }
     }
 }

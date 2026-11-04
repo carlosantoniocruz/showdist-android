@@ -37,7 +37,14 @@ import com.showconfigs.showdist.ui.Type
 
 /** Settings (SPEC.md §1.5): the unit system, then About and the way to the licenses. */
 @Composable
-fun SettingsScreen(unitSettings: UnitSettings, onLicenses: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    unitSettings: UnitSettings,
+    onCalibrateScale: () -> Unit,
+    onWarmUp: () -> Unit,
+    onLevelZero: () -> Unit,
+    onLicenses: () -> Unit,
+    onBack: () -> Unit,
+) {
     Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Black) { padding ->
         // Scrolls edge to edge; the rows sit in a centred column on wide screens (SPEC.md §6.5).
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
@@ -45,6 +52,19 @@ fun SettingsScreen(unitSettings: UnitSettings, onLicenses: () -> Unit, onBack: (
                 SectionTitle("UNITS")
                 UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
                 UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+                SettingsDivider()
+                SectionTitle("CALIBRATE")
+                SettingsRow(
+                    "Measurement scale",
+                    subtitle = if (Calibration.hasScale) "${correctionText(Calibration.scale)} applied" else "Measure something you know",
+                    onClick = onCalibrateScale,
+                ) { Chevron() }
+                SettingsRow("Tracking warm-up", subtitle = "Move your phone slowly", onClick = onWarmUp) { Chevron() }
+                SettingsRow(
+                    "Level zero",
+                    subtitle = if (Calibration.hasLevelZero) "Zero set" else "Set zero on a surface you trust",
+                    onClick = onLevelZero,
+                ) { Chevron() }
                 SettingsDivider()
                 SectionTitle("FEEDBACK")
                 VibrationOption()

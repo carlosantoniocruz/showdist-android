@@ -1,5 +1,9 @@
 package com.showconfigs.showdist
 
+import com.showconfigs.showdist.measure.MeasureMode
+import com.showconfigs.showdist.settings.Calibration
+import com.showconfigs.showdist.settings.CalibrateLevelScreen
+import com.showconfigs.showdist.settings.CalibrateScaleScreen
 import com.showconfigs.showdist.ui.HapticsSetting
 import android.os.Bundle
 import android.view.WindowManager
@@ -68,11 +72,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Settings, Licenses, LicenseDetail }
+private enum class Screen { Menu, Measure, Leveler, History, Settings, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
 
 /**
- * A back-stack entry; [arg] is the license index for LicenseDetail and the [LevelerMode]
- * ordinal for Leveler, unused otherwise.
+ * A back-stack entry; [arg] is the license index for LicenseDetail, the [LevelerMode]
+ * ordinal for Leveler and the [MeasureMode] ordinal for Measure, unused otherwise.
  */
 private data class Route(val screen: Screen, val arg: Int = 0)
 
@@ -87,6 +91,7 @@ private fun ShowdistApp() {
     val context = LocalContext.current
     val unitSettings = remember { UnitSettings(context) }
     remember { HapticsSetting.load(context) }
+    remember { Calibration.load(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
@@ -129,6 +134,7 @@ private fun ShowdistApp() {
             // A fixed slot, so History pushed from Measure doesn't recreate the AR session.
             if (stack.any { it.screen == Screen.Measure }) {
                 MeasureScreen(
+                    mode = MeasureMode.entries[stack.first { it.screen == Screen.Measure }.arg],
                     units = unitSettings.units,
                     projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
                     projectionSerial = projectionSerial,
@@ -136,6 +142,10 @@ private fun ShowdistApp() {
                     onUnits = unitSettings::select,
                     onHistory = { push(Screen.History) },
                     onBack = ::pop,
+                    onCalibrated = { raw ->
+                        Calibration.target?.let { (_, trueMetres) -> Calibration.calibrateScale(context, raw, trueMetres) }
+                        pop()
+                    },
                 )
             }
             when (top.screen) {
@@ -156,7 +166,20 @@ private fun ShowdistApp() {
                 Screen.Measure -> Unit // Drawn in its slot above.
                 Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
                 Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
-                Screen.Settings -> SettingsScreen(unitSettings, onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
+                Screen.Settings -> SettingsScreen(
+                    unitSettings,
+                    onCalibrateScale = { push(Screen.CalibrateScale) },
+                    onWarmUp = { push(Screen.Measure, MeasureMode.WarmUp.ordinal) },
+                    onLevelZero = { push(Screen.CalibrateLevel) },
+                    onLicenses = { push(Screen.Licenses) },
+                    onBack = ::pop,
+                )
+                Screen.CalibrateScale -> CalibrateScaleScreen(
+                    unitSettings.units,
+                    onMeasure = { push(Screen.Measure, MeasureMode.CalibrateScale.ordinal) },
+                    onBack = ::pop,
+                )
+                Screen.CalibrateLevel -> CalibrateLevelScreen(onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
             }

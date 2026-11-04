@@ -1,5 +1,7 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.settings.Calibration
+import kotlinx.coroutines.delay
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -91,6 +93,12 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
 import io.github.sceneview.ar.ARSceneView
 
+/**
+ * What Measure is opened for (SPEC.md §1.5a): measuring, calibrating the scale against a
+ * known object (two points, then [MeasureScreen]'s onCalibrated), or warming up tracking.
+ */
+enum class MeasureMode { Normal, CalibrateScale, WarmUp }
+
 /** Outcome of the start routine (SPEC.md §2.1). */
 private sealed interface StartState {
     data object Waking : StartState
@@ -116,6 +124,7 @@ private enum class ProblemAction(val label: String) {
  */
 @Composable
 fun MeasureScreen(
+    mode: MeasureMode,
     units: UnitSystem,
     projection: Recording?,
     projectionSerial: Int,
@@ -123,6 +132,7 @@ fun MeasureScreen(
     onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
     onBack: () -> Unit,
+    onCalibrated: (rawMetres: Double) -> Unit = {},
 ) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
@@ -174,7 +184,7 @@ fun MeasureScreen(
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(mode, units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onCalibrated, onSessionFailed = { state = problemFor(it) })
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -193,6 +203,7 @@ fun MeasureScreen(
  */
 @Composable
 private fun MeasureArea(
+    mode: MeasureMode,
     units: UnitSystem,
     projection: Recording?,
     projectionSerial: Int,
@@ -200,20 +211,45 @@ private fun MeasureArea(
     onUnits: (UnitSystem) -> Unit,
     onHistory: () -> Unit,
     onBack: () -> Unit,
+    onCalibrated: (rawMetres: Double) -> Unit,
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
+    val calibrating = mode == MeasureMode.CalibrateScale
+    // Raw readings while calibrating, so they can be compared with the true length.
+    SideEffect { tracker.scale = if (calibrating) 1.0 else Calibration.scale }
+    if (calibrating) {
+        LaunchedEffect(tracker.pointCount) {
+            if (tracker.pointCount == 2) {
+                delay(400) // let the line show, and the anchors settle
+                onCalibrated(tracker.rawDistance(0, 1))
+            }
+        }
+    }
+    // The warm-up (SPEC.md §1.5a): opened from Settings, or from the prompt when tracking is poor.
+    var warmUpOpen by remember { mutableStateOf(mode == MeasureMode.WarmUp) }
+    var warmUpOffered by remember { mutableStateOf(false) }
+    val poor = tracker.status == TrackingStatus.Lost || tracker.status == TrackingStatus.NeedDetail ||
+        (tracker.status == TrackingStatus.MoveSlowly && tracker.pointCount > 0)
+    LaunchedEffect(poor, warmUpOpen) {
+        if (poor && !warmUpOpen) {
+            delay(WARM_UP_PROMPT_MS)
+            warmUpOffered = true
+        } else if (!poor) {
+            warmUpOffered = false
+        }
+    }
     val snapRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
     SideEffect { tracker.snapRadiusPx = snapRadiusPx }
     // Labels and the total reformat on the next camera frame after a change.
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
     // Each "View in AR" bumps the serial, so picking the same recording again restarts it.
-    LaunchedEffect(projectionSerial) { projection?.let { tracker.startProjection(it.points) } }
+    LaunchedEffect(projectionSerial) { projection?.let { tracker.startProjection(it.points, it.scale) } }
     val sessionLifecycle = rememberCappedLifecycle(capped = covered)
     val barRotation = rememberBarRotation(sessionLifecycle)
     var saved by remember { mutableStateOf<Recording?>(null) }
-    val holdToSave = rememberHoldToSave(tracker) { saved = it }
+    val holdToSave = rememberHoldToSave(tracker, enabled = !calibrating && !warmUpOpen) { saved = it }
 
     // −1, 0 or +1 as the bar controls are turned; recomposes only when it crosses 45°.
     val sideways by remember {
@@ -269,7 +305,7 @@ private fun MeasureArea(
                     .onPlaced { infoBottomPx = it.boundsInParent().bottom.toInt() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                HintLine(tracker.hint)
+                HintLine(tracker.hint, instruction = if (calibrating) "Place a point at each end of ${Calibration.target?.first?.what ?: "the object"}" else null)
                 if (tracker.pointCount >= 2 && sideways == 0) {
                     Spacer(Modifier.height(6.dp))
                     RunningTotal(tracker.totalMetres, units)
@@ -293,6 +329,22 @@ private fun MeasureArea(
             if (saving) {
                 SavingPill(
                     Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
+                )
+            }
+            if (warmUpOffered && !warmUpOpen) {
+                WarmUpPrompt(
+                    onClick = { warmUpOpen = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 64.dp)
+                        .turnWith { barRotation.value },
+                )
+            }
+            if (warmUpOpen) {
+                WarmUpOverlay(
+                    quality = { tracker.warmQuality },
+                    onDone = { if (mode == MeasureMode.WarmUp) onBack() else warmUpOpen = false },
+                    modifier = Modifier.align(Alignment.Center),
                 )
             }
             TrackingPill(
@@ -354,13 +406,13 @@ private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Mod
 /**
  * The hint line (SPEC.md §2.3): 15 sp white on a scrim pill, cross-fading on change. Tracking
  * hints are left to the status pill; for those it keeps its height, empty, so the running
- * total below it doesn't jump.
+ * total below it doesn't jump. An [instruction] (calibration) replaces the other hints.
  */
 @Composable
-private fun HintLine(hint: Hint) {
+private fun HintLine(hint: Hint, instruction: String? = null) {
     Crossfade(hint, animationSpec = tween(250), label = "hint") { h ->
         Text(
-            if (h.tracking) " " else h.text,
+            if (h.tracking) " " else instruction ?: h.text,
             modifier = Modifier
                 .then(if (h.tracking) Modifier else Modifier.background(Palette.Scrim, RoundedCornerShape(50)))
                 .padding(horizontal = 14.dp, vertical = 6.dp),

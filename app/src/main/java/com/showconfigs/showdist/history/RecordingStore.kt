@@ -77,7 +77,8 @@ object RecordingStore {
                         .put("createdAt", r.createdAt)
                         .put("points", JSONArray().apply { r.points.forEach { p -> put(JSONArray(p.toList())) } })
                         .put("total", r.total)
-                        .apply { r.unit?.let { put("unit", it.name) } },
+                        .apply { r.unit?.let { put("unit", it.name) } }
+                        .apply { if (r.scale != 1.0) put("scale", r.scale) },
                 )
             }
         }.toString()
@@ -111,6 +112,8 @@ object RecordingStore {
                     },
                     unit = o.optString("unit").let { u -> UnitSystem.entries.firstOrNull { it.name == u } },
                     storedTotal = if (o.has("total")) o.getDouble("total") else null,
+                    // Optional since v1.4 (calibration); absent means uncorrected.
+                    scale = o.optDouble("scale", 1.0),
                 )
             }
         } catch (e: Exception) {
