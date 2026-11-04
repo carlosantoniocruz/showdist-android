@@ -107,6 +107,8 @@ A list with 8 dp vertical padding:
 
 Tapping an option sets the unit system immediately and persists it (§2.7).
 
+**FEEDBACK** (v1.4), after a divider: a "Vibration" row (subtitle "Taps and pulses as you measure and level") with a Material switch (sandstone track when on). On by default, persisted as `showdist.haptics`. Off silences every haptic in the app (§11).
+
 Below the units comes About (§1.6), then 24 dp of space.
 
 
@@ -372,15 +374,16 @@ It is divided into **five equal-width columns**, each control centred in its own
 
 **Hold-to-save (the "reset" after a measurement):**
 - A long press **anywhere on screen** starts a charge. The standard long-press recognition delay is about 500 ms, then charging begins.
-- The charge starts only with ≥2 points and plays a selection-click haptic.
+- The charge starts only with ≥2 points **and the camera TRACKING** (v1.4). With ≥2 points but tracking lost, it doesn't charge and plays a soft double tick ("not ready"); with fewer points, nothing happens.
+- **Haptics while charging (v1.4):** pulses that quicken from every 160 ms to every 60 ms and strengthen from 0.15 to 0.7 as the charge fills, run from their own coroutine (never the render loop).
 - It animates linearly from 0 to 1 over **800 ms**, filling the main button's ring.
 - While the charge is above 0:
   - An **edge band** traces the screen's border: a 6 dp stroke with round caps in **sandstone** (§5), over a dark halo 3 dp wider each side, running clockwise from top centre to `charge` of the way round, on a full-perimeter track of white at alpha 0.2. It follows the display's rounded corners (the top-left `RoundedCorner` radius on API 31+, square before).
   - A **SAVING pill** is centred horizontally, and vertically halfway between the bottom of the top info column (§2.2, so it moves down when the running total shows) and 28 dp above the camera area's centre (clear of the reticle): "SAVING" (18 sp, bold, letter-spacing 3, white) on a fully rounded scrim pill (§5), padding 20 × 8 dp, with a 1.5 dp white border. It turns with the bar controls (§2.9).
   - Both disappear when the charge returns to 0 or the save completes.
-- If the finger lifts or the gesture is cancelled before completion, the charge animates back to 0 over 200 ms. Nothing is saved.
+- If the finger lifts or the gesture is cancelled before completion, the pulses stop at once (anything playing is cancelled, then one very light tick), and the charge animates back to 0 over 200 ms. Nothing is saved.
 - On completion:
-  1. Play a medium haptic impact.
+  1. Play a crisp confirming tap, stronger than the build-up.
   2. Snapshot the current points' world positions into a **Recording** (§2.7).
   3. **Clear all anchors**. The session keeps running, so this is a fresh start for the next measurement without restarting AR.
   4. Add the recording to the front of the store and persist it.
@@ -853,13 +856,15 @@ settings (outlined), info (outlined), error_outline, history, chevron_right, arr
 | Event | Haptic |
 |---|---|
 | Place point tap | selection click |
-| Hold-to-save charge begins | selection click |
-| Save completes | medium impact |
+| Hold-to-save charging | pulses every 160 → 60 ms, strength 0.15 → 0.7 |
+| Hold-to-save released early | pulses stop; one very light tick |
+| Hold-to-save refused (≥2 points, tracking lost) | soft double tick |
+| Save completes | confirming click |
 | Leveler Zero / Reset | selection click |
 | Collapse hold (menu) | pulses every 250 → 40 ms, strength rising with progress |
 | Collapse collision | confirming click |
 
-**Strength-varying haptics** (`ui/Haptics.kt`, v1.4) pick the richest the motor supports: composition primitives (tick scaled 0.25–1, click 1) on API 30+ where supported; else 12 ms one-shots at amplitude 40–240 (confirm 30 ms at 255) where amplitude control exists (API 26+); else the view's haptic constants (clock tick below half strength, keyboard tap above; confirm, or long-press before API 30). They use touch usage attributes, play nothing while the system's touch feedback is off, and are fired from gesture and animation coroutines, never from a render loop. Requires the VIBRATE permission (install-time).
+**Strength-varying haptics** (`ui/Haptics.kt`, v1.4) pick the richest the motor supports: composition primitives (tick scaled 0.25–1, click 1) on API 30+ where supported; else 12 ms one-shots at amplitude 40–240 (confirm 30 ms at 255) where amplitude control exists (API 26+); else the view's haptic constants (clock tick below half strength, keyboard tap above; confirm, or long-press before API 30). Every haptic in the app goes through it (selection clicks use the view's clock tick). They use touch usage attributes, play nothing while the app's **Vibration** setting (§1.5) or the system's touch feedback is off, and are fired from gesture and animation coroutines, never from a render loop. Requires the VIBRATE permission (install-time).
 
 ## 12. Timing constants summary
 

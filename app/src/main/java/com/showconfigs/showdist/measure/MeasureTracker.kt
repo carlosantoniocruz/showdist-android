@@ -155,6 +155,10 @@ class MeasureTracker {
         private set
     private var everTracked = false
 
+    /** Whether the camera is TRACKING; gates saving (SPEC.md §2.6). Changes rarely. */
+    var tracking by mutableStateOf(false)
+        private set
+
     /** Only changes when the hint's text would, so it recomposes rarely. */
     var hint by mutableStateOf(Hint.Starting)
         private set
@@ -518,6 +522,7 @@ class MeasureTracker {
         val reason = camera.trackingFailureReason
         hint = hintFor(state, reason, hit != null, anchors.size)
         if (tracking) everTracked = true
+        this.tracking = tracking
         status = statusFor(state, reason, hit != null, needsWarmUp)
     }
 

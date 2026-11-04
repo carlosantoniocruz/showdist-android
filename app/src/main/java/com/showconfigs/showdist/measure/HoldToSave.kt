@@ -1,6 +1,5 @@
 package com.showconfigs.showdist.measure
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -17,10 +16,11 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalView
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
+import com.showconfigs.showdist.ui.rememberHaptics
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  */
 fun Modifier.holdToSave(
     canCharge: () -> Boolean,
+    onRefused: () -> Unit,
     onChargeStart: () -> Unit,
     onRelease: () -> Unit,
 ): Modifier = pointerInput(Unit) {
@@ -42,7 +43,11 @@ fun Modifier.holdToSave(
         val endedEarly = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
             awaitLiftOrMove(down.id, viewConfiguration.touchSlop)
         }
-        if (endedEarly != null || !canCharge()) return@awaitEachGesture
+        if (endedEarly != null) return@awaitEachGesture
+        if (!canCharge()) {
+            onRefused()
+            return@awaitEachGesture
+        }
 
         onChargeStart()
         try {
@@ -72,6 +77,10 @@ private suspend fun AwaitPointerEventScope.awaitLiftOrMove(id: PointerId, slop: 
 private const val CHARGE_MS = 800
 private const val REWIND_MS = 200
 
+/** Build-up pulses while charging: every 160 ms at first, every 60 ms near the end. */
+private const val PULSE_FIRST_MS = 160f
+private const val PULSE_LAST_MS = 60f
+
 /** The hold-to-save gesture for the whole Measure screen, and its charge (0..1). */
 class HoldToSaveState internal constructor(private val animatable: Animatable<Float, *>, val modifier: Modifier) {
     /** Read only while drawing, so the charging arc redraws without recomposing. */
@@ -79,31 +88,42 @@ class HoldToSaveState internal constructor(private val animatable: Animatable<Fl
 }
 
 /**
- * Hold-to-save (SPEC.md §2.6): with at least 2 points, a long-press charges linearly over
- * 800 ms; lifting early rewinds over 200 ms and saves nothing. On completion: a medium
- * haptic, the points are saved as a Recording, the anchors cleared (the session keeps
- * running), and [onSaved] shows the "SAVED" sheet.
+ * Hold-to-save (SPEC.md §2.6): with at least 2 points and tracking, a long-press charges
+ * linearly over 800 ms, with haptic pulses that quicken and strengthen as it fills; lifting
+ * early stops them at once (one very light tick), rewinds over 200 ms and saves nothing.
+ * Holding with points while tracking is lost doesn't charge: a soft double tick says "not
+ * ready". On completion: a crisp confirming tap, the points are saved as a Recording, the
+ * anchors cleared (the session keeps running), and [onSaved] shows the "SAVED" sheet.
+ * Haptics run in the gesture's coroutines, never in the render loop.
  */
 @Composable
 fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): HoldToSaveState {
-    val view = LocalView.current
+    val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
     val currentOnSaved by rememberUpdatedState(onSaved)
     return remember(tracker) {
         val charge = Animatable(0f)
         var job: Job? = null
+        var pulses: Job? = null
         var completed = false
         val gesture = Modifier.holdToSave(
-            canCharge = { tracker.pointCount >= 2 },
+            canCharge = { tracker.pointCount >= 2 && tracker.tracking },
+            onRefused = { if (tracker.pointCount >= 2) haptics.notReady() },
             onChargeStart = {
-                // Flutter's selectionClick and mediumImpact map to these constants.
-                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 completed = false
+                pulses = scope.launch {
+                    while (true) {
+                        val c = charge.value
+                        haptics.pulse(0.15f + 0.55f * c)
+                        delay((PULSE_FIRST_MS - (PULSE_FIRST_MS - PULSE_LAST_MS) * c).toLong())
+                    }
+                }
                 job = scope.launch {
                     val remaining = ((1f - charge.value) * CHARGE_MS).toInt()
                     charge.animateTo(1f, tween(remaining, easing = LinearEasing))
                     completed = true
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    pulses?.cancel()
+                    haptics.confirm()
                     val recording = Recording.create(tracker.snapshotPoints(), tracker.units)
                     tracker.clear()
                     RecordingStore.add(recording)
@@ -112,7 +132,10 @@ fun rememberHoldToSave(tracker: MeasureTracker, onSaved: (Recording) -> Unit): H
                 }
             },
             onRelease = {
+                pulses?.cancel()
                 if (!completed) {
+                    haptics.cancel()
+                    haptics.pulse(0f)
                     job?.cancel()
                     scope.launch { charge.animateTo(0f, tween(REWIND_MS, easing = LinearEasing)) }
                 }

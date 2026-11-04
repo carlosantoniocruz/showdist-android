@@ -1,5 +1,9 @@
 package com.showconfigs.showdist.settings
 
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.platform.LocalContext
+import com.showconfigs.showdist.ui.HapticsSetting
 import com.showconfigs.showdist.ui.readingColumn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -41,9 +45,37 @@ fun SettingsScreen(unitSettings: UnitSettings, onLicenses: () -> Unit, onBack: (
                 SectionTitle("UNITS")
                 UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
                 UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+                SettingsDivider()
+                SectionTitle("FEEDBACK")
+                VibrationOption()
                 AboutSections(onLicenses)
             }
         }
+    }
+}
+
+/** The app-wide Vibration switch (SPEC.md §1.5); the system's touch feedback still applies. */
+@Composable
+private fun VibrationOption() {
+    val context = LocalContext.current
+    val on = HapticsSetting.enabled
+    SettingsRow(
+        "Vibration",
+        subtitle = "Taps and pulses as you measure and level",
+        role = Role.Switch,
+        onClick = { HapticsSetting.set(context, !on) },
+    ) {
+        Switch(
+            checked = on,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Palette.Black,
+                checkedTrackColor = Palette.Sandstone,
+                uncheckedThumbColor = Palette.TextMuted,
+                uncheckedTrackColor = Palette.SurfaceHigh,
+                uncheckedBorderColor = Palette.TextMuted,
+            ),
+        )
     }
 }
 

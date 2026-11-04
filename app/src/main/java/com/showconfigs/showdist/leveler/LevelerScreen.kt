@@ -1,9 +1,9 @@
 package com.showconfigs.showdist.leveler
 
+import com.showconfigs.showdist.ui.rememberHaptics
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.hardware.SensorManager
-import android.view.HapticFeedbackConstants
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,7 +48,7 @@ enum class LevelerMode { Tube, Bullseye }
 @Composable
 fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
     val context = LocalContext.current
-    val view = LocalView.current
+    val haptics = rememberHaptics()
     val sensor = remember {
         LevelSensor(context.getSystemService(Context.SENSOR_SERVICE) as SensorManager)
     }
@@ -74,13 +73,13 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                     offset = sensor.readoutRoll
                     offsetX = sensor.readoutTiltX
                     offsetY = sensor.readoutTiltY
-                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    haptics.tick()
                 }
                 AppBarAction(ShowdistIcons.RestartAlt, "Reset to true level", enabled = zeroed) {
                     offset = 0f
                     offsetX = 0f
                     offsetY = 0f
-                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    haptics.tick()
                 }
             }
         },
@@ -162,9 +161,9 @@ private val BULLSEYE_READOUT = 72.sp
 /** One haptic tick each time the reading settles into level (SPEC.md §4.1). */
 @Composable
 private fun TickOnLevel(level: Boolean) {
-    val view = LocalView.current
+    val haptics = rememberHaptics()
     LaunchedEffect(level) {
-        if (level) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        if (level) haptics.tick()
     }
 }
 

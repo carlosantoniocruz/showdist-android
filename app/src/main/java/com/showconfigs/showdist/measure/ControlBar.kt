@@ -1,6 +1,6 @@
 package com.showconfigs.showdist.measure
 
-import android.view.HapticFeedbackConstants
+import com.showconfigs.showdist.ui.rememberHaptics
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,7 +32,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -170,7 +169,7 @@ private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
  */
 @Composable
 private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Unit) {
-    val view = LocalView.current
+    val haptics = rememberHaptics()
     val accent = if (enabled) Palette.Sandstone else Palette.Sandstone.copy(alpha = 0.4f)
     Canvas(
         Modifier
@@ -182,8 +181,7 @@ private fun MainButton(enabled: Boolean, charge: () -> Float, onPlace: () -> Uni
                 indication = null,
                 role = Role.Button,
             ) {
-                // Flutter's selectionClick maps to CLOCK_TICK on Android.
-                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                haptics.tick()
                 onPlace()
             }
             .semantics { contentDescription = "Place point. Hold anywhere on screen to save measurement" },

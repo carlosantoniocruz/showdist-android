@@ -1,5 +1,6 @@
 package com.showconfigs.showdist
 
+import com.showconfigs.showdist.ui.HapticsSetting
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -85,6 +86,7 @@ private data class Route(val screen: Screen, val arg: Int = 0)
 private fun ShowdistApp() {
     val context = LocalContext.current
     val unitSettings = remember { UnitSettings(context) }
+    remember { HapticsSetting.load(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
