@@ -63,7 +63,8 @@ Every screen is a full-screen page pushed on a back stack. The system Back butto
 
 Plain black, no background graphics. Content sits inside the system safe area in a column: a slim top row, the orbital selector filling the space, and the quick guide beneath it. The main menu never touches the camera or the AR session.
 
-**Top row** (4 dp padding), icon buttons in sandstone with tooltips on the right: **History** (`history_rounded`, only once ≥1 recording is saved, with a sandstone badge showing the count in black; content description "History, N saved") then **Settings** (`settings_outlined`). History is not a moon: it's saved data, not a tool. Export PDF is not on the menu; History exports any selection.
+**Bottom buttons** (v1.4, one-handed; `menu/MenuButtons.kt`): no top row; 16 dp of space at the top. Under the quick guide (whose bottom padding is 12 dp, so it sits just above them), a horizontally centred row, 40 dp apart, of two **bare icons** with no container: **History** (`history_rounded`, only once ≥1 recording is saved; content description "History, N saved") and **Settings** (`settings_outlined`). With History hidden, Settings centres alone. Each is a 30 dp sandstone icon in a 56 dp round touch target (a ripple shows when pressed). Below the row: 4 dp (lowered at the user's request from the brief's 16–24 dp), on top of the bottom mandatory-gesture inset (after the safe-drawing padding), so the icons sit low but stay clear of the gesture area; with the 56 dp touch target, the icon's centre is about 65 dp from the bottom edge on a Pixel 10a. There's no count badge. On wide screens the row is centred like the guide (§6.5). History is not a moon: it's saved data, not a tool. Export PDF is not on the menu; History exports any selection.
+- **History pulse:** while recordings exist, History glows on a loop: one animated value goes 0 → 1 → 0 over **3.6 s** (ease in-out, reversing). It drives two layers' alpha only: a soft-white (#FFF8EE) copy of the icon over the sandstone one, and a pre-rendered halo of the icon's own shape (the icon drawn white and blurred 6 dp, once per size, into a bitmap, at 70% × value) behind it. Both layers modulate alpha (no offscreen buffer), so nothing redraws. The pulse pauses while the fun facts cover the menu and stops whenever the menu isn't on screen; with reduced motion it holds a steady soft-white tint (value 0.6).
 
 **Orbital selector** (`menu/Orbit.kt`), sized from the space it's given (w × h):
 - **Sun**, a dying star, flat and minimal (no glow, gradient or particles): a sandstone disc of radius `sunR = min(0.27w, 0.30h, 124 dp)`, with one shed-shell ring at 1.22 × sunR (1.5 dp, sandstone at alpha 0.45). "SHOWDIST" sits across it in black, weight 700, letter-spacing 0.12 em, sized to span 1.5 × sunR and raised 0.12 × sunR above centre. It ignores the system font scale (it's the app's mark). TalkBack reads it as a heading, "Showdist".
@@ -86,17 +87,27 @@ Plain black, no background graphics. Content sits inside the system safe area in
   - **The facts** live in `res/raw/fun_facts.txt`: one block per fact, blank-line separated, the fact's text then an optional `source: NAME` line; `#` lines are comments. Surprising or hard-to-believe facts carry a short source (BIPM, NIST, NASA, Britannica, IAU, CIA World Factbook, …); common knowledge needs none; legends are phrased "According to legend". Every fact was checked against a reliable source before being added (v1.4 review: the Great Pyramid "level to 2 cm" claim was dropped, as sources disagree; the granite cubit-rod claim was reduced to the cubit's definition and surviving rods' ~52 cm; the three non-metric countries are attributed to the CIA World Factbook; the Giza water-trench levelling is attributed to Lehner and Edwards as a suggestion).
 - The focused moon is held by the app, not the menu, so the tool last used is still in front on return; it also survives rotation and process death.
 
-**Quick guide**, beneath the orbit in a reserved 236 dp (min) area so the orbit never jumps. Once the orbit settles it slides up a third of its height with a spring (damping 0.9, stiffness 300) and fades in over 220 ms; while the orbit turns it fades out (120 ms). It's a polite live region, so TalkBack reads it out. Padding L28 T8 R28 B24, scrolling if the text outgrows it, centred:
-- The tool's name in the Title style in sandstone, letter-spacing 2.
-- 6 dp gap, what it's for (Body, centred).
-- 14 dp gap, one row per step: a sandstone "›" in a 20 dp column, then the step (Secondary).
-- 14 dp gap, "TAP THE MOON AGAIN TO OPEN" (Caption at 12 sp).
+**Orbit and guide placed for the thumb** (v1.4): the orbit gets only the height its span needs (2.42 sun radii + 32 dp, sun radius min(27% of width, 124 dp), shrinking on short screens, at least 160 dp), and the guide exactly the height of the tallest tool's guide (all three are laid out invisibly to size it, so nothing is reserved beyond the text and nothing moves as tools change). The height left over is shared by weight: **70% above the orbit** (so the whole group sits low, within thumb reach), then 10% each between the orbit and the guide, the guide and the closing line, and the closing line and the bottom buttons. Each tool's title sits at the same height. **Swiping anywhere on the guide** turns the orbit exactly as swiping on the orbit does (same step and fling); taps and holds there do nothing, and only holding the sun starts the collapse.
 
-| Tool | Purpose | Steps |
-|---|---|---|
-| AR MEASURE | Distances with the camera. | Move slowly until the reticle's dots turn solid. / Tap the round button to drop each point. / Hold anywhere to save; saved ones go to History. |
-| TUBE LEVEL | Level or plumb on walls, posts and beams. | Hold an edge of the phone to the surface. / Upright or sideways; the bubble turns green within 0.3°. / On an uneven base, the target icon zeroes it. |
-| BULLSEYE LEVEL | Level on a flat surface, both ways at once. | Lay the phone flat on the surface. / Centre the bubble in the ring. / X is side to side, Y front to back. |
+**Quick guide**, beneath the orbit, in a slot as tall as the tallest guide so the orbit never jumps. Once the orbit settles it slides up a third of its height with a spring (damping 0.9, stiffness 300) and fades in over 220 ms; while the orbit turns it fades out (120 ms). It's a polite live region, so TalkBack reads it out. One block of even width (at most 388 dp including 24 dp padding each side), centred on the sun's axis so its margins match on both sides, everything centred (v1.4):
+- The tool's name: Title style scaled by 0.86 (18 sp), sandstone, letter-spacing 2.
+- 8 dp gap, one concise paragraph: Body scaled by 0.86 (about 14 sp), white, line height 1.45. Each is worded to wrap to full lines with no word left alone on the last.
+
+| Tool | Paragraph |
+|---|---|
+| AR MEASURE | Measure distances with the camera. Move slowly until the reticle turns solid, tap to drop points, hold to save. |
+| TUBE LEVEL | Level or plumb walls and beams. Hold an edge of the phone to the surface until the bubble turns green. |
+| BULLSEYE LEVEL | Level a flat surface both ways. Lay the phone on it and centre the bubble; X is side to side, Y front to back. |
+
+**"TAP THE MOON AGAIN TO OPEN"** stands on its own between the guide and the bottom buttons: Caption at 12 sp, centred, in grey (`Palette.Hint` #8A8A8A, 5.8:1 on black). Its gap above (10% of the spare height + 12 dp) and below (10%) match the gap between the orbit and the guide (10%), so the three gaps look equal (measured on a Pixel 10a: 142, 139 and 153 px, the last including the icons' clear touch padding). Swiping on it turns the orbit too.
+
+### 1.4a Menu backdrop (v1.4, `menu/Sky.kt`)
+
+Decorative only (no semantics), and only in the empty band **above the sun** (the space the 70% top share leaves, §1.4), clipped to it, so nothing ever crosses the sun, the guide or the buttons. Shapes fade out within 40 dp of the band's top and bottom edges rather than being cut off.
+- **Modern measuring tools**, as large, barely visible line art (#141414, 2 dp strokes, 110 dp boxes): a tape measure, a laser distance meter, a box level, a digital caliper, a speed square, a cross-line laser level on a tripod, a measuring wheel, a total station, a steel rule and a digital angle finder. Three float at a time, spread across the width to start, drifting mostly sideways at about 2–5 dp/s (vertical speed 35% of that) and turning at 0.6–1.8°/s, wrapping from side to side (seeded, so the arrangement is the same each launch).
+- **Meteors**, very dark brown (#2E2016 at the head, the tail fading to nothing over 80 dp, 1.5 dp wide), each starting somewhere in the band on a **random heading** and gliding 45% of the width over 8–12 s, fading in over the first 15% and out over the last 30%. One starts every 4–9 s, at most two at once.
+- Every shape is drawn once into a bitmap per density; motion only moves, turns and fades layers, about 30 times a second, so nothing redraws.
+- Still (no drift, no meteors) with reduced motion and while the fun facts cover the menu; stopped whenever the menu isn't on screen.
 
 ### 1.5 Settings
 
@@ -709,7 +720,7 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | **text** | `#FFFFFF` | Primary text, titles, bar icons, the Leveler readout, centre marks (alpha 0.7) and bubble. |
 | **textMuted** | `#B8B8B8` | Secondary text: descriptions, captions, subtitles, guide steps, empty states, dialog bodies, cancel buttons; chevrons, unselected radios and moon rings. |
 | **white** | `#FFFFFF` | Over the camera: the reticle centre dot, live line, label text, hint, running total, charge arc. Leveler ticks (alpha variants). |
-| **sandstone** | `#C8A97E` | The only accent (the Material primary, secondary, tertiary and error): the sun and its shell, the focused moon's ring and every moon picture, top-row icons and the History badge, the guide's tool name and bullets, the main button, "View in AR", selection in History, "Delete", radios, "level" on the Leveler (marks, ring, readout, axis letters; not the bubble), headings in About and License detail, the Licenses spinner, the Problem view, the app-icon rule. |
+| **sandstone** | `#C8A97E` | The only accent (the Material primary, secondary, tertiary and error): the sun and its shell, the focused moon's ring and every moon picture, the menu's History and Settings buttons, the guide's tool name and bullets, the main button, "View in AR", selection in History, "Delete", radios, "level" on the Leveler (marks, ring, readout, axis letters; not the bubble), headings in About and License detail, the Licenses spinner, the Problem view, the app-icon rule. |
 | **divider** | sandstone at 35% (`#59C8A97E`) | Dividers in Settings (including About), Licenses and History. |
 | **line** | white at 30% (`#4DFFFFFF`) | Outlines that should read but stay quiet: the Leveler vial, dish, rings, crosshairs and scale lines, the orbit, the control bar's top rule, outlined-button borders. |
 | **level green** | `#3DDC84` | The Leveler bubble when level, and nothing else (11.8:1 on black). |
@@ -748,7 +759,7 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 
 ### 6.2 SHOWDIST wordmark
 
-- The text "SHOWDIST": one word, all caps, JetBrains Mono, weight 700, in black on the menu's sun (§1.4), sized to the sun. In About it's the Title style in sandstone.
+- The text "SHOWDIST": one word, all caps, JetBrains Mono, weight 700, in black on the menu's sun (§1.4), sized to the sun (eight glyphs spanning 1.5 radii), centred horizontally and raised very slightly, 0.04 radii above the sun's centre (v1.4). On the sun it's drawn extra bold: the filled text with a same-coloured outline over it, 5.5% of the font size wide with round joins, since the heaviest bundled face is Bold. The light-wash copy (§1.4 collapse) is drawn the same way in white. In About it's the Title style in sandstone.
 - The app icon has no lettering.
 
 ### 6.3 Text styles (`Type` in `ui/Theme.kt`)

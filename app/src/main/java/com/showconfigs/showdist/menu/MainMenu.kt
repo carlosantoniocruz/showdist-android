@@ -1,6 +1,18 @@
 package com.showconfigs.showdist.menu
 
-import com.showconfigs.showdist.ui.readingColumn
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.mandatorySystemGestures
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -13,7 +25,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,10 +33,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,48 +47,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.showconfigs.showdist.ui.AppBarAction
 import com.showconfigs.showdist.ui.Palette
-import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
 import com.showconfigs.showdist.ui.rememberHaptics
 import com.showconfigs.showdist.ui.rememberReduceMotion
 
 /** The tools, one moon each, with their quick guides (SPEC.md §1.4). */
-enum class Tool(val title: String, val spoken: String, val purpose: String, val steps: List<String>) {
+enum class Tool(val title: String, val spoken: String, val about: String) {
     Measure(
         "AR MEASURE",
         "AR Measure",
-        "Distances with the camera.",
-        listOf(
-            "Move slowly until the reticle's dots turn solid.",
-            "Tap the round button to drop each point.",
-            "Hold anywhere to save; saved ones go to History.",
-        ),
+        "Measure distances with the camera. Move slowly until the reticle turns solid, tap to drop points, hold to save.",
     ),
     Tube(
         "TUBE LEVEL",
         "Tube Level",
-        "Level or plumb on walls, posts and beams.",
-        listOf(
-            "Hold an edge of the phone to the surface.",
-            "Upright or sideways; the bubble turns green within 0.3°.",
-            "On an uneven base, the target icon zeroes it.",
-        ),
+        "Level or plumb walls and beams. Hold an edge of the phone to the surface until the bubble turns green.",
     ),
     Bullseye(
         "BULLSEYE LEVEL",
         "Bullseye Level",
-        "Level on a flat surface, both ways at once.",
-        listOf(
-            "Lay the phone flat on the surface.",
-            "Centre the bubble in the ring.",
-            "X is side to side, Y front to back.",
-        ),
+        "Level a flat surface both ways. Lay the phone on it and centre the bubble; X is side to side, Y front to back.",
     ),
 }
 
@@ -108,27 +98,63 @@ fun MainMenu(
     val egg = remember { CollapseEgg(scope, haptics, reduceMotion, onCollide = { factsShowing = true }) }
     LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
 
-    Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize().background(Palette.Black).safeDrawingPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            if (savedCount > 0) {
-                BadgedBox(
-                    badge = {
-                        Badge(containerColor = Palette.Sandstone, contentColor = Palette.Black) { Text("$savedCount") }
-                    },
-                ) {
-                    AppBarAction(ShowdistIcons.History, "History, $savedCount saved", tint = Palette.Sandstone, onClick = onHistory)
-                }
-                Spacer(Modifier.width(8.dp))
+    Box(Modifier.fillMaxSize().background(Palette.Black)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        // Thumb reach (SPEC.md §1.4): the orbit takes only the height its span needs
+        // (shrinking on short screens), and the space left over is shared out so the whole
+        // group sits low: half above the orbit, and equal gaps above and below the guide,
+        // whose text is centred in its fixed slot, so it's evenly spaced between the moons
+        // and the buttons whichever tool is in front.
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val orbitHeight = minOf(sunRadiusFor(maxWidth) * ORBIT_SPAN + ORBIT_MARGIN, maxHeight - GuideEstimate)
+                .coerceAtLeast(MIN_ORBIT_HEIGHT)
+            val areaWidth = maxWidth
+            Column(Modifier.fillMaxSize()) {
+                // The backdrop (SPEC.md §1.4a) lives only in this band above the sun; still
+                // while covered or with reduced motion.
+                MenuSky(animate = !reduceMotion && !factsShowing, modifier = Modifier.weight(TOP_SHARE).fillMaxWidth())
+                Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.fillMaxWidth().height(orbitHeight))
+                Spacer(Modifier.weight(GAP_SHARE))
+                // Swiping anywhere on the guide turns the orbit too, at the same rate.
+                val stepPx = with(LocalDensity.current) { orbitRadiusX(areaWidth, sunRadiusFor(areaWidth, orbitHeight)).toPx() }
+                QuickGuide(
+                    tool = if (orbit.settled) Tool.entries[orbit.focused] else null,
+                    reduceMotion = reduceMotion,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .orbitSwipe(orbit, stepPx),
+                )
+                // The closing instruction, on its own and evenly spaced: the same gap above
+                // it as below it, and as between the moons and the guide. The fixed part
+                // matches the clear margin under the orbit and above the icons, so the gaps
+                // look equal.
+                Spacer(Modifier.height(CAPTION_BALANCE))
+                Spacer(Modifier.weight(GAP_SHARE))
+                Text(
+                    "TAP THE MOON AGAIN TO OPEN",
+                    Modifier.fillMaxWidth().orbitSwipe(orbit, stepPx),
+                    style = Type.Caption.copy(
+                        color = Palette.Hint,
+                        fontSize = Type.Caption.fontSize * 0.86f,
+                        textAlign = TextAlign.Center,
+                    ),
+                )
+                Spacer(Modifier.weight(GAP_SHARE))
             }
-            AppBarAction(ShowdistIcons.SettingsOutlined, "Settings", tint = Palette.Sandstone, onClick = onSettings)
         }
-        Orbit(orbit, egg, Tool.entries, onOpen = onTool, modifier = Modifier.weight(1f).fillMaxWidth())
-        QuickGuide(
-            tool = if (orbit.settled) Tool.entries[orbit.focused] else null,
+        // One-handed reach (SPEC.md §1.4): History and Settings in a row near the bottom,
+        // clear of the gesture area by 20 dp.
+        MenuButtons(
+            showHistory = savedCount > 0,
+            savedCount = savedCount,
+            pulsing = !factsShowing,
             reduceMotion = reduceMotion,
-            modifier = Modifier.fillMaxWidth().heightIn(min = GuideHeight),
+            onHistory = onHistory,
+            onSettings = onSettings,
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.mandatorySystemGestures.only(WindowInsetsSides.Bottom))
+                .padding(top = 4.dp, bottom = 4.dp),
         )
     }
     // The collapse's prize (SPEC.md §1.4), over everything.
@@ -136,8 +162,24 @@ fun MainMenu(
     }
 }
 
-/** Reserved for the guide even while it's hidden, so the orbit doesn't jump. */
-private val GuideHeight = 236.dp
+/** Roughly the tallest guide, used only to keep room for it when shrinking the orbit on short screens. */
+private val GuideEstimate = 180.dp
+
+/** The orbit's smallest height on very short screens. */
+private val MIN_ORBIT_HEIGHT = 160.dp
+
+/** How the menu's spare height is shared: above the orbit, and each gap around the guide. */
+private const val TOP_SHARE = 0.7f
+private const val GAP_SHARE = 0.1f
+
+/** Evens out the visible gaps around the closing instruction (see its Spacer). */
+private val CAPTION_BALANCE = 12.dp
+
+/** The guide's name and paragraph, scaled down evenly from the Title and Body styles. */
+private const val GUIDE_SCALE = 0.86f
+
+/** The guide block's width, padding included: the same on every phone and tablet. */
+private val GuideTextWidth = 388.dp
 
 /**
  * The focused tool's quick guide (SPEC.md §1.4): its name, what it's for, and how to use
@@ -146,47 +188,56 @@ private val GuideHeight = 236.dp
  */
 @Composable
 private fun QuickGuide(tool: Tool?, reduceMotion: Boolean, modifier: Modifier) {
-    AnimatedContent(
-        targetState = tool,
-        modifier = modifier,
-        transitionSpec = {
-            if (reduceMotion) {
-                EnterTransition.None togetherWith ExitTransition.None
-            } else {
-                (slideInVertically(spring(dampingRatio = 0.9f, stiffness = 300f)) { it / 3 } + fadeIn(tween(220))) togetherWith
-                    fadeOut(tween(120))
-            }
-        },
-        contentAlignment = Alignment.TopCenter,
-        label = "guide",
-    ) { shown ->
-        if (shown == null) {
-            Box(Modifier.fillMaxWidth())
-            return@AnimatedContent
-        }
-        // On wide screens, a centred column under the sun (SPEC.md §6.5).
-        Column(
-            Modifier
-                .readingColumn()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 24.dp)
-                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(shown.title, style = Type.Title.copy(color = Palette.Sandstone, letterSpacing = 2.sp))
-            Spacer(Modifier.height(6.dp))
-            Text(shown.purpose, style = Type.Body.copy(textAlign = TextAlign.Center))
-            Spacer(Modifier.height(14.dp))
-            Column(Modifier.fillMaxWidth()) {
-                for (step in shown.steps) {
-                    Row(Modifier.padding(vertical = 3.dp)) {
-                        Text("›", Modifier.width(20.dp), style = Type.Secondary.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
-                        Text(step, Modifier.weight(1f), style = Type.Secondary)
-                    }
+    // Sized to the tallest tool's guide, laid out invisibly, so the slot fits the text
+    // exactly with no reserved space, and nothing moves as tools change.
+    Box(modifier) {
+        for (t in Tool.entries) GuideText(t, Modifier.alpha(0f).clearAndSetSemantics {})
+        AnimatedContent(
+            targetState = tool,
+            modifier = Modifier.matchParentSize(),
+            transitionSpec = {
+                if (reduceMotion) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    (slideInVertically(spring(dampingRatio = 0.9f, stiffness = 300f)) { it / 3 } + fadeIn(tween(220))) togetherWith
+                        fadeOut(tween(120))
                 }
+            },
+            contentAlignment = Alignment.TopCenter,
+            label = "guide",
+        ) { shown ->
+            if (shown == null) {
+                Box(Modifier.fillMaxWidth())
+                return@AnimatedContent
             }
-            Spacer(Modifier.height(14.dp))
-            Text("TAP THE MOON AGAIN TO OPEN", style = Type.Caption.copy(fontSize = Type.Caption.fontSize * 0.86f))
+            GuideText(shown, Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite })
         }
+    }
+}
+
+/**
+ * One tool's guide (SPEC.md §1.4, §6.5): its name and a short paragraph, both centred in a
+ * block of even width on the sun's axis, so the margins match on both sides. Sizes are the
+ * Title and Body styles scaled evenly by [GUIDE_SCALE].
+ */
+@Composable
+private fun GuideText(tool: Tool, modifier: Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .widthIn(max = GuideTextWidth)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            tool.title,
+            style = Type.Title.copy(color = Palette.Sandstone, letterSpacing = 2.sp, fontSize = Type.Title.fontSize * GUIDE_SCALE),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            tool.about,
+            style = Type.Body.copy(fontSize = Type.Body.fontSize * GUIDE_SCALE, lineHeight = 1.45.em, textAlign = TextAlign.Center),
+        )
     }
 }

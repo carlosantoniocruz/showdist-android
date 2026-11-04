@@ -33,6 +33,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.ImageBitmap
@@ -65,6 +67,40 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+
+/** The orbit's height in sun radii: the shell (1.22) above the centre, the front moon (0.8 + 0.4) below. */
+const val ORBIT_SPAN = 2.42f
+
+/** Room kept above and below the orbit's span, in total. */
+val ORBIT_MARGIN = 32.dp
+
+/** The sun's radius for a given width, before any height limit (SPEC.md §1.4). */
+fun sunRadiusFor(width: Dp): Dp = minOf(width * 0.27f, 124.dp)
+
+/** The sun's radius in an orbit area [width] × [height]: fits the shell and front moon. */
+fun sunRadiusFor(width: Dp, height: Dp): Dp = minOf(sunRadiusFor(width), (height - ORBIT_MARGIN) / ORBIT_SPAN)
+
+/** The orbit's horizontal radius, which is also how far a drag must go to turn one moon. */
+fun orbitRadiusX(width: Dp, sunR: Dp): Dp = minOf(width * 0.40f, width / 2 - sunR * 0.40f * 0.75f)
+
+/**
+ * Horizontal swipes turn the orbit (SPEC.md §1.4): dragging [stepPx] turns it one moon, and
+ * a flick carries on. Used on the orbit and on the guide text beneath it. Taps and holds
+ * pass through (holding the sun is the collapse's alone).
+ */
+fun Modifier.orbitSwipe(state: OrbitState, stepPx: Float): Modifier = pointerInput(state, stepPx) {
+    val tracker = VelocityTracker()
+    detectHorizontalDragGestures(
+        onDragStart = { tracker.resetTracking() },
+        onDragEnd = { state.release(-tracker.calculateVelocity().x / stepPx) },
+        onDragCancel = { state.release(0f) },
+    ) { change, dx ->
+        tracker.addPosition(change.uptimeMillis, change.position)
+        change.consume()
+        // Dragging left brings the moon on the right to the front.
+        state.dragBy(-dx / stepPx)
+    }
+}
 
 /** How far ahead a flick carries the orbit before it snaps, in seconds of its speed. */
 private const val FLING_LOOKAHEAD = 0.25f
@@ -168,9 +204,10 @@ fun Orbit(
     ) {
         val w = maxWidth
         val h = maxHeight
-        val sunR = minOf(w * 0.27f, h * 0.30f, 124.dp)
+        // Fits the shell above and the front moon below (2.42 sun radii) in the height given.
+        val sunR = sunRadiusFor(w, h)
         val moonR = sunR * 0.40f
-        val rx = minOf(w * 0.40f, w / 2 - moonR * 0.75f)
+        val rx = orbitRadiusX(w, sunR)
         val ry = sunR * 0.8f
         val shellR = sunR * 1.22f
         // The sun's shell above and the front moon below, centred together in the space.
@@ -181,23 +218,7 @@ fun Orbit(
         val glowPx = with(density) { (sunR * GLOW_SCALE).roundToPx() }
         val glows = remember(glowPx) { SunGlows(glowPx) }
 
-        Box(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(state, stepPx) {
-                    val tracker = VelocityTracker()
-                    detectHorizontalDragGestures(
-                        onDragStart = { tracker.resetTracking() },
-                        onDragEnd = { state.release(-tracker.calculateVelocity().x / stepPx) },
-                        onDragCancel = { state.release(0f) },
-                    ) { change, dx ->
-                        tracker.addPosition(change.uptimeMillis, change.position)
-                        change.consume()
-                        // Dragging left brings the moon on the right to the front.
-                        state.dragBy(-dx / stepPx)
-                    }
-                },
-        ) {
+        Box(Modifier.fillMaxSize().orbitSwipe(state, stepPx)) {
             // The orbit's far half and the shell, behind everything.
             Canvas(Modifier.fillMaxSize().zIndex(-5f)) {
                 val c = Offset(cx.toPx(), cy.toPx())
@@ -295,6 +316,32 @@ private fun DrawScope.drawOrbitHalf(c: Offset, rx: Float, ry: Float, back: Boole
     )
 }
 
+/** How far the wordmark sits above the sun's centre, in sun radii. */
+private const val WORDMARK_LIFT = 0.04f
+
+/** The outline that thickens the wordmark, as a share of its font size. */
+private const val WORDMARK_STROKE = 0.055f
+
+/**
+ * SHOWDIST in [style], extra bold: the filled glyphs with an outline of the same colour
+ * over them, which thickens every stroke evenly (JetBrains Mono's heaviest bundled face
+ * is Bold).
+ */
+@Composable
+private fun BoldWordmark(style: TextStyle, modifier: Modifier) {
+    val strokePx = with(LocalDensity.current) { style.fontSize.toPx() } * WORDMARK_STROKE
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Text("SHOWDIST", maxLines = 1, softWrap = false, style = style)
+        Text(
+            "SHOWDIST",
+            Modifier.clearAndSetSemantics {},
+            maxLines = 1,
+            softWrap = false,
+            style = style.copy(drawStyle = Stroke(width = strokePx, join = StrokeJoin.Round)),
+        )
+    }
+}
+
 /** How far the light washes out the wordmark at full glow (white over black). */
 private const val WORDMARK_WASH = 0.85f
 
@@ -352,21 +399,15 @@ private fun Sun(radius: Dp, glow: () -> Float, modifier: Modifier) {
             fontSize = (radius.value * 1.5f / 5.64f / fontScale).sp,
             letterSpacing = 0.12.em,
         )
-        Text(
-            "SHOWDIST",
-            modifier = Modifier.offset(y = -radius * 0.12f),
-            maxLines = 1,
-            softWrap = false,
-            style = wordmark,
-        )
+        // On the sun's centre, raised very slightly, and heavier than the bundled Bold: a thin
+        // outline over the fill.
+        val lift = Modifier.offset(y = -radius * WORDMARK_LIFT)
+        BoldWordmark(wordmark, lift)
         // The light washes the wordmark out too: a white copy fades in over it with the glow,
         // leaving it a faint grey on the white sun at the end.
-        Text(
-            "SHOWDIST",
-            modifier = Modifier.offset(y = -radius * 0.12f).graphicsLayer { alpha = WORDMARK_WASH * glow() }.clearAndSetSemantics {},
-            maxLines = 1,
-            softWrap = false,
-            style = wordmark.copy(color = Palette.White),
+        BoldWordmark(
+            wordmark.copy(color = Palette.White),
+            lift.graphicsLayer { alpha = WORDMARK_WASH * glow() }.clearAndSetSemantics {},
         )
     }
 }

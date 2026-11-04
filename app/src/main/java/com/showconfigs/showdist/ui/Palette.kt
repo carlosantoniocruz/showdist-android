@@ -17,6 +17,9 @@ object Palette {
     /** Filled controls and the selected-row tint on black, slightly warm. */
     val SurfaceHigh = Color(0xFF1E1C19)
 
+    /** Quiet instructions, a step below [TextMuted]: 5.8:1 on black. */
+    val Hint = Color(0xFF8A8A8A)
+
     /** Primary text: 21:1 on black. */
     val Text = Color(0xFFFFFFFF)
 
