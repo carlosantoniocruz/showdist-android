@@ -37,6 +37,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -96,7 +97,16 @@ fun MainMenu(
     var factsShowing by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
     val egg = remember { CollapseEgg(scope, haptics, reduceMotion, onCollide = { factsShowing = true }) }
-    LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
+    // A light tick each time the orbit settles on a different moon (SPEC.md §1.4).
+    var lastSettled by remember { mutableIntStateOf(orbit.focused) }
+    LaunchedEffect(orbit.settled) {
+        if (!orbit.settled) return@LaunchedEffect
+        if (orbit.focused != lastSettled) {
+            lastSettled = orbit.focused
+            haptics.tick()
+        }
+        onFocused(Tool.entries[orbit.focused])
+    }
 
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {

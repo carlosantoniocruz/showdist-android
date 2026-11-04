@@ -92,18 +92,24 @@ fun Modifier.orbitSwipe(state: OrbitState, stepPx: Float): Modifier = pointerInp
     val tracker = VelocityTracker()
     detectHorizontalDragGestures(
         onDragStart = { tracker.resetTracking() },
-        onDragEnd = { state.release(-tracker.calculateVelocity().x / stepPx) },
+        onDragEnd = { state.release(-tracker.calculateVelocity().x / (stepPx * DRAG_PER_MOON)) },
         onDragCancel = { state.release(0f) },
     ) { change, dx ->
         tracker.addPosition(change.uptimeMillis, change.position)
         change.consume()
         // Dragging left brings the moon on the right to the front.
-        state.dragBy(-dx / stepPx)
+        state.dragBy(-dx / (stepPx * DRAG_PER_MOON))
     }
 }
 
 /** How far ahead a flick carries the orbit before it snaps, in seconds of its speed. */
-private const val FLING_LOOKAHEAD = 0.25f
+private const val FLING_LOOKAHEAD = 0.12f
+
+/** A drag must turn the orbit this far (in moons) from where it started to move on a moon. */
+private const val SNAP_THRESHOLD = 0.35f
+
+/** Drag distance per moon, in orbit radii: higher turns it less per finger movement. */
+private const val DRAG_PER_MOON = 1.6f
 
 /**
  * Where the moons are on their orbit, and the motion between moons (SPEC.md §1.4).
@@ -125,6 +131,7 @@ class OrbitState(
     private var moving by mutableStateOf(false)
     private var target = initial
     private var job: Job? = null
+    private var dragFrom = initial
 
     /** The moon at the front, or nearest it while the orbit turns. */
     val focused: Int get() = Math.floorMod(position.roundToInt(), count)
@@ -145,17 +152,26 @@ class OrbitState(
 
     fun dragBy(moons: Float) {
         job?.cancel()
+        if (!dragging) dragFrom = if (moving) target else position.roundToInt()
         moving = false
         dragging = true
         position += moons
     }
 
-    /** Ends a drag moving at [velocity] moons per second: snaps to the nearest moon, a flick carrying one further. */
+    /**
+     * Ends a drag moving at [velocity] moons per second. It resists: unless the drag (plus a
+     * short look-ahead for a flick) has turned the orbit [SNAP_THRESHOLD] of a moon from where
+     * it started, it springs back; otherwise it moves on one moon in that direction.
+     */
     fun release(velocity: Float) {
         dragging = false
-        val here = position.roundToInt()
-        val ahead = (position + velocity * FLING_LOOKAHEAD).roundToInt().coerceIn(here - 1, here + 1)
-        settleAt(ahead, velocity)
+        val moved = position + velocity * FLING_LOOKAHEAD - dragFrom
+        val to = when {
+            moved >= SNAP_THRESHOLD -> dragFrom + 1
+            moved <= -SNAP_THRESHOLD -> dragFrom - 1
+            else -> dragFrom
+        }
+        settleAt(to, velocity)
     }
 
     private fun settleAt(to: Int, velocity: Float) {
@@ -168,7 +184,8 @@ class OrbitState(
         }
         moving = true
         val launched = scope.launch {
-            animate(position, to.toFloat(), velocity, spring(dampingRatio = 0.82f, stiffness = 180f)) { v, _ ->
+            // Stiffer than before, so the moons snap firmly into place.
+            animate(position, to.toFloat(), velocity, spring(dampingRatio = 0.85f, stiffness = 300f)) { v, _ ->
                 position = v
             }
         }
@@ -274,6 +291,8 @@ fun Orbit(
                     radius = moonR,
                     focused = focused,
                     light = { egg.glow },
+                    // Darker the further round it is; the egg's light lifts it.
+                    shade = { MOON_SHADE * (1f - (cos(angleOf(i)) + 1f) / 2f) * (1f - egg.glow) },
                     modifier = Modifier
                         .offset {
                             val angle = angleOf(i)
@@ -290,8 +309,7 @@ fun Orbit(
                             val scale = (0.6f + 0.4f * near) * (1f - 0.6f * egg.pull)
                             scaleX = scale
                             scaleY = scale
-                            // Lit by the sun as they close in, they brighten to full.
-                            alpha = (0.5f + 0.5f * near) + (0.5f - 0.5f * near) * egg.glow
+                            // Always opaque: depth shows in size and stacking, never by fading.
                         },
                     onClick = {
                         if (egg.active) return@Moon
@@ -419,7 +437,15 @@ private fun Sun(radius: Dp, glow: () -> Float, modifier: Modifier) {
  * its own layer.
  */
 @Composable
-private fun Moon(tool: Tool, radius: Dp, focused: Boolean, light: () -> Float, modifier: Modifier, onClick: () -> Unit) {
+private fun Moon(
+    tool: Tool,
+    radius: Dp,
+    focused: Boolean,
+    light: () -> Float,
+    shade: () -> Float,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     Box(
         modifier
             .size(radius * 2)
@@ -451,38 +477,71 @@ private fun Moon(tool: Tool, radius: Dp, focused: Boolean, light: () -> Float, m
                 r - gap - ring / 2f,
                 style = Stroke(ring),
             )
-            tool.drawPicture(this, center, r * 0.5f, Palette.Sandstone)
+            tool.drawPicture(this, center, r * 0.5f, Palette.Sandstone, dots = false)
+        }
+        // Depth shading (SPEC.md §1.4): opaque black over the body, ring and lines, on its own
+        // layer so turning the orbit only changes its alpha.
+        Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = shade() }) {
+            drawCircle(Palette.Black, size.minDimension / 2f - 3.dp.toPx())
+        }
+        // The white dots stay bright above the shading, as on the app icon.
+        Canvas(Modifier.fillMaxSize()) {
+            tool.drawPicture(this, center, size.minDimension / 4f, Palette.Sandstone, dots = true)
         }
     }
 }
 
-/** Each tool's picture, within [r] of [c]: a dimension line, a vial, a bullseye. */
-private fun Tool.drawPicture(scope: DrawScope, c: Offset, r: Float, color: Color) = with(scope) {
+/** The app icon's end dots, as a share of half the rule's length (6 of 20, SPEC.md §8.1). */
+private const val ICON_DOT = 0.3f
+
+/** The icon's end ticks reach this far either side of the rule (11 of 20). */
+private const val ICON_TICK = 0.55f
+
+/**
+ * Each tool's picture, within [r] of [c]: a dimension line, a vial, a bullseye. Lines are in
+ * [color]; the dots are always pure white, as on the app icon (SPEC.md §1.4, §8.1), whatever
+ * the moon's state, each with a faint dark edge so it still reads when the collapse lights
+ * the moon toward white.
+ */
+private fun Tool.drawPicture(scope: DrawScope, c: Offset, r: Float, color: Color, dots: Boolean) = with(scope) {
     val stroke = 2.dp.toPx()
+    val edge = 0.75.dp.toPx()
+    // Called twice: lines only (dots = false), then dots only, so shading can sit between.
+    fun whiteDot(at: Offset, radius: Float) {
+        if (!dots) return
+        drawCircle(DotEdge, radius + edge, at)
+        drawCircle(Palette.White, radius, at)
+    }
+    fun line(a: Offset, b: Offset) {
+        if (!dots) drawLine(color, a, b, stroke, StrokeCap.Round)
+    }
     when (this@drawPicture) {
         Tool.Measure -> {
-            val cap = r * 0.45f
-            drawLine(color, Offset(c.x - r, c.y), Offset(c.x + r, c.y), stroke, StrokeCap.Round)
-            for (x in floatArrayOf(c.x - r, c.x + r)) {
-                drawLine(color, Offset(x, c.y - cap), Offset(x, c.y + cap), stroke, StrokeCap.Round)
-                drawCircle(color, r * 0.16f, Offset(x, c.y))
-            }
+            // The app icon's mark: a rule between two end ticks, a white point on each end.
+            val cap = r * ICON_TICK
+            line(Offset(c.x - r, c.y), Offset(c.x + r, c.y))
+            for (x in floatArrayOf(c.x - r, c.x + r)) line(Offset(x, c.y - cap), Offset(x, c.y + cap))
+            for (x in floatArrayOf(c.x - r, c.x + r)) whiteDot(Offset(x, c.y), r * ICON_DOT)
         }
         Tool.Tube -> {
             val half = r * 0.42f
-            drawRoundRect(
-                color,
-                Offset(c.x - r, c.y - half),
-                Size(2 * r, 2 * half),
-                CornerRadius(half),
-                style = Stroke(stroke),
-            )
-            drawCircle(color, half * 0.6f, c)
+            if (!dots) {
+                drawRoundRect(color, Offset(c.x - r, c.y - half), Size(2 * r, 2 * half), CornerRadius(half), style = Stroke(stroke))
+            }
+            whiteDot(c, half * 0.6f) // the bubble
         }
         Tool.Bullseye -> {
-            drawCircle(color, r, c, style = Stroke(stroke))
-            drawCircle(color, r * 0.5f, c, style = Stroke(stroke * 0.75f))
-            drawCircle(color, r * 0.2f, c)
+            if (!dots) {
+                drawCircle(color, r, c, style = Stroke(stroke))
+                drawCircle(color, r * 0.5f, c, style = Stroke(stroke * 0.75f))
+            }
+            whiteDot(c, r * 0.2f) // the bubble, at centre
         }
     }
 }
+
+/** How dark a moon gets at the very back of the orbit. */
+private const val MOON_SHADE = 0.75f
+
+/** The faint dark edge round the white dots. */
+private val DotEdge = Color(0x59000000)
