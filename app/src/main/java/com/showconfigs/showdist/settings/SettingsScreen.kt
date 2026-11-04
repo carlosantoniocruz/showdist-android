@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.readingColumn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,13 +35,14 @@ import com.showconfigs.showdist.ui.Type
 @Composable
 fun SettingsScreen(unitSettings: UnitSettings, onLicenses: () -> Unit, onBack: () -> Unit) {
     Scaffold(topBar = { ShowdistAppBar("SETTINGS", onBack) }, containerColor = Palette.Black) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(vertical = 8.dp),
-        ) {
-            SectionTitle("UNITS")
-            UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
-            UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
-            AboutSections(onLicenses)
+        // Scrolls edge to edge; the rows sit in a centred column on wide screens (SPEC.md §6.5).
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            Column(Modifier.readingColumn().padding(vertical = 8.dp)) {
+                SectionTitle("UNITS")
+                UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
+                UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+                AboutSections(onLicenses)
+            }
         }
     }
 }

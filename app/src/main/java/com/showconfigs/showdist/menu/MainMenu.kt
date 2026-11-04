@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.menu
 
+import com.showconfigs.showdist.ui.readingColumn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -163,9 +164,10 @@ private fun QuickGuide(tool: Tool?, reduceMotion: Boolean, modifier: Modifier) {
             Box(Modifier.fillMaxWidth())
             return@AnimatedContent
         }
+        // On wide screens, a centred column under the sun (SPEC.md §6.5).
         Column(
             Modifier
-                .fillMaxWidth()
+                .readingColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 24.dp)
                 .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },

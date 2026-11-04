@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.ReadingSides
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -43,10 +44,20 @@ fun LicensesScreen(onOpen: (index: Int) -> Unit, onBack: () -> Unit) {
             }
             return@Scaffold
         }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            itemsIndexed(list, key = { _, license -> license.name }) { index, license ->
-                if (index > 0) SettingsDivider(Modifier.padding(start = 20.dp))
-                SettingsRow(license.name, onClick = { onOpen(index) }) { Chevron() }
+        ReadingSides { side ->
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = side,
+                    top = padding.calculateTopPadding(),
+                    end = side,
+                    bottom = padding.calculateBottomPadding(),
+                ),
+            ) {
+                itemsIndexed(list, key = { _, license -> license.name }) { index, license ->
+                    if (index > 0) SettingsDivider(Modifier.padding(start = 20.dp))
+                    SettingsRow(license.name, onClick = { onOpen(index) }) { Chevron() }
+                }
             }
         }
     }
@@ -62,9 +73,10 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
 
     Scaffold(topBar = { ShowdistAppBar("LICENSE", onBack) }, containerColor = Palette.Black) { padding ->
         if (license == null) return@Scaffold
+        ReadingSides(Modifier.fillMaxSize().padding(padding)) { side ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(24.dp),
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 24.dp + side, vertical = 24.dp),
         ) {
             item {
                 Text(
@@ -82,6 +94,7 @@ fun LicenseDetailScreen(index: Int, onBack: () -> Unit) {
                 )
                 Spacer(Modifier.height(16.dp))
             }
+        }
         }
     }
 }

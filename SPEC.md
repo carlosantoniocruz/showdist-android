@@ -748,6 +748,14 @@ The Measure screen keeps its own sizes for text over the camera: hint 15 sp, run
 
 ---
 
+
+### 6.5 Wide screens (v1.4)
+
+Text-heavy content sits in a **horizontally centred column at most 520 dp wide** (`ui/ReadingColumn.kt`), decided by the width available, never by device type, so phones (all narrower) are unchanged. Inside the column, alignment stays as on phones.
+- **Main menu:** the quick guide (title, purpose, steps, "TAP THE MOON AGAIN TO OPEN"), centred under the sun.
+- **Settings, History, Licenses, License detail:** their rows and text. Scrolling lists keep scrolling edge to edge: the column comes from side content padding, not a narrower list.
+- The measurement sheet is a Material bottom sheet, already capped at 640 dp. The fun facts column is capped at 560 dp (§1.4).
+- **Orientation:** the activity asks for portrait, but Android 16+ ignores that on large screens (smallest width ≥ 600 dp), so tablets rotate. The layouts above hold in landscape (checked at 720 dp wide, both orientations): the orbit sizes itself from the smaller dimension, and the guide stays clear of the sun and moons. AR Measure on a landscape tablet is not yet adapted: its sideways controls (§2.9) assume a portrait screen.
 ## 7. About text & third-party licences
 
 ### 7.1 About text (verbatim)

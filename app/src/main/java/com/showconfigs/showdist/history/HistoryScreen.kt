@@ -1,5 +1,8 @@
 package com.showconfigs.showdist.history
 
+import com.showconfigs.showdist.ui.ReadingSides
+import com.showconfigs.showdist.ui.ReadingWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -116,14 +119,17 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save.",
+                    modifier = Modifier.widthIn(max = ReadingWidth),
                     style = Type.Secondary.copy(lineHeight = 1.5.em, textAlign = TextAlign.Center),
                 )
             }
             return@Scaffold
         }
+        // Scrolls edge to edge; rows sit in a centred column on wide screens (SPEC.md §6.5).
+        ReadingSides(Modifier.fillMaxSize().padding(padding)) { side ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = side, end = side, bottom = 24.dp),
         ) {
             itemsIndexed(recordings, key = { _, r -> r.id }) { index, recording ->
                 if (index > 0) {
@@ -151,6 +157,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                     onCopy = { export.copy(listOf(recording)) },
                 )
             }
+        }
         }
     }
 
