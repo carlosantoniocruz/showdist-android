@@ -46,4 +46,4 @@ build is unsigned.
 
 ## License
 
-[MIT](LICENSE). Bundled fonts and libraries keep their own licenses (see `app/src/main/res/raw/`).
+Proprietary, all rights reserved. See [LICENSE](LICENSE). Bundled fonts and libraries keep their own licenses (see `app/src/main/res/raw/`).
