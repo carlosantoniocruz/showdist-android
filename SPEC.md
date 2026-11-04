@@ -464,7 +464,7 @@ Drawing within the 44×44 box, with 7 dp padding:
 
 ### 2.9 Orientation handling in Measure (button rotation)
 
-The screen stays portrait. The four small bar controls rotate, and so do the readings over the camera: each distance label (about its own centre, §3.3), the running total and the SAVING pill (§2.6). Turned sideways, the running total and the pill take their rotated footprint in layout; a label's clamp to the canvas uses its rotated bounds.
+The screen stays portrait. The four small bar controls rotate, and so do the readings over the camera: each distance label (about its own centre, §3.3), the running total and the SAVING pill (§2.6). Turned sideways, the SAVING pill takes its rotated footprint in layout; a label's clamp to the canvas uses its rotated bounds. **Running total held sideways (v1.4):** once the turn passes 45°, the total leaves the top info column and is centred on the reader's top edge: the screen's right edge when turned clockwise, the left edge otherwise, vertically centred on the camera area, 12 dp inside the horizontal safe-drawing insets. It's compact there: 32 sp, 12 h × 2 v padding. It never overlaps the reticle (centre), the menu button (top-left corner) or the control bar.
 
 The accelerometer is read at about **5 Hz**. Using raw device-frame `x` and `y` in m/s²:
 - If `√(x² + y²) < 3.0` (the phone is roughly flat), keep the current value.

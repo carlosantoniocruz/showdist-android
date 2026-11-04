@@ -215,6 +215,13 @@ private fun MeasureArea(
     var saved by remember { mutableStateOf<Recording?>(null) }
     val holdToSave = rememberHoldToSave(tracker) { saved = it }
 
+    // −1, 0 or +1 as the bar controls are turned; recomposes only when it crosses 45°.
+    val sideways by remember {
+        derivedStateOf {
+            val r = barRotation.value
+            if (abs(r) <= 45f) 0 else if (r > 0f) 1 else -1
+        }
+    }
     val cornerRadiusPx = rememberScreenCornerRadius()
     // The top info column's bottom edge, so the SAVING pill can sit below it.
     var infoBottomPx by remember { mutableIntStateOf(0) }
@@ -262,10 +269,24 @@ private fun MeasureArea(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HintLine(tracker.hint)
-                if (tracker.pointCount >= 2) {
+                if (tracker.pointCount >= 2 && sideways == 0) {
                     Spacer(Modifier.height(6.dp))
-                    RunningTotal(tracker.totalMetres, units, Modifier.turnWith { barRotation.value })
+                    RunningTotal(tracker.totalMetres, units)
                 }
+            }
+            // Held sideways (SPEC.md §2.9): the total sits centred on the reader's top edge,
+            // which is the screen's right edge (turned clockwise) or left edge, at a smaller size.
+            if (tracker.pointCount >= 2 && sideways != 0) {
+                RunningTotal(
+                    tracker.totalMetres,
+                    units,
+                    Modifier
+                        .align(if (sideways > 0) Alignment.CenterEnd else Alignment.CenterStart)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                        .padding(horizontal = 12.dp)
+                        .turnWith { barRotation.value },
+                    compact = true,
+                )
             }
             val saving by remember { derivedStateOf { holdToSave.charge() > 0f } }
             if (saving) {
@@ -348,17 +369,20 @@ private fun HintLine(hint: Hint) {
     }
 }
 
-/** Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 40 sp, pure white. */
+/**
+ * Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 40 sp, pure white;
+ * [compact] (held sideways) 32 sp with tighter padding.
+ */
 @Composable
-private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier) {
+private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier, compact: Boolean = false) {
     BasicText(
         text = DistanceFormat.format(metres, units),
         modifier = modifier
             .background(Palette.Scrim, RoundedCornerShape(50))
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 2.dp else 4.dp),
         style = BaseText.copy(
             color = Palette.White,
-            fontSize = 40.sp,
+            fontSize = if (compact) 32.sp else 40.sp,
             fontWeight = FontWeight.ExtraLight,
             fontFeatureSettings = FEATURES_TABULAR,
         ),
