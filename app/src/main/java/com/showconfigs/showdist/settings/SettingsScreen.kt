@@ -55,6 +55,7 @@ fun SettingsScreen(
     onCalibrateScale: () -> Unit,
     onWarmUp: () -> Unit,
     onLevelZero: () -> Unit,
+    onFormulas: () -> Unit,
     onAbout: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -94,6 +95,7 @@ fun SettingsScreen(
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
                     Column {
                         SectionTitle("ADDITIONAL INFO")
+                        SettingsRow("Handy formulas", subtitle = "Shapes, percentages, conversions", onClick = onFormulas) { Chevron() }
                         SettingsRow("About", subtitle = "Showdist, the developer and licenses", onClick = onAbout) { Chevron() }
                     }
                 }
@@ -203,9 +205,10 @@ internal fun SettingsRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            // Single-line rows are compact; rows with a subtitle get room for both lines.
+            .heightIn(min = if (subtitle == null) 52.dp else 64.dp)
             .clickable(role = role, onClick = onClick)
-            .padding(horizontal = horizontalPadding, vertical = 8.dp),
+            .padding(horizontal = horizontalPadding, vertical = if (subtitle == null) 4.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

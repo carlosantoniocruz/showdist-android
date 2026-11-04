@@ -118,7 +118,7 @@ Decorative only (no semantics), and only in the empty band **above the sun** (th
 A list with 8 dp vertical padding:
 
 - Section header "UNITS" in the Caption style, textMuted, left-aligned, padding L16 T12 R16 B4, marked as a heading.
-- Option rows "Imperial (ft, in)" and "Metric (m, cm)" (Label style, min height 64 dp). The trailing radio icon is `radio_button_checked_rounded` in **sandstone** when selected, or `radio_button_unchecked_rounded` in textMuted otherwise.
+- Option rows "Imperial (ft, in)" and "Metric (m, cm)" (Label style). v1.4: single-line Settings rows are compact (min height 52 dp, 4 dp vertical padding); rows with a subtitle keep 64 dp. The trailing radio icon is `radio_button_checked_rounded` in **sandstone** when selected, or `radio_button_unchecked_rounded` in textMuted otherwise.
 
 Tapping an option sets the unit system immediately and persists it (§2.7).
 
@@ -163,6 +163,34 @@ Its own screen (v1.4, `settings/AboutScreen.kt`), reached **only from Settings**
 - The license list is built once per app run and cached.
 - Tapping a row opens **License detail**. Its padding is 24 dp on all sides. The component name is shown in **sandstone** in the Title style at 26 sp, followed by a 20 dp gap. Then comes each license paragraph in the Body style and a 16 dp gap after each. Paragraphs marked "centred" are centre-aligned, and all others are start-aligned.
 - The list is curated by hand in `settings/Licenses.kt` (§7.2).
+
+### 1.8 Handy formulas (v1.4, `settings/FormulasScreen.kt`)
+
+From Settings → Additional Info → "Handy formulas" (subtitle "Shapes, percentages, conversions"), above About. App bar "HANDY FORMULAS", back at the bottom (§1.2), the centred reading column on wide screens (§6.5). Static: no animation; a lazy list, so scrolling stays smooth on low-end phones.
+
+Sections (Caption headers, dividers between): **SHAPES**, **SQUARE CORNERS**, **PERCENTAGES AND TIPS**, **CONVERSIONS**, **SPEED**. Each row: the name (Label, bold), the formula (Label, sandstone), a short example (Secondary), and, where a shape fits, a 64 dp line drawing on the right. Examples follow the unit setting where it makes sense (imperial shown; metric in brackets):
+
+| Row | Formula | Example | Drawing |
+|---|---|---|---|
+| Rectangle area | length × width | 10 ft × 12 ft = 120 sq ft (3 m × 4 m = 12 m²) | rectangle, l and w |
+| Triangle area | ½ × base × height | ½ × 6 ft × 4 ft = 12 sq ft (½ × 6 m × 4 m = 12 m²) | triangle, b and a dashed h |
+| Circle area | π × radius² | π × (2 ft)² ≈ 12.57 sq ft (m²) | circle, r |
+| Circumference | 2 × π × radius (π ≈ 3.14) | 2 × π × 2 ft ≈ 12.57 ft (m) | circle, r |
+| Box volume | length × width × height | 10 ft × 12 ft × 8 ft = 960 cu ft (3 m × 4 m × 2.5 m = 30 m³) | box, l, w, h |
+| Pythagorean theorem | a² + b² = c² | 3² + 4² = 9 + 16 = 25 = 5² | right triangle, a, b, c, square-corner mark |
+| The 3-4-5 trick | sides 3 and 4, diagonal 5: square | mark 3 ft and 4 ft; 5 ft across means square (60 cm, 80 cm, 1 m) | right triangle, 3, 4, 5 |
+| 10 percent | move the decimal one place left | 10% of 45.00 = 4.50 | percent sign |
+| 15 percent tip | 10% plus half of that | on 40: 4 + 2 = 6 | — |
+| Percent change | (new − original) ÷ original × 100 | 50 to 60: 10 ÷ 50 = 20% up | — |
+| Inches to centimetres | × 2.54 (exact) | 12 in × 2.54 = 30.48 cm | — |
+| Kilometres to miles | × 0.62 (about) | 10 km ≈ 6.2 mi | — |
+| Kilograms to pounds | × 2.2 (about) | 5 kg ≈ 11 lb | — |
+| Celsius to Fahrenheit | × 1.8 + 32 (quick: double + 30) | 20 °C × 1.8 + 32 = 68 °F (quick: 70 °F) | thermometer |
+| Speed | distance ÷ time | 120 mi in 2 h = 60 mph (100 km in 2 h = 50 km/h) | — |
+
+Drawings: thin strokes (1.4 dp) in the text colour at 38% (clearly secondary, still visible outdoors), dimension letters at 11 sp in the same colour, no bitmaps; each drawing's paths are built once per size and reused. Every formula and factor was checked (1 in = 2.54 cm exactly; 1 km = 0.621 mi; 1 kg = 2.205 lb; °F = °C × 1.8 + 32; π × 2² = 12.566).
+
+The same material is in the fun facts pool (§1.4) as ten short tips, shuffled with the other facts, without sources (common knowledge).
 
 ### 1.9 History
 

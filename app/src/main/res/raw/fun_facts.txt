@@ -107,3 +107,25 @@ source: IAU
 
 In 2020 China and Nepal jointly measured Mount Everest at 8,848.86 metres.
 source: Survey Department of Nepal
+
+# Everyday formulas (SPEC.md §1.4, §1.8): short tips; common knowledge, so no sources.
+
+Handy formula: a rectangle's area is length × width, a triangle's is half the base × the height, and a circle's is π × the radius squared.
+
+A circle's circumference is 2 × π × its radius, and π is roughly 3.14.
+
+A box's volume is length × width × height.
+
+The Pythagorean theorem: in a right triangle, a² + b² = c², where c is the long side.
+
+The 3-4-5 trick: if two sides measure 3 and 4 and the diagonal between their ends measures 5, the corner is perfectly square.
+
+For 10 percent, move the decimal point one place left. A 15 percent tip is 10 percent plus half of that.
+
+Percent change is the difference divided by the original amount, times 100.
+
+One inch is exactly 2.54 centimetres; a kilometre is about 0.62 of a mile, and a kilogram about 2.2 pounds.
+
+Celsius to Fahrenheit: multiply by 1.8 and add 32, or for a quick guess, double it and add 30.
+
+Speed is distance divided by time: 120 miles in 2 hours is 60 miles an hour.
