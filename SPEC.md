@@ -179,8 +179,9 @@ When the screen opens:
    - Light estimation: disabled.
    - Update mode: latest camera image.
    - Focus: auto.
-   - Depth mode: automatic, if the device supports it.
-   - Instant Placement: disabled (v1.1).
+   - Depth mode: **disabled** (v1.4). On phones without a depth sensor ARCore would otherwise run costly software depth.
+   - Instant Placement, cloud anchors, geospatial, Streetscape, augmented faces, semantics: disabled. Augmented images: none (empty database).
+   - Camera config (v1.4): back camera, **30 fps**, depth sensor not used; the smallest GPU texture whose short side is at least 720 px (else the largest), then the smallest CPU image. The choice is logged.
 5. Resume the session. The start routine returns one of these outcomes:
 
 | Outcome | Title | Body | Button |
@@ -250,16 +251,17 @@ Work runs only when ARCore delivers a **new camera image**, about 30 per second.
 - **Tracking status:** TRACKING, PAUSED (treated as "lost"), or STOPPED. The failure reason is none, bad state, insufficient light, excessive motion, insufficient features, or camera unavailable.
 - **Plane count:** the number of planes that are TRACKING and not subsumed by another plane. It is recounted every 10th new image, about 3 times a second, and is used for the hint and the warm-up.
 - **Reticle hit:** hit-test the **exact centre of the camera area**, then take, by priority (v1.1):
-  1. the nearest Plane hit whose pose is inside the plane's polygon, else
-  2. the nearest DepthPoint hit (when the device supports depth), else
-  3. the nearest feature Point hit whose orientation mode is ESTIMATED_SURFACE_NORMAL, as a last resort.
+  1. the nearest Plane hit whose pose is inside the plane's polygon **and** whose plane faces the camera (the camera is on the side of the hit pose's +y normal), else
+  2. the nearest feature Point hit whose orientation mode is ESTIMATED_SURFACE_NORMAL, as a last resort.
   If none qualifies, there is no reticle hit. Hit testing only runs while the camera is TRACKING (so never with a tracking failure reason).
+- **Smoothing (v1.4):** the drawn hit (live line end, live label, a projection's aim and turn) is an exponential moving average of the raw hits, moving **50%** of the way on each new image. A jump of more than **25 cm**, or a hit after no hit, is taken at once. Placement samples use the raw hits.
 - **Warm-up (v1.1):** before the first point of a measurement (or a projection's first tap), the session must have found at least one plane and the camera must have moved at least **8 cm** from where tracking began, for parallax. The camera position comes from the view matrix (−Rᵀt). Once warmed up, it stays so for the session. Until then the main button is disabled and the hint says why (§2.3).
 - **Placing a point (v1.1):** a tap on the main button (enabled only with a reticle hit and, for a first point, after warm-up):
   - **Snap:** if a visible point's screen position is within **24 dp** of the reticle, the new point is anchored at that point's current pose (the nearest such point). Projections don't snap.
   - **Otherwise sample:** the reticle hit's position is recorded on each of the next new camera images until **6** samples are taken (about 200 ms), within at most 12 images. Tracking must hold throughout, or the placement is dropped. With at least 3 samples, the point is anchored at their **component-wise median**; with fewer, nothing is placed. Further taps are ignored while sampling.
-  - Each point gets its own session anchor. Distances are recomputed from the live anchor poses every new image, and the anchors are re-read when saving.
-  - **Debug builds only:** each placement is logged (tag `ShowdistMeasure`) with the hit kind (Plane, Depth, Point or Snap), the tracking state, the sample count and the spread (largest distance of a sample from the median, in mm). Release builds contain none of this.
+  - Each point gets its own session anchor. A point is drawn only while its anchor is TRACKING; a paused anchor is kept, hidden, and shows again when it resumes. Distances are recomputed from the live anchor poses every new image, and the anchors are re-read when saving. Undo and Clear detach anchors; either one also cancels a placement that's still sampling.
+  - **Logging (tag `ShowdistMeasure`, all builds, v1.4):** camera tracking-state changes (with the failure reason), the anchor count after each place/undo/clear, and the number of anchors tracking whenever it changes.
+  - **Debug builds only:** each placement is also logged with the hit kind (Plane, Point or Snap), the tracking state, the sample count and the spread (largest distance of a sample from the median, in mm).
 - **Screen projection:** project each world point with ARCore's camera matrices (near 0.05 m, far 100 m):
   - `clip = Projection × View × (x, y, z, 1)`
   - The point is behind the camera if `clip.w ≤ 1e-4`.
@@ -793,7 +795,7 @@ The repo has no raster images or other assets. The native AR layer already exist
    - The existing mitigation is the memory watchdog in §2.10. It only *offers* a session restart, once per session, and only after the heap has grown by 256–768 MB or the system is low on memory. That is evidently too late or too weak.
    - Traits of the current implementation that likely contribute (unverified; investigate in the rebuild):
      - Saving or clearing only detaches anchors. The **same ARCore session keeps running** across measurements, so its planes, feature-point map and depth data keep growing. Only closing the screen or accepting the memory prompt releases them.
-     - **Depth mode AUTOMATIC** is enabled on supporting devices, which adds significant per-frame native memory.
+     - **Depth mode AUTOMATIC** was enabled on supporting devices, which adds significant per-frame native memory. (Disabled in v1.4.)
      - The camera view is hosted as a Flutter platform view using **hybrid composition** (an "expensive" Android view), rendered by a continuously redrawing GLSurfaceView at the display refresh rate. Each new camera frame is also copied into a fresh array and posted to the main thread about 30 times a second.
      - The camera texture and GL program are never explicitly deleted when the view is disposed. When the session changes, the anchor list is cleared without detaching anchors (the old session is closed, though).
    - Suggestions for the rebuild:

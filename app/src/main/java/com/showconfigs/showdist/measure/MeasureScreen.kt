@@ -222,15 +222,22 @@ private fun MeasureArea(
         Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
+                // Low-power setup (SPEC.md §2.1): 30 fps camera, plane finding only. Depth is
+                // off: on phones without a depth sensor it would run costly software depth.
+                sessionCameraConfig = ::modestCameraConfig,
                 planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL,
-                // ARSession downgrades this to DISABLED on devices without depth support.
-                depthMode = Config.DepthMode.AUTOMATIC,
+                depthMode = Config.DepthMode.DISABLED,
+                instantPlacementMode = Config.InstantPlacementMode.DISABLED,
+                cloudAnchorMode = Config.CloudAnchorMode.DISABLED,
+                geospatialMode = Config.GeospatialMode.DISABLED,
+                streetscapeGeometryMode = Config.StreetscapeGeometryMode.DISABLED,
+                augmentedFaceMode = Config.AugmentedFaceMode.DISABLED,
+                semanticMode = Config.SemanticMode.DISABLED,
                 updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE,
                 focusMode = Config.FocusMode.AUTO,
                 sessionConfiguration = { _, config ->
+                    // Augmented images stay off: the config's image database is left empty.
                     config.lightEstimationMode = Config.LightEstimationMode.DISABLED
-                    // Every point comes from a real surface hit (SPEC.md §2.4).
-                    config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
                 },
                 // The spec draws no plane visualisation, only the camera feed and the overlay.
                 planeRenderer = false,
