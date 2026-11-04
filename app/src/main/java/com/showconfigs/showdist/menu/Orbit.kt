@@ -2,6 +2,9 @@ package com.showconfigs.showdist.menu
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
+import android.graphics.Bitmap
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -32,12 +35,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
@@ -171,7 +178,8 @@ fun Orbit(
         val cx = w / 2
         val density = LocalDensity.current
         val stepPx = with(density) { rx.toPx() }
-        val sparks = remember { BurstSparks() }
+        val glowPx = with(density) { (sunR * GLOW_SCALE).roundToPx() }
+        val glows = remember(glowPx) { SunGlows(glowPx) }
 
         Box(
             Modifier
@@ -196,7 +204,26 @@ fun Orbit(
                 drawCircle(Palette.Sandstone.copy(alpha = 0.45f), shellR.toPx(), c, style = Stroke(1.5.dp.toPx()))
                 drawOrbitHalf(c, rx.toPx(), ry.toPx(), back = true)
             }
-            Sun(sunR, Modifier.offset(cx - sunR, cy - sunR).collapseOnHold(egg))
+            // The sun's glow (SPEC.md §1.4): pre-rendered, sandstone giving way to white as
+            // the moons close in; only its layer's alpha and scale change.
+            Canvas(
+                Modifier
+                    .offset(cx - sunR * GLOW_SCALE, cy - sunR * GLOW_SCALE)
+                    .size(sunR * GLOW_SCALE * 2)
+                    .zIndex(-4f)
+                    .graphicsLayer {
+                        val g = egg.glow
+                        alpha = if (g > 0f) 1f else 0f
+                        val s = 0.8f + 0.4f * g
+                        scaleX = s
+                        scaleY = s
+                    },
+            ) {
+                val g = egg.glow
+                drawImage(glows.sandstone, alpha = (2f * g).coerceAtMost(1f) * (1f - g))
+                drawImage(glows.white, alpha = g)
+            }
+            Sun(sunR, { egg.glow }, Modifier.offset(cx - sunR, cy - sunR).collapseOnHold(egg))
             Box(Modifier.fillMaxWidth().height(cy - sunR), contentAlignment = Alignment.Center) { aboveSun() }
             // The orbit's near half, over the sun and under the front moon.
             Canvas(Modifier.fillMaxSize().zIndex(0.5f)) {
@@ -225,6 +252,7 @@ fun Orbit(
                     tool = tool,
                     radius = moonR,
                     focused = focused,
+                    light = { egg.glow },
                     modifier = Modifier
                         .offset {
                             val angle = angleOf(i)
@@ -241,19 +269,14 @@ fun Orbit(
                             val scale = (0.6f + 0.4f * near) * (1f - 0.6f * egg.pull)
                             scaleX = scale
                             scaleY = scale
-                            alpha = if (egg.moonsHidden) 0f else 0.5f + 0.5f * near
+                            // Lit by the sun as they close in, they brighten to full.
+                            alpha = (0.5f + 0.5f * near) + (0.5f - 0.5f * near) * egg.glow
                         },
                     onClick = {
                         if (egg.active) return@Moon
                         if (focused && state.settled) onOpen(tool) else state.focus(i)
                     },
                 )
-            }
-            val bursting by remember { derivedStateOf { egg.burst >= 0f } }
-            if (bursting) {
-                Canvas(Modifier.fillMaxSize().zIndex(10f)) {
-                    drawBurst(egg.burst, Offset(cx.toPx(), cy.toPx()), sunR.toPx(), sparks)
-                }
             }
         }
     }
@@ -272,12 +295,46 @@ private fun DrawScope.drawOrbitHalf(c: Offset, rx: Float, ry: Float, back: Boole
     )
 }
 
+/** How far the light washes out the wordmark at full glow (white over black). */
+private const val WORDMARK_WASH = 0.85f
+
+/** The glow's radius, in sun radii. */
+private const val GLOW_SCALE = 2f
+
+/**
+ * The sun's glow, drawn once per size into two bitmaps: a soft radial falloff in sandstone
+ * and in white. No live blur; the egg only fades and scales them.
+ */
+private class SunGlows(radiusPx: Int) {
+    val sandstone = render(radiusPx, Palette.Sandstone)
+    val white = render(radiusPx, Palette.White)
+
+    private fun render(r: Int, color: Color): ImageBitmap {
+        val side = (r * 2).coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val c = color.toArgb()
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                side / 2f, side / 2f, side / 2f,
+                intArrayOf(withAlpha(c, 0.85f), withAlpha(c, 0.55f), withAlpha(c, 0.18f), withAlpha(c, 0f)),
+                floatArrayOf(0.35f, 0.5f, 0.72f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        }
+        android.graphics.Canvas(bitmap).drawCircle(side / 2f, side / 2f, side / 2f, paint)
+        return bitmap.asImageBitmap()
+    }
+
+    private fun withAlpha(argb: Int, a: Float) = (argb and 0x00FFFFFF) or ((a * 255).toInt() shl 24)
+}
+
 /**
  * The sun: a flat sandstone disc with SHOWDIST across it in black, sized to the disc and
- * not to the system font scale, since it's the app's mark.
+ * not to the system font scale, since it's the app's mark. A white disc over it fades in
+ * with [glow] (SPEC.md §1.4), on its own layer, so the sun turns white without redrawing.
  */
 @Composable
-private fun Sun(radius: Dp, modifier: Modifier) {
+private fun Sun(radius: Dp, glow: () -> Float, modifier: Modifier) {
     val fontScale = LocalDensity.current.fontScale
     Box(
         modifier
@@ -289,26 +346,39 @@ private fun Sun(radius: Dp, modifier: Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) { drawCircle(Palette.Sandstone) }
+        Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = glow() }) { drawCircle(Palette.White) }
         // Eight 0.6 em glyphs with 0.12 em spacing span about 5.6 em; set that to 1.5 radii.
+        val wordmark = Type.Wordmark.copy(
+            fontSize = (radius.value * 1.5f / 5.64f / fontScale).sp,
+            letterSpacing = 0.12.em,
+        )
         Text(
             "SHOWDIST",
             modifier = Modifier.offset(y = -radius * 0.12f),
             maxLines = 1,
             softWrap = false,
-            style = Type.Wordmark.copy(
-                fontSize = (radius.value * 1.5f / 5.64f / fontScale).sp,
-                letterSpacing = 0.12.em,
-            ),
+            style = wordmark,
+        )
+        // The light washes the wordmark out too: a white copy fades in over it with the glow,
+        // leaving it a faint grey on the white sun at the end.
+        Text(
+            "SHOWDIST",
+            modifier = Modifier.offset(y = -radius * 0.12f).graphicsLayer { alpha = WORDMARK_WASH * glow() }.clearAndSetSemantics {},
+            maxLines = 1,
+            softWrap = false,
+            style = wordmark.copy(color = Palette.White),
         )
     }
 }
 
 /**
  * A moon: a near-black disc with a hairline black gap around it, so it reads cleanly over
- * the sun, a ring (sandstone when focused) and the tool's picture in sandstone.
+ * the sun, a ring (sandstone when focused) and the tool's picture in sandstone. As the
+ * collapse brings it in, a white disc fades over its body with [light] (SPEC.md §1.4), on
+ * its own layer.
  */
 @Composable
-private fun Moon(tool: Tool, radius: Dp, focused: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun Moon(tool: Tool, radius: Dp, focused: Boolean, light: () -> Float, modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier
             .size(radius * 2)
@@ -325,9 +395,15 @@ private fun Moon(tool: Tool, radius: Dp, focused: Boolean, modifier: Modifier, o
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val r = size.minDimension / 2f
-            val gap = 3.dp.toPx()
             drawCircle(Palette.Black, r)
-            drawCircle(Palette.Surface, r - gap)
+            drawCircle(Palette.Surface, r - 3.dp.toPx())
+        }
+        Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = 0.85f * light() }) {
+            drawCircle(Palette.White, size.minDimension / 2f - 3.dp.toPx())
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+            val gap = 3.dp.toPx()
             val ring = (if (focused) 2.5.dp else 1.5.dp).toPx()
             drawCircle(
                 if (focused) Palette.Sandstone else Palette.TextMuted,

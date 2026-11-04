@@ -87,6 +87,10 @@ private val FACT_GAP = 44.dp
 private const val FADE_IN_MS = 600
 private const val FADE_OUT_MS = 350
 
+/** The collision flash (SPEC.md §1.4): brief, so it never strobes. */
+private const val FLASH_IN_MS = 120
+private const val FLASH_OUT_MS = 320
+
 /**
  * The collapse's prize (SPEC.md §1.4): the screen fades to black and the fun facts roll up
  * it, shuffled, credits style, fading out at the top and bottom edges. Each run deals a new
@@ -94,28 +98,42 @@ private const val FADE_OUT_MS = 350
  * going back fades it out and calls [onClose]. With [reduceMotion], one fact shows at a
  * time, still, and a tap moves to the next.
  *
+ * With [flash] (the collapse's collision) it opens with a brief white flash over the whole
+ * screen, which then fades into the black; otherwise the black simply fades in.
+ *
  * Only the column's layer translation changes per frame, so scrolling re-records nothing;
  * the fades are fixed gradients drawn over it.
  */
 @Composable
-fun FunFactsScene(deck: FactDeck, reduceMotion: Boolean, onClose: () -> Unit) {
+fun FunFactsScene(deck: FactDeck, reduceMotion: Boolean, flash: Boolean, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val scene = remember { Animatable(1f) }
     val alpha = remember { Animatable(0f) }
+    val white = remember { Animatable(0f) }
     var closing by remember { mutableStateOf(false) }
     fun close() {
         if (closing) return
         closing = true
         scope.launch {
-            alpha.animateTo(0f, tween(FADE_OUT_MS))
+            scene.animateTo(0f, tween(FADE_OUT_MS))
             onClose()
         }
     }
-    LaunchedEffect(Unit) { alpha.animateTo(1f, tween(FADE_IN_MS)) }
+    LaunchedEffect(Unit) {
+        if (flash) {
+            white.animateTo(1f, tween(FLASH_IN_MS))
+            alpha.snapTo(1f)
+            white.animateTo(0f, tween(FLASH_OUT_MS))
+        } else {
+            alpha.animateTo(1f, tween(FADE_IN_MS))
+        }
+    }
     BackHandler { close() }
 
     var round by remember { mutableStateOf(deck.shuffle()) }
     var index by remember { mutableIntStateOf(0) }
 
+    Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = scene.value }) {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -178,6 +196,8 @@ fun FunFactsScene(deck: FactDeck, reduceMotion: Boolean, onClose: () -> Unit) {
             }
         }
         EdgeFades(Modifier.fillMaxSize())
+    }
+    Spacer(Modifier.fillMaxSize().graphicsLayer { this.alpha = white.value }.background(Palette.White))
     }
 }
 

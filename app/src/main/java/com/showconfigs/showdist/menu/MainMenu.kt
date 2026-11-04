@@ -35,7 +35,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -47,6 +46,7 @@ import com.showconfigs.showdist.ui.AppBarAction
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
+import com.showconfigs.showdist.ui.rememberHaptics
 import com.showconfigs.showdist.ui.rememberReduceMotion
 
 /** The tools, one moon each, with their quick guides (SPEC.md §1.4). */
@@ -101,10 +101,10 @@ fun MainMenu(
     val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
     val orbit = remember { OrbitState(focused.ordinal, Tool.entries.size, scope, reduceMotion) }
-    val view = LocalView.current
     val deck = rememberFactDeck()
     var factsShowing by remember { mutableStateOf(false) }
-    val egg = remember { CollapseEgg(scope, view, reduceMotion, onBurst = { factsShowing = true }) }
+    val haptics = rememberHaptics()
+    val egg = remember { CollapseEgg(scope, haptics, reduceMotion, onCollide = { factsShowing = true }) }
     LaunchedEffect(orbit.settled) { if (orbit.settled) onFocused(Tool.entries[orbit.focused]) }
 
     Box(Modifier.fillMaxSize()) {
@@ -131,7 +131,7 @@ fun MainMenu(
         )
     }
     // The collapse's prize (SPEC.md §1.4), over everything.
-    if (factsShowing) FunFactsScene(deck, reduceMotion, onClose = { factsShowing = false })
+    if (factsShowing) FunFactsScene(deck, reduceMotion, flash = !reduceMotion, onClose = { factsShowing = false })
     }
 }
 

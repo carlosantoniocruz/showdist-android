@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Haptics that build in strength (SPEC.md §1.4, §2.6); install-time, no prompt. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- AR-only app: Play Store hides it from devices without an ARCore-capable camera. -->
     <!-- Play filters on its own ARCore device list, so "true" is right there. F-Droid instead
          asks the phone, and many ARCore phones don't report this feature; the F-Droid build
