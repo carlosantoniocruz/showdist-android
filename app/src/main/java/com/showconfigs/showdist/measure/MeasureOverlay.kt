@@ -81,7 +81,7 @@ fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Fl
                 )
             }
             for (i in 1 until count) {
-                if (!tracker.visible[i - 1] || !tracker.visible[i] || !tracker.segmentMidInFront[i]) continue
+                if (tracker.isLineStart(i) || !tracker.visible[i - 1] || !tracker.visible[i] || !tracker.segmentMidInFront[i]) continue
                 labels.draw(
                     c, w, h,
                     tracker.segmentMidXY[i * 2], tracker.segmentMidXY[i * 2 + 1],
@@ -188,7 +188,7 @@ private class PointsPainter(private val density: Float, scheme: ArScheme) {
         for (pass in 0..1) {
             val paint = if (pass == 0) lineShadow else line
             for (i in 1 until count) {
-                if (!t.visible[i - 1] || !t.visible[i]) continue
+                if (t.isLineStart(i) || !t.visible[i - 1] || !t.visible[i]) continue
                 c.drawLine(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h, xy[i * 2] * w, xy[i * 2 + 1] * h, paint)
             }
         }

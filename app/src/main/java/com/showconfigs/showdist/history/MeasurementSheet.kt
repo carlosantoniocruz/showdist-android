@@ -55,9 +55,11 @@ import com.showconfigs.showdist.ui.Type
 import kotlinx.coroutines.launch
 
 /** Runs Share / Copy text and reports the outcome in the app's snackbar. */
-class ExportActions(private val run: (List<Recording>, share: Boolean) -> Unit) {
-    fun share(recordings: List<Recording>) = run(recordings, true)
-    fun copy(recordings: List<Recording>) = run(recordings, false)
+class ExportActions(private val run: (List<HistoryEntry>, share: Boolean) -> Unit) {
+    fun share(recordings: List<Recording>) = run(recordings.map { HistoryEntry.Chain(it) }, true)
+    fun copy(recordings: List<Recording>) = run(recordings.map { HistoryEntry.Chain(it) }, false)
+    fun shareEntries(entries: List<HistoryEntry>) = run(entries, true)
+    fun copyEntries(entries: List<HistoryEntry>) = run(entries, false)
 }
 
 @Composable
@@ -65,9 +67,9 @@ fun rememberExportActions(units: UnitSystem): ExportActions {
     val context = LocalContext.current
     val snackbar = LocalSnackbarHostState.current
     val scope = rememberCoroutineScope()
-    return ExportActions { recordings, share ->
+    return ExportActions { entries, share ->
         scope.launch {
-            val message = if (share) Export.share(context, recordings, units) else Export.copy(context, recordings, units)
+            val message = if (share) Export.share(context, entries, units) else Export.copy(context, entries, units)
             if (message != null) snackbar.showSnackbar(message)
         }
     }

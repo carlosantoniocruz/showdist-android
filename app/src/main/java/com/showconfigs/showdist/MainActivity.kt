@@ -1,5 +1,10 @@
 package com.showconfigs.showdist
 
+import com.showconfigs.showdist.history.GroupScreen
+import com.showconfigs.showdist.history.GroupStore
+import com.showconfigs.showdist.measure.KindPrompt
+import com.showconfigs.showdist.measure.MeasureKind
+import com.showconfigs.showdist.settings.MeasureKindSetting
 import com.showconfigs.showdist.settings.AboutScreen
 import com.showconfigs.showdist.measure.MeasureMode
 import com.showconfigs.showdist.settings.Calibration
@@ -51,6 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RecordingStore.init(this)
+        GroupStore.init(this)
         // Screen kept on while the app is in the foreground (SPEC.md §0); the flag only
         // applies while this window is visible.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -73,7 +79,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Settings, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
+private enum class Screen { Menu, Measure, Leveler, History, Group, Settings, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail, the [LevelerMode]
@@ -93,6 +99,7 @@ private fun ShowdistApp() {
     val unitSettings = remember { UnitSettings(context) }
     remember { HapticsSetting.load(context) }
     remember { Calibration.load(context) }
+    remember { MeasureKindSetting.load(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
@@ -107,10 +114,25 @@ private fun ShowdistApp() {
     var projectionSerial by rememberSaveable { mutableIntStateOf(0) }
     // The menu's front moon, kept here because the menu leaves composition while a tool is open.
     var menuFocus by rememberSaveable { mutableStateOf(Tool.Measure) }
+    // Chained or Group for the open Measure, and the saved group it adds lines to, if any
+    // (SPEC.md §2.13); the group History has open.
+    var measureKind by rememberSaveable { mutableStateOf(MeasureKind.Chained) }
+    var appendGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var askKind by rememberSaveable { mutableStateOf(false) }
 
     fun push(screen: Screen, arg: Int = 0) = stack.add(Route(screen, arg))
     fun pop() {
-        if (stack.removeAt(stack.lastIndex).screen == Screen.Measure) projectionId = null
+        if (stack.removeAt(stack.lastIndex).screen == Screen.Measure) {
+            projectionId = null
+            appendGroupId = null
+        }
+    }
+
+    fun openMeasure(kind: MeasureKind) {
+        measureKind = kind
+        appendGroupId = null
+        push(Screen.Measure)
     }
 
     /** Back to the open Measure if there is one (History over it), else a new Measure on top. */
@@ -120,7 +142,7 @@ private fun ShowdistApp() {
         if (stack.any { it.screen == Screen.Measure }) {
             while (stack.last().screen != Screen.Measure) pop()
         } else {
-            push(Screen.Measure)
+            openMeasure(MeasureKind.Chained)
         }
     }
 
@@ -128,7 +150,7 @@ private fun ShowdistApp() {
 
     val top = stack.last()
     val snackbar = remember { SnackbarHostState() }
-    val saved = RecordingStore.recordings.size
+    val saved = RecordingStore.recordings.size + GroupStore.groups.size
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbar) {
         Box(Modifier.fillMaxSize()) {
@@ -136,6 +158,8 @@ private fun ShowdistApp() {
             if (stack.any { it.screen == Screen.Measure }) {
                 MeasureScreen(
                     mode = MeasureMode.entries[stack.first { it.screen == Screen.Measure }.arg],
+                    kind = measureKind,
+                    appendTo = appendGroupId,
                     units = unitSettings.units,
                     projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
                     projectionSerial = projectionSerial,
@@ -147,6 +171,8 @@ private fun ShowdistApp() {
                         Calibration.target?.let { (_, trueMetres) -> Calibration.calibrateScale(context, raw, trueMetres) }
                         pop()
                     },
+                    // Lines added to a saved group: back to that group.
+                    onGroupAppended = ::pop,
                 )
             }
             when (top.screen) {
@@ -156,7 +182,7 @@ private fun ShowdistApp() {
                     onFocused = { menuFocus = it },
                     onTool = { tool ->
                         when (tool) {
-                            Tool.Measure -> push(Screen.Measure)
+                            Tool.Measure -> MeasureKindSetting.remembered?.let(::openMeasure) ?: run { askKind = true }
                             Tool.Tube -> push(Screen.Leveler, LevelerMode.Tube.ordinal)
                             Tool.Bullseye -> push(Screen.Leveler, LevelerMode.Bullseye.ordinal)
                         }
@@ -166,7 +192,26 @@ private fun ShowdistApp() {
                 )
                 Screen.Measure -> Unit // Drawn in its slot above.
                 Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
-                Screen.History -> HistoryScreen(unitSettings.units, onViewInAr = ::viewInAr, onBack = ::pop)
+                Screen.History -> HistoryScreen(
+                    unitSettings.units,
+                    onViewInAr = ::viewInAr,
+                    onOpenGroup = {
+                        openGroupId = it
+                        push(Screen.Group)
+                    },
+                    onBack = ::pop,
+                )
+                Screen.Group -> GroupScreen(
+                    groupId = openGroupId,
+                    units = unitSettings.units,
+                    // Not while a Measure is already open beneath History: one session at a time.
+                    onAddLines = if (stack.any { it.screen == Screen.Measure }) null else { id ->
+                        measureKind = MeasureKind.Group
+                        appendGroupId = id
+                        push(Screen.Measure)
+                    },
+                    onBack = ::pop,
+                )
                 Screen.Settings -> SettingsScreen(
                     unitSettings,
                     onCalibrateScale = { push(Screen.CalibrateScale) },
@@ -184,6 +229,15 @@ private fun ShowdistApp() {
                 Screen.CalibrateLevel -> CalibrateLevelScreen(onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
+            }
+            if (askKind) {
+                KindPrompt(
+                    onPick = { kind ->
+                        askKind = false
+                        openMeasure(kind)
+                    },
+                    onDismiss = { askKind = false },
+                )
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
         }

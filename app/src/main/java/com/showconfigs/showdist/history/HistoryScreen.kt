@@ -1,5 +1,8 @@
 package com.showconfigs.showdist.history
 
+import com.showconfigs.showdist.ui.DialogText
+import com.showconfigs.showdist.ui.ShowdistDialog
+import androidx.compose.runtime.derivedStateOf
 import com.showconfigs.showdist.ui.BackBar
 import com.showconfigs.showdist.ui.ReadingSides
 import com.showconfigs.showdist.ui.ReadingWidth
@@ -55,11 +58,15 @@ import com.showconfigs.showdist.ui.Type
 /** A pending delete: which ids, and the dialog wording for them. */
 private class DeleteRequest(val ids: Set<String>, val title: String, val confirm: String)
 
-/** History (SPEC.md §1.9): saved measurements, newest first, with selection and delete. */
+/**
+ * History (SPEC.md §1.9): saved chains and groups together, newest first, with selection,
+ * delete, share and PDF. A chain opens its sheet; a group opens its own screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: () -> Unit) {
+fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGroup: (String) -> Unit, onBack: () -> Unit) {
     val recordings = RecordingStore.recordings
+    val entries by remember { derivedStateOf { historyEntries(RecordingStore.recordings, GroupStore.groups) } }
     val export = rememberExportActions(units)
     val exportPdf = rememberPdfExport(units)
     var selecting by rememberSaveable { mutableStateOf(false) }
@@ -74,7 +81,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
     fun toggle(id: String) {
         selected = if (id in selected) selected - id else selected + id
     }
-    fun selectedInOrder() = recordings.filter { it.id in selected }
+    fun selectedInOrder() = entries.filter { it.id in selected }
 
     // System Back leaves selection mode first, and only pops the screen on the next press.
     BackHandler(enabled = selecting) { exitSelection() }
@@ -85,10 +92,10 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                 SelectionBar(
                     count = selected.size,
                     onCancel = ::exitSelection,
-                    onSelectAll = { selected = recordings.map { it.id }.toSet() },
+                    onSelectAll = { selected = entries.map { it.id }.toSet() },
                     onExportPdf = { exportPdf(selectedInOrder()) },
-                    onShare = { export.share(selectedInOrder()) },
-                    onCopy = { export.copy(selectedInOrder()) },
+                    onShare = { export.shareEntries(selectedInOrder()) },
+                    onCopy = { export.copyEntries(selectedInOrder()) },
                     onDelete = {
                         val n = selected.size
                         pendingDelete = DeleteRequest(
@@ -101,12 +108,12 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
             } else {
                 ShowdistAppBar("HISTORY") {
                     OverflowMenu(
-                        enabled = recordings.isNotEmpty(),
+                        enabled = entries.isNotEmpty(),
                         onSelect = { selecting = true },
                         onDeleteAll = {
                             pendingDelete = DeleteRequest(
-                                recordings.map { it.id }.toSet(),
-                                "Delete all ${recordings.size} measurements?",
+                                entries.map { it.id }.toSet(),
+                                "Delete all ${entries.size} measurements?",
                                 "Delete all",
                             )
                         },
@@ -118,7 +125,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
         bottomBar = { BackBar(onBack = { if (selecting) exitSelection() else onBack() }) },
         containerColor = Palette.Black,
     ) { padding ->
-        if (recordings.isEmpty()) {
+        if (entries.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding).padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
                 Text(
                     "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save.",
@@ -134,7 +141,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
             Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = side, end = side, bottom = 24.dp),
         ) {
-            itemsIndexed(recordings, key = { _, r -> r.id }) { index, recording ->
+            itemsIndexed(entries, key = { _, e -> e.id }) { index, entry ->
                 if (index > 0) {
                     HorizontalDivider(
                         Modifier.padding(start = 72.dp),
@@ -142,6 +149,27 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
                         color = Palette.Divider,
                     )
                 }
+                fun longPress() {
+                    if (selecting) {
+                        toggle(entry.id)
+                    } else {
+                        selecting = true
+                        selected = setOf(entry.id)
+                    }
+                }
+                if (entry is HistoryEntry.Group) {
+                    GroupRow(
+                        group = entry.group,
+                        selecting = selecting,
+                        isSelected = entry.id in selected,
+                        onClick = { if (selecting) toggle(entry.id) else onOpenGroup(entry.id) },
+                        onLongClick = ::longPress,
+                        onShare = { export.shareEntries(listOf(entry)) },
+                        onCopy = { export.copyEntries(listOf(entry)) },
+                    )
+                    return@itemsIndexed
+                }
+                val recording = (entry as HistoryEntry.Chain).recording
                 HistoryRow(
                     recording = recording,
                     units = units,
@@ -175,27 +203,20 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onBack: ()
     }
 
     pendingDelete?.let { request ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            containerColor = Palette.Surface,
-            title = { Text(request.title, style = Type.Title.copy(fontWeight = FontWeight.Normal)) },
-            icon = { Icon(ShowdistIcons.DeleteOutline, contentDescription = null, tint = Palette.Sandstone) },
-            text = { Text("This can't be undone.", style = Type.Secondary) },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text("Cancel", style = Type.Label.copy(color = Palette.TextMuted))
-                }
+        ShowdistDialog(
+            onDismiss = { pendingDelete = null },
+            title = request.title,
+            dismiss = "Cancel",
+            confirm = request.confirm,
+            onConfirm = {
+                RecordingStore.remove(request.ids)
+                GroupStore.remove(request.ids)
+                pendingDelete = null
+                exitSelection()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    RecordingStore.remove(request.ids)
-                    pendingDelete = null
-                    exitSelection()
-                }) {
-                    Text(request.confirm, style = Type.Label.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
-                }
-            },
-        )
+        ) {
+            Text("This can't be undone.", style = DialogText.Secondary)
+        }
     }
 }
 
@@ -229,6 +250,53 @@ private fun HistoryRow(
                 style = Type.Value,
             )
             Text("${recording.points.size} points", style = Type.Secondary)
+        }
+        if (selecting) {
+            Icon(
+                if (isSelected) ShowdistIcons.CheckCircle else ShowdistIcons.CircleOutlined,
+                contentDescription = if (isSelected) "Selected" else "Not selected",
+                tint = if (isSelected) Palette.Sandstone else Palette.TextMuted,
+                modifier = Modifier.padding(end = 12.dp),
+            )
+        } else {
+            ShareMenuButton(enabled = true, onShare = onShare, onCopy = onCopy)
+        }
+    }
+}
+
+/**
+ * A group's row (SPEC.md §1.9, §2.13): its framed thumbnail, its name, and "N lines · date".
+ * Tapping opens the group.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupRow(
+    group: MeasureGroup,
+    selecting: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onShare: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    val accent = if (isSelected) Palette.Sandstone else Palette.Text
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (isSelected) Palette.SurfaceHigh else Palette.Black)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .heightIn(min = 80.dp)
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GroupThumbnail(group, accent)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+            Text(group.name, style = Type.Value.copy(fontSize = Type.Value.fontSize * 0.85f), maxLines = 1)
+            Text(
+                "${group.lines.size} line${if (group.lines.size == 1) "" else "s"} · ${group.shortDate}",
+                style = Type.Secondary,
+            )
         }
         if (selecting) {
             Icon(

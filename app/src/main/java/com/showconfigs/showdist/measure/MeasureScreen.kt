@@ -99,6 +99,12 @@ import io.github.sceneview.ar.ARSceneView
  */
 enum class MeasureMode { Normal, CalibrateScale, WarmUp }
 
+/**
+ * How points join (SPEC.md §2.13): one continuous path with a running total, or separate
+ * lines that together belong to one thing (a room, a table, a cabinet).
+ */
+enum class MeasureKind { Chained, Group }
+
 /** Outcome of the start routine (SPEC.md §2.1). */
 private sealed interface StartState {
     data object Waking : StartState
@@ -125,6 +131,8 @@ private enum class ProblemAction(val label: String) {
 @Composable
 fun MeasureScreen(
     mode: MeasureMode,
+    kind: MeasureKind,
+    appendTo: String?,
     units: UnitSystem,
     projection: Recording?,
     projectionSerial: Int,
@@ -133,6 +141,7 @@ fun MeasureScreen(
     onHistory: () -> Unit,
     onBack: () -> Unit,
     onCalibrated: (rawMetres: Double) -> Unit = {},
+    onGroupAppended: () -> Unit = {},
 ) {
     val activity = LocalActivity.current ?: return
     var state by remember { mutableStateOf<StartState>(StartState.Waking) }
@@ -184,7 +193,10 @@ fun MeasureScreen(
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
             StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
-            StartState.Ready -> MeasureArea(mode, units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onCalibrated, onSessionFailed = { state = problemFor(it) })
+            StartState.Ready -> MeasureArea(
+                mode, kind, appendTo, units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onCalibrated,
+                onGroupAppended, onSessionFailed = { state = problemFor(it) },
+            )
             is StartState.Problem -> ProblemView(s) {
                 when (s.action) {
                     ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -204,6 +216,8 @@ fun MeasureScreen(
 @Composable
 private fun MeasureArea(
     mode: MeasureMode,
+    kind: MeasureKind,
+    appendTo: String?,
     units: UnitSystem,
     projection: Recording?,
     projectionSerial: Int,
@@ -212,9 +226,14 @@ private fun MeasureArea(
     onHistory: () -> Unit,
     onBack: () -> Unit,
     onCalibrated: (rawMetres: Double) -> Unit,
+    onGroupAppended: () -> Unit,
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
+    // Group mode (SPEC.md §2.13). Calibration always measures one plain line.
+    val grouping = kind == MeasureKind.Group && mode == MeasureMode.Normal
+    SideEffect { if (tracker.pointCount == 0) tracker.groupMode = grouping }
+    val group = rememberGroupSession(tracker, units, appendTo, onGroupAppended)
     val calibrating = mode == MeasureMode.CalibrateScale
     // Raw readings while calibrating, so they can be compared with the true length.
     SideEffect { tracker.scale = if (calibrating) 1.0 else Calibration.scale }
@@ -249,7 +268,21 @@ private fun MeasureArea(
     val sessionLifecycle = rememberCappedLifecycle(capped = covered)
     val barRotation = rememberBarRotation(sessionLifecycle)
     var saved by remember { mutableStateOf<Recording?>(null) }
-    val holdToSave = rememberHoldToSave(tracker, enabled = !calibrating && !warmUpOpen) { saved = it }
+    val holdToSave = rememberHoldToSave(
+        tracker,
+        enabled = !calibrating && !warmUpOpen,
+        ready = { if (grouping) tracker.completedLines >= 1 else tracker.pointCount >= 2 },
+        onComplete = {
+            if (grouping) {
+                group.finish()
+            } else {
+                val recording = Recording.create(tracker.snapshotPoints(), tracker.units, tracker.scale)
+                tracker.clear()
+                RecordingStore.add(recording)
+                saved = recording
+            }
+        },
+    )
 
     // −1, 0 or +1 as the bar controls are turned; recomposes only when it crosses 45°.
     val sideways by remember {
@@ -306,14 +339,20 @@ private fun MeasureArea(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HintLine(tracker.hint, instruction = if (calibrating) "Place a point at each end of ${Calibration.target?.first?.what ?: "the object"}" else null)
-                if (tracker.pointCount >= 2 && sideways == 0) {
+                // In a group: the line being drawn while it reaches a surface, else the last one.
+                val showTotal = if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2
+                if (showTotal && sideways == 0) {
                     Spacer(Modifier.height(6.dp))
                     RunningTotal(tracker.totalMetres, units)
+                }
+                if (grouping && tracker.completedLines >= 1) {
+                    Spacer(Modifier.height(8.dp))
+                    GroupBar(tracker.completedLines, onDone = group::finish)
                 }
             }
             // Held sideways (SPEC.md §2.9): the total sits centred on the reader's top edge,
             // which is the screen's right edge (turned clockwise) or left edge, at a smaller size.
-            if (tracker.pointCount >= 2 && sideways != 0) {
+            if ((if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2) && sideways != 0) {
                 RunningTotal(
                     tracker.totalMetres,
                     units,
@@ -329,6 +368,17 @@ private fun MeasureArea(
             if (saving) {
                 SavingPill(
                     Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
+                )
+            }
+            if (grouping) {
+                LineCard(
+                    group,
+                    units,
+                    tracker.totalMetres,
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 64.dp)
+                        .turnWith { barRotation.value },
                 )
             }
             if (warmUpOffered && !warmUpOpen) {
@@ -368,7 +418,7 @@ private fun MeasureArea(
         ControlBar(
             canPlace = tracker.canPlace,
             hasPoints = tracker.pointCount > 0 || tracker.projectionStage != ProjectionStage.None,
-            savedCount = RecordingStore.recordings.size,
+            savedCount = RecordingStore.recordings.size + com.showconfigs.showdist.history.GroupStore.groups.size,
             units = units,
             charge = holdToSave::charge,
             rotation = { barRotation.value },
@@ -381,6 +431,7 @@ private fun MeasureArea(
     }
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
+    if (grouping) GroupDialogs(group)
 }
 
 /**
@@ -518,6 +569,10 @@ private fun rememberScreenCornerRadius(): Float {
         }
     }
 }
+
+/** A group's length pill shows a finished line, or one being drawn while it has a surface to reach. */
+private fun groupLengthShown(t: MeasureTracker): Boolean =
+    if (t.pointCount % 2 == 1) t.hasHit else t.pointCount >= 2
 
 /** Clearance kept above the reticle's centre: its 16 dp ring plus its dots and halo. */
 private val RETICLE_CLEARANCE = 28.dp

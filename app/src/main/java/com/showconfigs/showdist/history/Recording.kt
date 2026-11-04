@@ -50,20 +50,5 @@ private fun distance(a: DoubleArray, b: DoubleArray): Double {
     return sqrt(dx * dx + dy * dy + dz * dz)
 }
 
-/**
- * Plain text for Copy and Share (SPEC.md §2.7), built in memory and never written to
- * storage: per recording its number, date, unit, each segment's length and the total, in
- * the current [units]; recordings are separated by a blank line.
- */
-fun List<Recording>.toShareText(units: UnitSystem): String = buildString {
-    this@toShareText.forEachIndexed { i, r ->
-        if (i > 0) append("\n\n")
-        append("#${i + 1} · ${r.headingTime}\n")
-        append("Unit: ${if (units == UnitSystem.Metric) "metric" else "imperial"}\n")
-        r.segments.forEachIndexed { j, length -> append("${j + 1}. ${DistanceFormat.format(length, units)}\n") }
-        append("Total: ${DistanceFormat.format(r.total, units)}")
-    }
-}
-
 /** "N points · M segments" under the sheet's total. */
 fun Recording.countsLine(): String = "${points.size} points · ${segments.size} segments"

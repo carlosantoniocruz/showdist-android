@@ -93,23 +93,30 @@ class HoldToSaveState internal constructor(private val animatable: Animatable<Fl
  * early stops them at once (one very light tick), rewinds over 200 ms and saves nothing.
  * Holding with points while tracking is lost doesn't charge: a soft double tick says "not
  * ready". On completion: a crisp confirming tap, the points are saved as a Recording, the
- * anchors cleared (the session keeps running), and [onSaved] shows the "SAVED" sheet.
+ * [onComplete] does the saving: a chain is stored and its sheet shown, a group asks for its
+ * name (SPEC.md §2.13). [ready] says whether there's anything to save.
  * Haptics run in the gesture's coroutines, never in the render loop.
  */
 @Composable
-fun rememberHoldToSave(tracker: MeasureTracker, enabled: Boolean, onSaved: (Recording) -> Unit): HoldToSaveState {
+fun rememberHoldToSave(
+    tracker: MeasureTracker,
+    enabled: Boolean,
+    ready: () -> Boolean,
+    onComplete: () -> Unit,
+): HoldToSaveState {
     val currentEnabled by rememberUpdatedState(enabled)
+    val currentReady by rememberUpdatedState(ready)
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
-    val currentOnSaved by rememberUpdatedState(onSaved)
+    val currentOnComplete by rememberUpdatedState(onComplete)
     return remember(tracker) {
         val charge = Animatable(0f)
         var job: Job? = null
         var pulses: Job? = null
         var completed = false
         val gesture = Modifier.holdToSave(
-            canCharge = { currentEnabled && tracker.pointCount >= 2 && tracker.tracking },
-            onRefused = { if (currentEnabled && tracker.pointCount >= 2) haptics.notReady() },
+            canCharge = { currentEnabled && currentReady() && tracker.tracking },
+            onRefused = { if (currentEnabled && currentReady()) haptics.notReady() },
             onChargeStart = {
                 completed = false
                 pulses = scope.launch {
@@ -125,11 +132,8 @@ fun rememberHoldToSave(tracker: MeasureTracker, enabled: Boolean, onSaved: (Reco
                     completed = true
                     pulses?.cancel()
                     haptics.confirm()
-                    val recording = Recording.create(tracker.snapshotPoints(), tracker.units, tracker.scale)
-                    tracker.clear()
-                    RecordingStore.add(recording)
                     charge.snapTo(0f)
-                    currentOnSaved(recording)
+                    currentOnComplete()
                 }
             },
             onRelease = {

@@ -14,9 +14,12 @@ import com.showconfigs.showdist.measure.UnitSystem
  */
 object Export {
     /** Opens the share sheet with the text as `text/plain`. Returns a snackbar message on failure. */
-    fun share(context: Context, recordings: List<Recording>, units: UnitSystem): String? = try {
-        val subject = if (recordings.size == 1) {
-            "Showdist: ${DistanceFormat.format(recordings[0].total, units)}"
+    fun share(context: Context, recordings: List<HistoryEntry>, units: UnitSystem): String? = try {
+        val first = recordings.singleOrNull()
+        val subject = if (first is HistoryEntry.Chain) {
+            "Showdist: ${DistanceFormat.format(first.recording.total, units)}"
+        } else if (first is HistoryEntry.Group) {
+            "Showdist: ${first.group.name}"
         } else {
             "Showdist: ${recordings.size} measurements"
         }
@@ -32,7 +35,7 @@ object Export {
     }
 
     /** Puts the text on the clipboard. Returns the snackbar message either way. */
-    fun copy(context: Context, recordings: List<Recording>, units: UnitSystem): String = try {
+    fun copy(context: Context, recordings: List<HistoryEntry>, units: UnitSystem): String = try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Showdist", recordings.toShareText(units)))
         "Copied to clipboard"

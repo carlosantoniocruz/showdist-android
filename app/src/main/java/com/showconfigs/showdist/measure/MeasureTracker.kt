@@ -76,6 +76,9 @@ enum class Hint(val text: String, val tracking: Boolean = false) {
     Scan("Move slowly to scan surfaces", tracking = true),
     Aim("Aim at a surface", tracking = true),
     PlaceFirst("Tap to place a point"),
+    GroupStart("Tap to start a line"),
+    GroupEnd("Tap to end the line"),
+    GroupNext("Tap to start the next line · hold to finish"),
     PlaceNext("Place the next point"),
     AddOrSave("Tap to add · hold anywhere to save"),
     WarmUp("Move the phone slowly to get started", tracking = true),
@@ -163,7 +166,22 @@ class MeasureTracker {
     var hint by mutableStateOf(Hint.Starting)
         private set
 
-    /** Sum of all segments. Only updated when the displayed value would change. */
+    /**
+     * Group mode (SPEC.md §2.13): every two points make a standalone line, with no segment
+     * between one line's end and the next one's start. Set only while there are no points.
+     */
+    var groupMode = false
+
+    /** True if point [i] starts a new line (and so has no segment from the point before). */
+    fun isLineStart(i: Int): Boolean = i == 0 || (groupMode && i % 2 == 0)
+
+    /** Group mode: lines finished so far. */
+    val completedLines: Int get() = if (groupMode) pointCount / 2 else 0
+
+    /**
+     * Sum of all segments, or in group mode the current line (the one being drawn, else the
+     * last one finished). Only updated when the displayed value would change.
+     */
     var totalMetres by mutableDoubleStateOf(0.0)
         private set
 
@@ -507,7 +525,9 @@ class MeasureTracker {
             if (anchorTracking) anchors[i].pose.getTranslation(world, i * 3)
             val o = i * 3
             visible[i] = tracking && anchorTracking && project(world[o], world[o + 1], world[o + 2], screenXY, i * 2)
-            if (i > 0) {
+            if (isLineStart(i)) {
+                segmentMidInFront[i] = false
+            } else {
                 val d = distance(world, o - 3, world, o) * scale
                 total += d
                 segmentMidInFront[i] = tracking && projectMidpoint(world, o - 3, world, o, segmentMidXY, i * 2)
@@ -525,7 +545,16 @@ class MeasureTracker {
         }
 
         val last = anchors.lastIndex
-        liveVisible = hit != null && last >= 0 && visible[last]
+        // In a group, the live line only shows while a line is half drawn.
+        liveVisible = hit != null && last >= 0 && visible[last] && (!groupMode || anchors.size % 2 == 1)
+        if (groupMode) {
+            total = when {
+                anchors.size % 2 == 1 && liveVisible -> distance(world, last * 3, smoothHit, 0) * scale
+                anchors.size % 2 == 1 -> 0.0
+                anchors.size >= 2 -> distance(world, (last - 1) * 3, world, last * 3) * scale
+                else -> 0.0
+            }
+        }
         if (liveVisible) {
             val d = distance(world, last * 3, smoothHit, 0) * scale
             liveMidInFront = projectMidpoint(world, last * 3, smoothHit, 0, liveMidXY, 0)
@@ -762,6 +791,10 @@ class MeasureTracker {
                 projectionStage != ProjectionStage.Placed -> if (planeCount == 0) Hint.Scan else Hint.WarmUp
             hasHit && projectionStage == ProjectionStage.Aim -> Hint.ProjectAim
             hasHit && projectionStage == ProjectionStage.Align -> Hint.ProjectAlign
+            groupMode && !hasHit -> Hint.Aim
+            groupMode && points % 2 == 1 -> Hint.GroupEnd
+            groupMode && points == 0 -> Hint.GroupStart
+            groupMode -> Hint.GroupNext
             !hasHit && (points < 2 || projectionStage == ProjectionStage.Aim || projectionStage == ProjectionStage.Align) -> Hint.Aim
             points == 0 -> Hint.PlaceFirst
             points == 1 -> Hint.PlaceNext

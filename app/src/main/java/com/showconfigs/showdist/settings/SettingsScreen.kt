@@ -1,5 +1,12 @@
 package com.showconfigs.showdist.settings
 
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.showconfigs.showdist.measure.MeasureKind
 import com.showconfigs.showdist.ui.BackBar
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
@@ -59,9 +66,10 @@ fun SettingsScreen(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Column(Modifier.readingColumn().padding(top = 8.dp, bottom = 24.dp)) {
                     Column {
-                        SectionTitle("UNITS")
+                        SectionTitle("MEASURING")
                         UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
                         UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
+                        MeasureKindOption()
                     }
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
                     Column {
@@ -96,6 +104,38 @@ fun SettingsScreen(
 
 /** The gap above and below each divider between Settings sections. */
 private val SECTION_GAP = 8.dp
+
+/**
+ * How AR Measure opens (SPEC.md §2.13): ask Chained or Group each time, or always one. The
+ * prompt's "Remember my choice" sets it too; "Ask each time" undoes that.
+ */
+@Composable
+private fun MeasureKindOption() {
+    val context = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    val current = MeasureKindSetting.remembered
+    val label = { k: MeasureKind? ->
+        when (k) {
+            null -> "Ask each time"
+            MeasureKind.Chained -> "Always chained"
+            MeasureKind.Group -> "Always group"
+        }
+    }
+    Box {
+        SettingsRow("Measure mode", subtitle = label(current), onClick = { open = true }) { Chevron() }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
+            for (k in listOf(null, MeasureKind.Chained, MeasureKind.Group)) {
+                DropdownMenuItem(
+                    text = { Text(label(k), style = Type.Label.copy(color = if (k == current) Palette.Sandstone else Palette.Text)) },
+                    onClick = {
+                        MeasureKindSetting.set(context, k)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
 
 /** The app-wide Vibration switch (SPEC.md §1.5); the system's touch feedback still applies. */
 @Composable

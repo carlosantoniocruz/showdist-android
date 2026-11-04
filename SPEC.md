@@ -53,6 +53,10 @@ Every screen is a full-screen page pushed on a back stack. The system Back butto
 - Title centred and set in the **Caption** style (§6.3) in white: "SETTINGS", "ABOUT", "LICENSES", "LICENSE", "HISTORY", "TUBE LEVELER", "BULLSEYE LEVELER".
 - No back arrow at the top (v1.4). **Back lives at the bottom** (`BackBar`, a Scaffold bottom bar): a bare sandstone `arrow_back_rounded` (30 dp) centred in a 56 dp round touch target with a ripple, content description "Back", on black, above the bottom safe-drawing and mandatory-gesture insets with 4 dp above and below, so it sits where the menu's History and Settings icons do. In History's selection mode it leaves selection first. On the Tube level in landscape (the only screen that rotates, §4.1) a bottom bar would take the height the vial and readout need, so the same back button floats in the bottom-start corner instead (8 dp in from the safe-drawing insets). The system back gesture works everywhere as before. Actions (History's menu, the Leveler's Zero and Reset, selection actions) stay in the top bar.
 
+### 1.2a Dialogs (v1.4, `ui/ShowdistDialog.kt`)
+
+Every pop-up uses one compact style, with no wasted space: a card on Surface with 20 dp corners, at most 360 dp wide (24 dp kept clear at the screen's sides), padding 18 dp at the sides and 16 dp on top, an optional title with 10 dp under it, then the content, then the buttons right-aligned close beneath (text buttons: "Cancel"-style in grey, the confirming one in bold sandstone; 4 dp bottom padding). **Text follows the main menu's sizes** (the guide's 0.86 scale, §1.4): titles like a tool's name (Title × 0.86, about 18 sp, regular), everything else like its paragraph (Body × 0.86, about 14 sp): messages in grey, text fields, button labels, and the prompt's descriptions. The prompt's option names are bold sandstone at the title size, in buttons ≥56 dp tall. No icon slot. Used by the Chained/Group prompt ("How will you measure?"; its two buttons ≥64 dp, 8 dp apart), the group-name and line-label dialogs, and the delete confirmations in History and on a group's screen.
+
 ### 1.3 Launch screen
 
 - Pre-Android 12: the window background is a plain **black (#000000)** field. No logo.
@@ -162,7 +166,8 @@ Its own screen (v1.4, `settings/AboutScreen.kt`), reached **only from Settings**
 
 ### 1.9 History
 
-- The list shows every saved measurement, newest first, separated by dividers (1 dp, divider colour, indented 72 dp). The list has 24 dp bottom padding.
+- The list shows every saved chain **and group** (§2.13) together, newest first, separated by dividers (1 dp, divider colour, indented 72 dp). The list has 24 dp bottom padding.
+- **Group rows** (v1.4): a 44 dp thumbnail of the group's separate lines inside a thin rounded frame (so groups look different from chains), the group's name (Value at 0.85×), and "N lines · Mar 3, 2026" (Secondary). Tapping opens the group's screen (§2.13); long-press selects; the share menu shares or copies it. Selection, delete, Delete all, share, copy and Export PDF all work across chains and groups.
 - **Empty state:** centred text with 40 dp side padding, 14 sp, textMuted, line height 1.5:
   "No measurements yet.\nPlace two or more dots, then hold anywhere on screen to save."
 - **Row** (left padding 16, right padding 4):
@@ -564,6 +569,27 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 - **Output:** `<cache>/exports/showdist_YYYYMMDD_HHMM.pdf`, shared through the FileProvider with `ACTION_SEND`, type `application/pdf`, subject "Showdist — Measurement Report". No storage permissions. Each export first deletes files in `exports/` older than 24 hours. On failure, a snackbar "Could not export PDF: …".
 
 ---
+- **Groups (v1.4, §2.13):** a group takes one cell like a chain. Caption: "#N · Name · N lines" (bold 10 pt) and its date. Its lines are drawn in one outline (every endpoint projected together onto their best-fit plane, as for a chain), each line on its own with its two dots and its number at its midpoint (pushed off the line, on white). Beside it, right-aligned in the cell (at least from 45% of its width), a list "n  Label  length" per line, in as many columns as fit. Monochrome as above.
+
+### 2.13 Chained and Group measuring (v1.4)
+
+**Choosing.** Opening AR Measure from the menu shows a dialog with two large outlined buttons (sandstone, 20 dp corners, ≥88 dp tall, title in the Title style and a Secondary line) — **Chained** "One continuous path, with a running total" and **Group** "Separate lines for one thing: a room, a table, a cabinet". In the compact dialog style (§1.2a): title "How will you measure?", buttons ≥64 dp tall with 16 × 12 dp padding, 8 dp apart. There's no "remember" option in it. Dismissing it opens nothing. Settings → Measuring → **Measure mode** (`showdist.measure_kind`) can make one the default instead ("Ask each time", "Always chained", "Always group"); then the dialog is skipped. "View in AR" from History always opens a Chained session; calibration and warm-up measure as before.
+
+**Chained** is unchanged: points link into one path; the pill shows the total; hold to save.
+
+**Group** (the tracker's group mode): every two points make one standalone line, each point with its own anchor (§2.4); no segment joins one line's end to the next one's start, and the dashed live line shows only while a line is half drawn. Up to 12 lines (24 points).
+- Hints: "Tap to start a line"; "Tap to end the line"; then "Tap to start the next line · hold to finish". With no reticle hit, the status pill explains (§2.3a).
+- The pill (§2.2's running-total pill, same style and sideways placement) shows the **current line**: the one being drawn while the reticle has a surface, else the last one finished. It's hidden while a line is half drawn and there's no surface.
+- Under it, once a line is finished: a "N lines" scrim pill and a **Done** button (scrim, 1.5 dp sandstone border, ≥48 dp).
+- After each line, until the next one starts, a card 64 dp above the bottom of the camera area shows "Line N · length" (or its label) and "Add label" / "Edit"; tapping it opens "Label line N" with a text field ("e.g. North wall", up to 32 characters; empty clears it). Undo and Clear drop the labels of lines no longer there.
+- **Done**, or holding anywhere (§2.6, ready once a line is finished), asks "Name this group" (placeholder and default "Group N", N = saved groups + 1; "Save" / "Keep measuring"). Saving stores the group, clears the points and shows "Saved Kitchen · 3 lines" in a snackbar. A half-drawn line is left out.
+- **Adding to a saved group** (from the group's screen): the same, but Done appends the new lines to that group and returns to it, with no name asked.
+
+**Data** (`history/Group.kt`): a group has an id (creation time in µs, like a recording's), a name, a createdAt timestamp, the unit at save, and a list of lines; each line has an id, two world points (as placed; lengths × its calibration scale, §1.5a), an optional label and an optional tag (§2.14). Groups live in `groups.json`, kept exactly like `recordings.json` (§2.7). A chain is still a single Recording.
+
+**Group screen** (from History): app bar "GROUP" with Export PDF and the share menu (Share / Copy, for the whole group); back at the bottom (§1.2). The group's name (Title, 24 sp, sandstone, with a pencil; tap to rename), "N lines · date", then a row per line: its number (sandstone), its label (white) or "Line N" (grey), its length (20 sp) and a delete button (confirm "Delete …? This can't be undone."). Tapping a row renames the line. **Add lines** (outlined sandstone pill with a plus) opens Measure in group mode adding to this group; it's hidden while a Measure is already open beneath History. Deleting every line keeps the (empty) group.
+
+**Share text** for a group: "Name · YYYY-MM-DD HH:MM", "Group of N lines", then "n. Label: length" per line.
 
 ## 3. AR reticle and overlay drawing
 

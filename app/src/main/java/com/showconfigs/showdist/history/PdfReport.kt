@@ -61,7 +61,7 @@ internal fun pdfPageCount(count: Int): Int =
 
 /** Export PDF for the History selection, reporting failures in the app's snackbar. */
 @Composable
-fun rememberPdfExport(units: UnitSystem): (List<Recording>) -> Unit {
+fun rememberPdfExport(units: UnitSystem): (List<HistoryEntry>) -> Unit {
     val context = LocalContext.current
     val snackbar = LocalSnackbarHostState.current
     val scope = rememberCoroutineScope()
@@ -79,7 +79,7 @@ fun rememberPdfExport(units: UnitSystem): (List<Recording>) -> Unit {
  */
 object PdfReport {
     /** Writes the report and opens the share sheet. Returns a snackbar message on failure. */
-    suspend fun share(context: Context, recordings: List<Recording>, units: UnitSystem): String? = try {
+    suspend fun share(context: Context, recordings: List<HistoryEntry>, units: UnitSystem): String? = try {
         val now = Date()
         val file = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "exports").apply { mkdirs() }
@@ -103,7 +103,7 @@ object PdfReport {
     }
 
     /** Renders every page into [out]. Blocking; call off the main thread. */
-    internal fun write(context: Context, recordings: List<Recording>, units: UnitSystem, now: Date, out: File) {
+    internal fun write(context: Context, recordings: List<HistoryEntry>, units: UnitSystem, now: Date, out: File) {
         val regular = ResourcesCompat.getFont(context, R.font.jetbrains_mono_regular)
         val bold = ResourcesCompat.getFont(context, R.font.jetbrains_mono_bold)
         // Monochrome for printing (SPEC.md §2.12): black on white, no accent colours.
@@ -159,7 +159,10 @@ object PdfReport {
                     val left = MARGIN + (k % tier.columns) * (cellW + CELL_GAP)
                     val cellTop = top + (k / tier.columns) * (cellH + CELL_GAP)
                     c.drawRect(left, cellTop, left + cellW, cellTop + cellH, border)
-                    drawCell(c, recordings[first + k], first + k + 1, units, tier.labelPt, left, cellTop, cellW, cellH, paints)
+                    when (val e = recordings[first + k]) {
+                        is HistoryEntry.Chain -> drawCell(c, e.recording, first + k + 1, units, tier.labelPt, left, cellTop, cellW, cellH, paints)
+                        is HistoryEntry.Group -> drawGroupCell(c, e.group, first + k + 1, units, tier.labelPt, left, cellTop, cellW, cellH, paints)
+                    }
                 }
 
                 text.textSize = MIN_LABEL_PT
@@ -275,6 +278,87 @@ object PdfReport {
         for (i in 0 until n) c.drawCircle(at[i * 2], at[i * 2 + 1], dotR, paints.dot)
         placeLabels(c, at, n, labels.map { it.text }, paints)
     }
+
+    /**
+     * A group's cell (SPEC.md §2.12, §2.13): every line drawn on its own in one outline,
+     * numbered at its midpoint, with a list of each line's number, label and length beside
+     * it; the caption gives the group's name and line count.
+     */
+    private fun drawGroupCell(
+        c: Canvas,
+        g: MeasureGroup,
+        number: Int,
+        units: UnitSystem,
+        labelPt: Float,
+        left: Float,
+        top: Float,
+        w: Float,
+        h: Float,
+        paints: Paints,
+    ) {
+        paints.bold.textSize = 10f
+        val count = "${g.lines.size} line${if (g.lines.size == 1) "" else "s"}"
+        c.drawText("#$number · ${g.name} · $count", left + CELL_PAD, top + h - CELL_PAD - 12f, paints.bold)
+        paints.text.textSize = MIN_LABEL_PT
+        c.drawText(g.headingTime, left + CELL_PAD, top + h - CELL_PAD, paints.text)
+        if (g.lines.isEmpty()) return
+
+        paints.text.textSize = labelPt
+        paints.minX = left + 4f
+        paints.maxX = left + w - 4f
+        paints.minY = top + 4f
+        paints.maxY = top + h - CELL_PAD - CAPTION_H
+
+        // The list, right-aligned in the cell, in as many columns as it needs.
+        val entries = groupListEntries(g, units)
+        val fm = paints.text.fontMetrics
+        val lineH = (fm.descent - fm.ascent) * 1.3f
+        val listT = top + CELL_PAD
+        val listB = paints.maxY
+        val rows = maxOf(1, ((listB - listT) / lineH).toInt())
+        val columns = (entries.size + rows - 1) / rows
+        val columnW = entries.maxOf { paints.text.measureText(it) } + LIST_GAP
+        val listL = maxOf(left + w - CELL_PAD - columns * columnW + LIST_GAP, left + w * 0.45f)
+        val shown = minOf(entries.size, rows)
+        val firstY = (listT + listB) / 2f - shown * lineH / 2f - fm.ascent
+        for (k in entries.indices) {
+            c.drawText(entries[k], listL + (k / rows) * columnW, firstY + (k % rows) * lineH, paints.text)
+        }
+        paints.maxX = listL - LIST_GAP
+
+        // The outline, to the left of the list.
+        val room = labelPt * 2.2f
+        val boxL = left + CELL_PAD + room
+        val boxR = listL - LIST_GAP - room
+        val boxT = top + CELL_PAD + room
+        val boxB = paints.maxY - room
+        if (boxR <= boxL || boxB <= boxT) return
+        val n = g.lines.size * 2
+        val xy = planeCoords(g.lines.flatMap { listOf(it.a, it.b) })
+        val at = fitDiagram(xy, n, boxL, boxT, boxR, boxB)
+        val dotR = if (labelPt > MIN_LABEL_PT) 3f else 2.5f
+        for (l in g.lines.indices) {
+            val a = l * 2
+            val b = l * 2 + 1
+            c.drawLine(at[a * 2], at[a * 2 + 1], at[b * 2], at[b * 2 + 1], paints.line)
+            c.drawCircle(at[a * 2], at[a * 2 + 1], dotR, paints.dot)
+            c.drawCircle(at[b * 2], at[b * 2 + 1], dotR, paints.dot)
+        }
+        for (l in g.lines.indices) {
+            val ax = at[l * 4]
+            val ay = at[l * 4 + 1]
+            val bx = at[l * 4 + 2]
+            val by = at[l * 4 + 3]
+            val len = hypot(bx - ax, by - ay)
+            val nx = if (len > 1e-3f) -(by - ay) / len else 0f
+            val ny = if (len > 1e-3f) (bx - ax) / len else -1f
+            placeLabel(c, "${l + 1}", (ax + bx) / 2f, (ay + by) / 2f, nx, ny, paints)
+        }
+    }
+
+    /** "1  North wall  3′ 4″" per line (SPEC.md §2.13); results are appended in §2.14. */
+    private fun groupListEntries(g: MeasureGroup, units: UnitSystem): List<String> =
+        g.lines.mapIndexed { i, l -> "${i + 1}  ${g.lineName(i)}  ${DistanceFormat.format(l.metres, units)}" }
 
     /** The diagram's page positions (x at 2i, y at 2i+1) at one uniform scale, centred in the box. */
     private fun fitDiagram(xy: FloatArray, n: Int, boxL: Float, boxT: Float, boxR: Float, boxB: Float): FloatArray {
