@@ -33,8 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.ui.Palette
@@ -45,49 +43,10 @@ private const val X_HANDLE = "@shcarlosconfigs"
 private const val X_URL = "https://x.com/shcarlosconfigs"
 private const val PRIVACY_POLICY_URL = "https://carlosantoniocruz.github.io/showdist-privacy/"
 
-/** A tool's usage guide in About: its name, then one line per task. */
-private class Guide(val title: String, val entries: List<Pair<String, String>>)
-
-private val Guides = listOf(
-    Guide(
-        "AR MEASURE",
-        listOf(
-            "Start" to "Move the phone slowly over the surface until the reticle's dots turn solid.",
-            "Points" to "Tap the round button to drop a point at the reticle. Each span is labelled; the total shows at the top.",
-            "Edit" to "Undo removes the last point; × clears them all. M / FT switches units.",
-            "Save" to "With two or more points, hold anywhere on screen until the line round the edge fills.",
-        ),
-    ),
-    Guide(
-        "HISTORY",
-        listOf(
-            "Open" to "The clock icon on the menu or in Measure, once something is saved.",
-            "Share" to "Share or copy any measurement as text. Select several to export them as one PDF.",
-            "View in AR" to "Tap where the first point goes, turn to line it up, and tap again.",
-        ),
-    ),
-    Guide(
-        "TUBE LEVEL",
-        listOf(
-            "Use" to "Hold an edge of the phone to a wall, post or beam, upright or sideways.",
-            "Level" to "Within 0.3°, the bubble turns green and the reading sandstone, with a tick you can feel.",
-            "Zero" to "On an uneven base, the target icon sets level here; reset returns to true level.",
-        ),
-    ),
-    Guide(
-        "BULLSEYE LEVEL",
-        listOf(
-            "Use" to "Lay the phone flat on the surface and centre the bubble in the ring.",
-            "Read" to "X is the tilt side to side, Y front to back.",
-            "Zero" to "Works as on the tube level.",
-        ),
-    ),
-)
-
 /**
  * About (SPEC.md §1.6), its own screen, reached only from Settings: the app's name and what
- * it does, "Created with AI assistance", the developer (the only contact is X), how to use
- * each tool, the ARCore notice, and the ways to the privacy policy (Play requires an in-app
+ * it does, "Created with AI assistance", the developer (the only contact is X), the ARCore
+ * notice, and the ways to the privacy policy (Play requires an in-app
  * link) and the licenses. Back returns to Settings.
  */
 @Composable
@@ -121,14 +80,6 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
                     Text("Version $version", style = Type.Secondary)
                 }
                 XContactRow(onClick = { runCatching { uriHandler.openUri(X_URL) } })
-
-                for (guide in Guides) {
-                    SettingsDivider(Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-                    SectionTitle(guide.title)
-                    Column(Modifier.padding(horizontal = 16.dp)) {
-                        for ((label, text) in guide.entries) GuideRow(label, text)
-                    }
-                }
 
                 SettingsDivider(Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
                 // Required by the ARCore terms of service.
@@ -179,17 +130,5 @@ private fun XContactRow(onClick: () -> Unit) {
         Icon(ShowdistIcons.XLogo, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
         Text(X_HANDLE, style = Type.Label.copy(color = Palette.Sandstone))
-    }
-}
-
-@Composable
-private fun GuideRow(label: String, text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(
-            label,
-            modifier = Modifier.width(104.dp),
-            style = Type.Secondary.copy(color = Palette.Text, fontWeight = FontWeight.Bold, textAlign = TextAlign.Start),
-        )
-        Text(text, modifier = Modifier.weight(1f), style = Type.Secondary)
     }
 }
