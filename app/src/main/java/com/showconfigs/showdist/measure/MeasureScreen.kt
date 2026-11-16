@@ -82,6 +82,8 @@ import com.google.ar.core.exceptions.UnavailableApkTooOldException
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
+import androidx.compose.foundation.layout.Row
+import com.showconfigs.showdist.history.GroupStore
 import com.showconfigs.showdist.history.MeasurementSheet
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
@@ -137,9 +139,13 @@ fun MeasureScreen(
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
+    task: Boolean,
     onUnits: (UnitSystem) -> Unit,
+    onLevel: () -> Unit,
     onHistory: () -> Unit,
+    onSettings: () -> Unit,
     onBack: () -> Unit,
+    onBusy: (Boolean) -> Unit,
     onCalibrated: (rawMetres: Double) -> Unit = {},
     onGroupAppended: () -> Unit = {},
 ) {
@@ -192,17 +198,40 @@ fun MeasureScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.Black)) {
         when (val s = state) {
-            StartState.Waking -> Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
             StartState.Ready -> MeasureArea(
-                mode, kind, appendTo, units, projection, projectionSerial, covered, onUnits, onHistory, onBack, onCalibrated,
-                onGroupAppended, onSessionFailed = { state = problemFor(it) },
+                mode, kind, appendTo, units, projection, projectionSerial, covered, task, onUnits, onLevel, onHistory,
+                onSettings, onBack, onBusy, onCalibrated, onGroupAppended, onSessionFailed = { state = problemFor(it) },
             )
-            is StartState.Problem -> ProblemView(s) {
-                when (s.action) {
-                    ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
-                    ProblemAction.OpenSettings -> activity.openAppSettings()
-                    ProblemAction.TryAgain, null -> start()
+            // Without the camera the bottom row still leads to the Leveler, History and Settings.
+            else -> Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (s is StartState.Problem) {
+                        ProblemView(s) {
+                            when (s.action) {
+                                ProblemAction.AllowCamera -> permissionLauncher.launch(Manifest.permission.CAMERA)
+                                ProblemAction.OpenSettings -> activity.openAppSettings()
+                                ProblemAction.TryAgain, null -> start()
+                            }
+                        }
+                    } else {
+                        Caption("WAKING THE CAMERA", Modifier.align(Alignment.Center))
+                    }
                 }
+                ControlBar(
+                    canPlace = false,
+                    hasPoints = false,
+                    savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
+                    task = task,
+                    charge = { 0f },
+                    rotation = { 0f },
+                    onPlace = {},
+                    onUndo = {},
+                    onClear = {},
+                    onLevel = onLevel,
+                    onHistory = onHistory,
+                    onSettings = onSettings,
+                    onBack = onBack,
+                )
             }
         }
     }
@@ -222,16 +251,25 @@ private fun MeasureArea(
     projection: Recording?,
     projectionSerial: Int,
     covered: Boolean,
+    task: Boolean,
     onUnits: (UnitSystem) -> Unit,
+    onLevel: () -> Unit,
     onHistory: () -> Unit,
+    onSettings: () -> Unit,
     onBack: () -> Unit,
+    onBusy: (Boolean) -> Unit,
     onCalibrated: (rawMetres: Double) -> Unit,
     onGroupAppended: () -> Unit,
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
-    // Group mode (SPEC.md §2.13). Calibration always measures one plain line.
-    val grouping = kind == MeasureKind.Group && mode == MeasureMode.Normal
+    // Chained or Group (SPEC.md §2.13) can change in Settings while Measure stays open; a
+    // change takes effect once no points are placed. Calibration always measures one plain line.
+    var activeKind by remember { mutableStateOf(kind) }
+    val empty = tracker.pointCount == 0
+    LaunchedEffect(kind, empty) { if (empty) activeKind = kind }
+    LaunchedEffect(empty) { onBusy(!empty) }
+    val grouping = activeKind == MeasureKind.Group && mode == MeasureMode.Normal
     SideEffect { if (tracker.pointCount == 0) tracker.groupMode = grouping }
     val group = rememberGroupSession(tracker, units, appendTo, onGroupAppended)
     val calibrating = mode == MeasureMode.CalibrateScale
@@ -247,6 +285,7 @@ private fun MeasureArea(
     }
     // The warm-up (SPEC.md §1.5a): opened from Settings, or from the prompt when tracking is poor.
     var warmUpOpen by remember { mutableStateOf(mode == MeasureMode.WarmUp) }
+    LaunchedEffect(mode) { warmUpOpen = mode == MeasureMode.WarmUp }
     var warmUpOffered by remember { mutableStateOf(false) }
     val poor = tracker.status == TrackingStatus.Lost || tracker.status == TrackingStatus.NeedDetail ||
         (tracker.status == TrackingStatus.MoveSlowly && tracker.pointCount > 0)
@@ -263,6 +302,10 @@ private fun MeasureArea(
     // Labels and the total reformat on the next camera frame after a change.
     SideEffect { tracker.units = units }
     DisposableEffect(tracker) { onDispose { tracker.release() } }
+    // A task that places points starts from an empty session and leaves nothing behind in
+    // it, whether it finished or was backed out of. The warm-up places none, so it keeps them.
+    val clearOnExit = task && mode != MeasureMode.WarmUp
+    DisposableEffect(clearOnExit) { onDispose { if (clearOnExit) tracker.clear() } }
     // Each "View in AR" bumps the serial, so picking the same recording again restarts it.
     LaunchedEffect(projectionSerial) { projection?.let { tracker.startProjection(it.points, it.scale) } }
     val sessionLifecycle = rememberCappedLifecycle(capped = covered)
@@ -330,29 +373,23 @@ private fun MeasureArea(
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
             MeasureOverlay(tracker, ArScheme.forUnits(units), { barRotation.value }, Modifier.fillMaxSize())
             Reticle(tracker, metric = units == UnitSystem.Metric, Modifier.align(Alignment.Center))
+            // The top holds only passive items (SPEC.md §2.2): the tracking state, then the hint.
+            val totalShown = if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 24.dp, top = 16.dp, end = 24.dp)
+                    .padding(start = 24.dp, top = 12.dp, end = 24.dp)
                     .onPlaced { infoBottomPx = it.boundsInParent().bottom.toInt() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                TrackingPill(tracker.status)
+                Spacer(Modifier.height(6.dp))
                 HintLine(tracker.hint, instruction = if (calibrating) "Place a point at each end of ${Calibration.target?.first?.what ?: "the object"}" else null)
-                // In a group: the line being drawn while it reaches a surface, else the last one.
-                val showTotal = if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2
-                if (showTotal && sideways == 0) {
-                    Spacer(Modifier.height(6.dp))
-                    RunningTotal(tracker.totalMetres, units)
-                }
-                if (grouping && tracker.completedLines >= 1) {
-                    Spacer(Modifier.height(8.dp))
-                    GroupBar(tracker.completedLines, onDone = group::finish)
-                }
             }
             // Held sideways (SPEC.md §2.9): the total sits centred on the reader's top edge,
             // which is the screen's right edge (turned clockwise) or left edge, at a smaller size.
-            if ((if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2) && sideways != 0) {
+            if (totalShown && sideways != 0) {
                 RunningTotal(
                     tracker.totalMetres,
                     units,
@@ -370,90 +407,57 @@ private fun MeasureArea(
                     Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
                 )
             }
-            if (grouping) {
-                LineCard(
-                    group,
-                    units,
-                    tracker.totalMetres,
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 64.dp)
-                        .turnWith { barRotation.value },
-                )
-            }
-            if (warmUpOffered && !warmUpOpen) {
-                WarmUpPrompt(
-                    onClick = { warmUpOpen = true },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 64.dp)
-                        .turnWith { barRotation.value },
-                )
-            }
             if (warmUpOpen) {
                 WarmUpOverlay(
                     quality = { tracker.warmQuality },
-                    onDone = { if (mode == MeasureMode.WarmUp) onBack() else warmUpOpen = false },
+                    onDone = {
+                        warmUpOpen = false
+                        if (mode == MeasureMode.WarmUp) onBack()
+                    },
                     modifier = Modifier.align(Alignment.Center),
                 )
             }
-            TrackingPill(
-                tracker.status,
+            // Everything tappable in the camera area sits at its foot, just above the bottom
+            // row (SPEC.md §2.2): prompts, the live readout, then the unit toggle and, in a
+            // group, its line count and Done. The stack turns as one when the phone is held
+            // sideways (SPEC.md §2.9); the readout then moves to the reader's top edge, above.
+            Column(
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
-                    .turnWith { barRotation.value },
-            )
-            // Back to the menu at the bottom-left of the camera area, within thumb reach, just
-            // above the control bar (SPEC.md §2.2).
-            MenuButton(
-                rotation = { barRotation.value },
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                    .padding(start = 8.dp, bottom = 8.dp),
-            )
+                    .padding(bottom = 4.dp)
+                    .turnWith { barRotation.value },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (warmUpOffered && !warmUpOpen) WarmUpPrompt(onClick = { warmUpOpen = true })
+                if (grouping) LineCard(group, units, tracker.totalMetres)
+                if (totalShown && sideways == 0) RunningTotal(tracker.totalMetres, units)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    UnitToggle(units, onUnits)
+                    if (grouping && tracker.completedLines >= 1) GroupBar(tracker.completedLines, onDone = group::finish)
+                }
+            }
         }
         ControlBar(
             canPlace = tracker.canPlace,
             hasPoints = tracker.pointCount > 0 || tracker.projectionStage != ProjectionStage.None,
-            savedCount = RecordingStore.recordings.size + com.showconfigs.showdist.history.GroupStore.groups.size,
-            units = units,
+            savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
+            task = task,
             charge = holdToSave::charge,
             rotation = { barRotation.value },
-            onUnits = onUnits,
-            onHistory = onHistory,
             onPlace = tracker::requestAdd,
             onUndo = tracker::undo,
             onClear = tracker::clear,
+            onLevel = onLevel,
+            onHistory = onHistory,
+            onSettings = onSettings,
+            onBack = onBack,
         )
     }
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
     if (grouping) GroupDialogs(group)
-}
-
-/**
- * Back to the main menu (SPEC.md §2.2): top-left of the camera area, as far as possible from
- * the control bar so it isn't hit by accident. A 48 dp target around a 40 dp scrim disc with
- * a white arrow; it turns with the bar icons (SPEC.md §2.9).
- */
-@Composable
-private fun MenuButton(rotation: () -> Float, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(48.dp)
-            .graphicsLayer { rotationZ = rotation() }
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = "Back to menu" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.size(40.dp).background(Palette.Scrim, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(ShowdistIcons.ArrowBack, contentDescription = null, tint = Palette.White.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
-        }
-    }
 }
 
 /**
@@ -476,19 +480,21 @@ private fun HintLine(hint: Hint, instruction: String? = null) {
 }
 
 /**
- * Running total pill (SPEC.md §2.2): Palette.Scrim, pill corners, 40 sp, pure white;
- * [compact] (held sideways) 32 sp with tighter padding.
+ * The live readout (SPEC.md §2.2): Palette.Scrim, pill corners, 34 sp, pure white, the unit
+ * always in words beside the number; [compact] (held sideways) 30 sp with tighter padding.
  */
 @Composable
 private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier, compact: Boolean = false) {
     BasicText(
-        text = DistanceFormat.format(metres, units),
+        text = DistanceFormat.formatWords(metres, units),
+        maxLines = 1,
+        softWrap = false,
         modifier = modifier
             .background(Palette.Scrim, RoundedCornerShape(50))
             .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 2.dp else 4.dp),
         style = BaseText.copy(
             color = Palette.White,
-            fontSize = if (compact) 32.sp else 40.sp,
+            fontSize = if (compact) 30.sp else 34.sp,
             fontWeight = FontWeight.ExtraLight,
             fontFeatureSettings = FEATURES_TABULAR,
         ),

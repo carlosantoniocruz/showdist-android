@@ -89,6 +89,12 @@ fun SettingsScreen(
                     }
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
                     Column {
+                        SectionTitle("LAYOUT")
+                        HandOption("Right-handed", left = false)
+                        HandOption("Left-handed", left = true)
+                    }
+                    SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
+                    Column {
                         SectionTitle("FEEDBACK")
                         VibrationOption()
                     }
@@ -108,25 +114,24 @@ fun SettingsScreen(
 private val SECTION_GAP = 8.dp
 
 /**
- * How AR Measure opens (SPEC.md §2.13): ask Chained or Group each time, or always one. The
- * prompt's "Remember my choice" sets it too; "Ask each time" undoes that.
+ * How Measure joins points (SPEC.md §2.13): Chained, the default, or Group. Measure opens
+ * straight into it; a change applies once no points are placed.
  */
 @Composable
 private fun MeasureKindOption() {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
-    val current = MeasureKindSetting.remembered
-    val label = { k: MeasureKind? ->
+    val current = MeasureKindSetting.remembered ?: MeasureKind.Chained
+    val label = { k: MeasureKind ->
         when (k) {
-            null -> "Ask each time"
-            MeasureKind.Chained -> "Always chained"
-            MeasureKind.Group -> "Always group"
+            MeasureKind.Chained -> "Chained: one path, running total"
+            MeasureKind.Group -> "Group: separate lines for one thing"
         }
     }
     Box {
         SettingsRow("Measure mode", subtitle = label(current), onClick = { open = true }) { Chevron() }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
-            for (k in listOf(null, MeasureKind.Chained, MeasureKind.Group)) {
+            for (k in MeasureKind.entries) {
                 DropdownMenuItem(
                     text = { Text(label(k), style = Type.Label.copy(color = if (k == current) Palette.Sandstone else Palette.Text)) },
                     onClick = {
@@ -136,6 +141,20 @@ private fun MeasureKindOption() {
                 )
             }
         }
+    }
+}
+
+/** Which thumb the bottom rows are laid out for (SPEC.md §1.5); the selected radio is sandstone. */
+@Composable
+private fun HandOption(label: String, left: Boolean) {
+    val context = LocalContext.current
+    val selected = HandSetting.leftHanded == left
+    SettingsRow(label, role = Role.RadioButton, onClick = { HandSetting.set(context, left) }) {
+        Icon(
+            if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (selected) Palette.Sandstone else Palette.TextMuted,
+        )
     }
 }
 

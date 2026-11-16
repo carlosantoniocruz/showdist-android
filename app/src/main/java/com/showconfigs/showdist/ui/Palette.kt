@@ -42,6 +42,9 @@ object Palette {
     /** The tracking pill's dot while tracking is lost or too dark: soft coral, apart from [Crimson]. */
     val Attention = Color(0xFFFF8A65)
 
+    /** The capture button in Measure's bottom row, and nothing else: peach red. */
+    val Capture = Color(0xFFFB5628)
+
     /** Unit state only: imperial (ft, in). */
     val Crimson = Color(0xFFE71837)
 

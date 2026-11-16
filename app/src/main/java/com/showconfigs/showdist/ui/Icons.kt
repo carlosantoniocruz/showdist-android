@@ -160,6 +160,21 @@ object ShowdistIcons {
             "c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
     )
 
+    /** "straighten": a ruler, for Measure in the mode switcher. */
+    val Straighten = icon(
+        "Straighten",
+        "M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z",
+    )
+
+    /** A spirit-level vial with its bubble between two marks, for the Leveler; drawn for this app. */
+    val Level = icon(
+        "Level",
+        "M3 8h18a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z" +
+            "M3 10v4h18v-4H3z" +
+            "M12 10.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" +
+            "M8 10h1v4H8zM15 10h1v4h-1z",
+    )
+
     val Add = icon("Add", "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z")
 
     /** The X (formerly Twitter) logo, from its published path data (SPEC.md §1.6). */

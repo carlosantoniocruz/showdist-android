@@ -20,6 +20,23 @@ object DistanceFormat {
     }
 
     /**
+     * The live readout's text (SPEC.md §2.2): the unit always in words beside the number,
+     * "4 ft 3 in", "7 1/2 in", "1.30 m", "45 cm". Rounded exactly as [format].
+     */
+    fun formatWords(metres: Double, units: UnitSystem): String {
+        if (units == UnitSystem.Metric) return format(metres, units)
+        val halves = halfInches(metres)
+        val wholeInches = halves / 2
+        val feet = wholeInches / 12
+        return buildString {
+            if (feet > 0) append(feet).append(" ft ")
+            append(wholeInches % 12)
+            if (halves % 2 == 1L) append(" 1/2")
+            append(" in")
+        }
+    }
+
+    /**
      * Writes the formatted distance into [out] and returns its length. Allocation-free,
      * for per-frame labels.
      */

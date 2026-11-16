@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.em
 import com.showconfigs.showdist.measure.DistanceFormat
 import com.showconfigs.showdist.measure.UnitSystem
 import com.showconfigs.showdist.ui.AppBarAction
+import com.showconfigs.showdist.ui.ActionBar
 import com.showconfigs.showdist.ui.AppBarInsets
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
@@ -87,7 +88,9 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGrou
     BackHandler(enabled = selecting) { exitSelection() }
 
     Scaffold(
-        topBar = {
+        // The top is a title only (SPEC.md §1.2); every action is at the bottom.
+        topBar = { ShowdistAppBar(if (selecting) "${selected.size} SELECTED" else "HISTORY") },
+        bottomBar = {
             if (selecting) {
                 SelectionBar(
                     count = selected.size,
@@ -106,7 +109,7 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGrou
                     },
                 )
             } else {
-                ShowdistAppBar("HISTORY") {
+                BackBar(onBack) {
                     OverflowMenu(
                         enabled = entries.isNotEmpty(),
                         onSelect = { selecting = true },
@@ -121,8 +124,6 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGrou
                 }
             }
         },
-        // Back at the bottom (SPEC.md §1.2); while selecting it leaves selection first.
-        bottomBar = { BackBar(onBack = { if (selecting) exitSelection() else onBack() }) },
         containerColor = Palette.Black,
     ) { padding ->
         if (entries.isEmpty()) {
@@ -311,7 +312,7 @@ private fun GroupRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Selection mode's bottom bar (SPEC.md §1.9): Cancel first, then the actions on the selection. */
 @Composable
 private fun SelectionBar(
     count: Int,
@@ -322,32 +323,17 @@ private fun SelectionBar(
     onCopy: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    TopAppBar(
-        title = { Text("$count selected", style = Type.Label) },
-        navigationIcon = { AppBarAction(ShowdistIcons.Close, "Cancel selection", onClick = onCancel) },
-        windowInsets = AppBarInsets,
-        actions = {
-            AppBarAction(ShowdistIcons.SelectAll, "Select all", onClick = onSelectAll)
-            AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF", enabled = count > 0, onClick = onExportPdf)
-            AppBarAction(ShowdistIcons.ContentCopy, "Copy", enabled = count > 0, onClick = onCopy)
-            AppBarAction(ShowdistIcons.IosShare, "Share", enabled = count > 0, onClick = onShare)
-            AppBarAction(
-                ShowdistIcons.DeleteOutline,
-                "Delete selected",
-                enabled = count > 0,
-                tint = Palette.Sandstone,
-                onClick = onDelete,
-            )
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Palette.Black,
-            scrolledContainerColor = Palette.Black,
-            titleContentColor = Palette.Text,
-        ),
-    )
+    ActionBar {
+        AppBarAction(ShowdistIcons.Close, "Cancel selection", onClick = onCancel)
+        AppBarAction(ShowdistIcons.SelectAll, "Select all", onClick = onSelectAll)
+        AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF", enabled = count > 0, onClick = onExportPdf)
+        AppBarAction(ShowdistIcons.ContentCopy, "Copy", enabled = count > 0, onClick = onCopy)
+        AppBarAction(ShowdistIcons.IosShare, "Share", enabled = count > 0, onClick = onShare)
+        AppBarAction(ShowdistIcons.DeleteOutline, "Delete selected", enabled = count > 0, tint = Palette.Sandstone, onClick = onDelete)
+    }
 }
 
-/** The app bar's "More" menu: Select, Delete all. Disabled when the list is empty. */
+/** The bottom bar's "More" menu: Select, Delete all. Disabled when the list is empty. */
 @Composable
 private fun OverflowMenu(enabled: Boolean, onSelect: () -> Unit, onDeleteAll: () -> Unit) {
     var open by remember { mutableStateOf(false) }

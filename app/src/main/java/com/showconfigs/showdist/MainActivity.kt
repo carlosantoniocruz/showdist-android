@@ -3,7 +3,6 @@ package com.showconfigs.showdist
 import com.showconfigs.showdist.settings.FormulasScreen
 import com.showconfigs.showdist.history.GroupScreen
 import com.showconfigs.showdist.history.GroupStore
-import com.showconfigs.showdist.measure.KindPrompt
 import com.showconfigs.showdist.measure.MeasureKind
 import com.showconfigs.showdist.settings.MeasureKindSetting
 import com.showconfigs.showdist.settings.AboutScreen
@@ -44,8 +43,9 @@ import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.leveler.LevelerMode
 import com.showconfigs.showdist.leveler.LevelerScreen
 import com.showconfigs.showdist.measure.MeasureScreen
-import com.showconfigs.showdist.menu.MainMenu
-import com.showconfigs.showdist.menu.Tool
+import com.showconfigs.showdist.settings.HandSetting
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.showconfigs.showdist.settings.LicenseDetailScreen
 import com.showconfigs.showdist.settings.LicensesScreen
 import com.showconfigs.showdist.settings.SettingsScreen
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Menu, Measure, Leveler, History, Group, Settings, Formulas, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
+private enum class Screen { Measure, Leveler, History, Group, Settings, Formulas, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail, the [LevelerMode]
@@ -89,10 +89,12 @@ private enum class Screen { Menu, Measure, Leveler, History, Group, Settings, Fo
 private data class Route(val screen: Screen, val arg: Int = 0)
 
 /**
- * Every screen is a full-screen page on a back stack (SPEC.md §1.1). Only the top screen is
- * composed, with one exception: Measure
- * stays composed (session paused) under History opened from it, so its points survive.
- * Leaving Measure itself closes its AR session. Back on the menu (the root) exits the app.
+ * Every screen is a full-screen page on a back stack whose root is Measure (SPEC.md §1.1):
+ * the app opens straight into the AR view, and Back there exits the app. Measure is always
+ * composed, its session paused while another page covers it, so its points survive a visit
+ * to the Leveler, History or Settings. A Measure entry further up the stack is a task on that
+ * same session (calibrating, warming up, adding lines to a saved group): it shows Measure
+ * again in that mode, and popping it returns to the page that asked.
  */
 @Composable
 private fun ShowdistApp() {
@@ -101,98 +103,97 @@ private fun ShowdistApp() {
     remember { HapticsSetting.load(context) }
     remember { Calibration.load(context) }
     remember { MeasureKindSetting.load(context) }
+    remember { HandSetting.load(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
             restore = { flat ->
-                flat.chunked(2).map { (name, arg) -> Route(Screen.valueOf(name), arg.toInt()) }.toMutableStateList()
+                // A name this version doesn't know (state saved by an older one) starts afresh.
+                val routes = flat.chunked(2).map { (name, arg) ->
+                    Screen.entries.firstOrNull { it.name == name }?.let { Route(it, arg.toInt()) }
+                }
+                val ok = routes.none { it == null } && routes.firstOrNull() == Route(Screen.Measure)
+                (if (ok) routes.filterNotNull() else listOf(Route(Screen.Measure))).toMutableStateList()
             },
         ),
-    ) { mutableListOf(Route(Screen.Menu)).toMutableStateList() }
+    ) { mutableListOf(Route(Screen.Measure)).toMutableStateList() }
 
-    // The recording "View in AR" projects in Measure (SPEC.md §2.11); cleared when Measure closes.
+    // The recording "View in AR" projects in Measure (SPEC.md §2.11).
     var projectionId by rememberSaveable { mutableStateOf<String?>(null) }
     var projectionSerial by rememberSaveable { mutableIntStateOf(0) }
-    // The menu's front moon, kept here because the menu leaves composition while a tool is open.
-    var menuFocus by rememberSaveable { mutableStateOf(Tool.Measure) }
-    // Chained or Group for the open Measure, and the saved group it adds lines to, if any
-    // (SPEC.md §2.13); the group History has open.
-    var measureKind by rememberSaveable { mutableStateOf(MeasureKind.Chained) }
+    // The leveler the switcher opens: the one last used.
+    var levelerMode by rememberSaveable { mutableStateOf(LevelerMode.Tube) }
+    // The saved group Measure is adding lines to, if any (SPEC.md §2.13); the group History has open.
     var appendGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var openGroupId by rememberSaveable { mutableStateOf<String?>(null) }
-    var askKind by rememberSaveable { mutableStateOf(false) }
+    // Whether Measure holds unsaved points; a task needs an empty session.
+    var measureBusy by remember { mutableStateOf(false) }
+
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     fun push(screen: Screen, arg: Int = 0) = stack.add(Route(screen, arg))
     fun pop() {
-        if (stack.removeAt(stack.lastIndex).screen == Screen.Measure) {
-            projectionId = null
-            appendGroupId = null
+        if (stack.size > 1 && stack.removeAt(stack.lastIndex).screen == Screen.Measure) appendGroupId = null
+    }
+
+    /** Starts a task on the Measure session, unless it holds a measurement in progress. */
+    fun measureTask(mode: MeasureMode, before: () -> Unit = {}) {
+        if (measureBusy) {
+            scope.launch { snackbar.showSnackbar("Save or clear the measurement in progress first") }
+        } else {
+            before()
+            push(Screen.Measure, mode.ordinal)
         }
     }
 
-    fun openMeasure(kind: MeasureKind) {
-        measureKind = kind
-        appendGroupId = null
-        push(Screen.Measure)
-    }
-
-    /** Back to the open Measure if there is one (History over it), else a new Measure on top. */
+    /** Back to Measure, where the recording is projected. */
     fun viewInAr(recording: Recording) {
         projectionId = recording.id
         projectionSerial++
-        if (stack.any { it.screen == Screen.Measure }) {
-            while (stack.last().screen != Screen.Measure) pop()
-        } else {
-            openMeasure(MeasureKind.Chained)
-        }
+        while (stack.size > 1) pop()
     }
 
     BackHandler(enabled = stack.size > 1) { pop() }
 
     val top = stack.last()
-    val snackbar = remember { SnackbarHostState() }
-    val saved = RecordingStore.recordings.size + GroupStore.groups.size
+    val task = top.screen == Screen.Measure && stack.size > 1
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbar) {
         Box(Modifier.fillMaxSize()) {
-            // A fixed slot, so History pushed from Measure doesn't recreate the AR session.
-            if (stack.any { it.screen == Screen.Measure }) {
-                MeasureScreen(
-                    mode = MeasureMode.entries[stack.first { it.screen == Screen.Measure }.arg],
-                    kind = measureKind,
-                    appendTo = appendGroupId,
-                    units = unitSettings.units,
-                    projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
-                    projectionSerial = projectionSerial,
-                    covered = top.screen != Screen.Measure,
-                    onUnits = unitSettings::select,
-                    onHistory = { push(Screen.History) },
-                    onBack = ::pop,
-                    onCalibrated = { raw ->
-                        Calibration.target?.let { (_, trueMetres) -> Calibration.calibrateScale(context, raw, trueMetres) }
-                        pop()
-                    },
-                    // Lines added to a saved group: back to that group.
-                    onGroupAppended = ::pop,
-                )
-            }
+            // One Measure, in a fixed slot, so no page change recreates the AR session.
+            MeasureScreen(
+                mode = if (task) MeasureMode.entries[top.arg] else MeasureMode.Normal,
+                kind = if (appendGroupId != null) MeasureKind.Group else MeasureKindSetting.remembered ?: MeasureKind.Chained,
+                appendTo = appendGroupId,
+                units = unitSettings.units,
+                projection = RecordingStore.recordings.firstOrNull { it.id == projectionId },
+                projectionSerial = projectionSerial,
+                covered = top.screen != Screen.Measure,
+                task = task,
+                onUnits = unitSettings::select,
+                onLevel = { push(Screen.Leveler, levelerMode.ordinal) },
+                onHistory = { push(Screen.History) },
+                onSettings = { push(Screen.Settings) },
+                onBack = ::pop,
+                onBusy = { measureBusy = it },
+                onCalibrated = { raw ->
+                    Calibration.target?.let { (_, trueMetres) -> Calibration.calibrateScale(context, raw, trueMetres) }
+                    pop()
+                },
+                // Lines added to a saved group: back to that group.
+                onGroupAppended = ::pop,
+            )
             when (top.screen) {
-                Screen.Menu -> MainMenu(
-                    savedCount = saved,
-                    focused = menuFocus,
-                    onFocused = { menuFocus = it },
-                    onTool = { tool ->
-                        when (tool) {
-                            Tool.Measure -> MeasureKindSetting.remembered?.let(::openMeasure) ?: run { askKind = true }
-                            Tool.Tube -> push(Screen.Leveler, LevelerMode.Tube.ordinal)
-                            Tool.Bullseye -> push(Screen.Leveler, LevelerMode.Bullseye.ordinal)
-                        }
-                    },
-                    onHistory = { push(Screen.History) },
-                    onSettings = { push(Screen.Settings) },
-                )
                 Screen.Measure -> Unit // Drawn in its slot above.
-                Screen.Leveler -> LevelerScreen(LevelerMode.entries[top.arg], onBack = ::pop)
+                Screen.Leveler -> LevelerScreen(
+                    LevelerMode.entries[top.arg],
+                    onMode = {
+                        levelerMode = it
+                        stack[stack.lastIndex] = Route(Screen.Leveler, it.ordinal)
+                    },
+                    onMeasure = ::pop,
+                )
                 Screen.History -> HistoryScreen(
                     unitSettings.units,
                     onViewInAr = ::viewInAr,
@@ -205,17 +206,13 @@ private fun ShowdistApp() {
                 Screen.Group -> GroupScreen(
                     groupId = openGroupId,
                     units = unitSettings.units,
-                    // Not while a Measure is already open beneath History: one session at a time.
-                    onAddLines = if (stack.any { it.screen == Screen.Measure }) null else { id ->
-                        measureKind = MeasureKind.Group
-                        appendGroupId = id
-                        push(Screen.Measure)
-                    },
+                    onAddLines = { id -> measureTask(MeasureMode.Normal) { appendGroupId = id } },
                     onBack = ::pop,
                 )
                 Screen.Settings -> SettingsScreen(
                     unitSettings,
                     onCalibrateScale = { push(Screen.CalibrateScale) },
+                    // The warm-up only watches tracking, so it can run over points already placed.
                     onWarmUp = { push(Screen.Measure, MeasureMode.WarmUp.ordinal) },
                     onLevelZero = { push(Screen.CalibrateLevel) },
                     onFormulas = { push(Screen.Formulas) },
@@ -226,21 +223,12 @@ private fun ShowdistApp() {
                 Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
                 Screen.CalibrateScale -> CalibrateScaleScreen(
                     unitSettings.units,
-                    onMeasure = { push(Screen.Measure, MeasureMode.CalibrateScale.ordinal) },
+                    onMeasure = { measureTask(MeasureMode.CalibrateScale) },
                     onBack = ::pop,
                 )
                 Screen.CalibrateLevel -> CalibrateLevelScreen(onBack = ::pop)
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
-            }
-            if (askKind) {
-                KindPrompt(
-                    onPick = { kind ->
-                        askKind = false
-                        openMeasure(kind)
-                    },
-                    onDismiss = { askKind = false },
-                )
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
         }

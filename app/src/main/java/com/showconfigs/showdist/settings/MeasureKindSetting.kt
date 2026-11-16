@@ -11,8 +11,8 @@ private const val PREFS = "showdist"
 private const val KEY = "showdist.measure_kind"
 
 /**
- * Whether AR Measure asks Chained or Group each time, or always opens one (SPEC.md §2.13).
- * [remembered] null means ask. Set from the prompt's "Remember my choice", or from Settings.
+ * Whether Measure joins points Chained or as a Group (SPEC.md §2.13).
+ * [remembered] null means the default, Chained. Set from Settings.
  */
 object MeasureKindSetting {
     var remembered by mutableStateOf<MeasureKind?>(null)

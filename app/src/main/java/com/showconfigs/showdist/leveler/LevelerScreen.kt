@@ -1,15 +1,15 @@
 package com.showconfigs.showdist.leveler
 
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
-import com.showconfigs.showdist.ui.BackButton
-import com.showconfigs.showdist.ui.BackBar
 import com.showconfigs.showdist.ui.rememberHaptics
+import com.showconfigs.showdist.ui.BarIconButton
+import com.showconfigs.showdist.ui.BarItem
+import com.showconfigs.showdist.ui.BarSlot
+import com.showconfigs.showdist.ui.BottomRow
+import com.showconfigs.showdist.ui.BottomRowCentre
+import com.showconfigs.showdist.ui.BottomRowSlot
+import com.showconfigs.showdist.ui.ModeSwitcher
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.hardware.SensorManager
@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.showconfigs.showdist.ui.AppBarAction
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistAppBar
 import com.showconfigs.showdist.ui.ShowdistIcons
@@ -52,10 +51,12 @@ enum class LevelerMode { Tube, Bullseye }
 
 /**
  * The Leveler (SPEC.md §4): the tube, a single-axis level held flat against a wall, or
- * the bullseye, a two-axis level laid flat on a surface.
+ * the bullseye, a two-axis level laid flat on a surface. Its bottom row matches Measure's
+ * (SPEC.md §1.1a): Zero in the centre, the switcher back to Measure ([onMeasure]) where
+ * Measure has it, the Tube/Bullseye toggle ([onMode]) beside it, and Reset on the tool side.
  */
 @Composable
-fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
+fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: () -> Unit) {
     val context = LocalContext.current
     val haptics = rememberHaptics()
     val sensor = remember {
@@ -77,25 +78,51 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
     }
 
     Scaffold(
-        topBar = {
-            ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER") {
-                AppBarAction(ShowdistIcons.CenterFocusStrong, "Zero — null against an uneven surface") {
-                    offset = sensor.readoutRoll
-                    offsetX = sensor.readoutTiltX
-                    offsetY = sensor.readoutTiltY
-                    haptics.tick()
-                }
-                AppBarAction(ShowdistIcons.RestartAlt, "Reset to true level", enabled = zeroed) {
-                    offset = 0f
-                    offsetX = 0f
-                    offsetY = 0f
-                    haptics.tick()
-                }
-            }
+        // Only the title up here, nothing to tap (SPEC.md §1.2). In landscape (the tube
+        // rotates) it gives its height to the vial and readout.
+        topBar = { if (!landscape) ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER") },
+        bottomBar = {
+            BottomRow(
+                nav = listOf(
+                    BarItem(visual = 56.dp) { BarSlot(BottomRowSlot) { ModeSwitcher(levelActive = true, onSwitch = onMeasure) } },
+                    BarItem {
+                        BarSlot(BottomRowSlot) {
+                            if (mode == LevelerMode.Tube) {
+                                BarIconButton(ShowdistIcons.RadioButtonChecked, "Switch to the bullseye level") { onMode(LevelerMode.Bullseye) }
+                            } else {
+                                BarIconButton(ShowdistIcons.Level, "Switch to the tube level") { onMode(LevelerMode.Tube) }
+                            }
+                        }
+                    },
+                ),
+                centre = {
+                    BarIconButton(
+                        ShowdistIcons.CenterFocusStrong,
+                        "Zero: null against an uneven surface",
+                        size = BottomRowCentre,
+                        iconSize = 32.dp,
+                        tint = Palette.Sandstone,
+                    ) {
+                        offset = sensor.readoutRoll
+                        offsetX = sensor.readoutTiltX
+                        offsetY = sensor.readoutTiltY
+                        haptics.tick()
+                    }
+                },
+                tools = listOf(
+                    BarItem {
+                        BarSlot(BottomRowSlot) {
+                            BarIconButton(ShowdistIcons.RestartAlt, "Reset to true level", enabled = zeroed) {
+                                offset = 0f
+                                offsetX = 0f
+                                offsetY = 0f
+                                haptics.tick()
+                            }
+                        }
+                    },
+                ),
+            )
         },
-        // Back at the bottom (SPEC.md §1.2). In landscape (the tube rotates) a bar would take
-        // the height the vial and readout need, so back floats in the corner instead.
-        bottomBar = { if (!landscape) BackBar(onBack) },
         containerColor = Palette.Black,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
@@ -146,15 +173,6 @@ fun LevelerScreen(mode: LevelerMode, onBack: () -> Unit) {
                     }
                 }
             }
-        }
-        if (landscape) {
-            BackButton(
-                onBack,
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start))
-                    .padding(8.dp),
-            )
         }
         }
     }

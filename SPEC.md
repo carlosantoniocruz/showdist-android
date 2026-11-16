@@ -33,25 +33,36 @@ All sizes are in density-independent pixels (dp; for text, sp). "Alpha" is opaci
 
 ```
 Launch screen (black field)
-  └─ Main Menu (landing; the orbital selector)
-       ├─ AR Measure (moon)  ──► History ──► Measurement detail sheet
-       │        └─► "Saved" sheet (after hold-to-save)
-       ├─ Tube Level (moon)
-       ├─ Bullseye Level (moon)
-       ├─ History (top row; only shown once ≥1 measurement is saved) ──► Measurement detail sheet
-       │        └─► "View in AR" ──► Measure, projecting it (§2.11)
-       └─ Settings (top row, right; About is part of it, §1.6)
-             └─ Licenses
-                  └─ License detail (one package)
+  └─ AR Measure (the root; the app opens straight into the camera view)
+       ├─ Leveler (bottom row switcher; Tube or Bullseye, whichever was used last)
+       ├─ History (bottom row) ──► Measurement detail sheet
+       │        ├─► Group screen ──► "Add lines" ──► Measure as a task
+       │        └─► "View in AR" ──► back to Measure, projecting it (§2.11)
+       ├─ Settings (bottom row, at the edge; About is part of it, §1.6)
+       │        ├─ Calibrate scale ──► Measure as a task; Tracking warm-up ──► Measure as a task
+       │        └─ About ──► Licenses ──► License detail (one package)
+       └─► "Saved" sheet (after hold-to-save)
 ```
 
-Every screen is a full-screen page pushed on a back stack. The system Back button/gesture and each app bar's back arrow (`arrow_back_rounded`, tooltip "Back") pop one level. The main menu is the root; Back there exits the app.
+There is **no main menu** (v1.5; the orbital menu, its backdrop, guide paragraphs and fun facts are gone). Every screen is a full-screen page on a back stack whose root is Measure; the system Back button/gesture and each page's bottom Back pop one level, and Back on Measure exits the app. Measure is always alive: while another page covers it the AR session is **paused**, and it resumes with every point intact.
+
+**Tasks.** Calibrating the scale, the tracking warm-up and adding lines to a saved group run on that same Measure session, shown again in that mode; finishing or backing out returns to the page that asked; the two that place points clear them on the way out. Scale calibration and adding lines need an empty session: with unsaved points placed they show the snackbar "Save or clear the measurement in progress first" instead. The warm-up only watches tracking, so it runs over any points.
+
+### 1.1a Bottom rows and the top of the screen (v1.5, `ui/BottomRow.kt`)
+
+- **Nothing at the top of any screen is tappable.** The top holds only passive items: in Measure the tracking pill and the hint; elsewhere the page title. Every control is in the thumb zone at the bottom.
+- **The bottom row** (Measure and the Leveler): black with a 1 dp line (§5) above it, inside the horizontal safe-drawing insets: 8 dp above a 68 dp centre slot, and below it the bottom gesture inset (mandatory system gestures or safe drawing, whichever is larger) plus 4 dp, never less than 16 dp, so no control sits in the swipe-up strip. **Any screen width:** the controls need 392 dp; on narrower screens the whole row (sizes, icons, text) scales down evenly, to 0.8 at most (320 dp wide), and on wide screens it keeps to a centred 480 dp column. Every target is at least 48 dp at full size. The main control is centred; each side takes half the remaining width with its controls spread evenly.
+  - **Even spacing:** the main control is dead centre, and the gap between one control's *drawn* edge and the next is the same everywhere on both sides (touch targets, 48 dp, are ignored for spacing), so the wide switcher pill stands as far from the centre button as a bare icon does. The gap is the one that spreads three 24 dp icons across a side: (side width − 72 dp) / 4, about 25 dp on a 411 dp phone. Controls are placed from the centre outward; a side with less to show ends short of the edge.
+  - **Navigation side** (right when right-handed), from the centre outward: the **Measure/Level switcher**, then History (24 dp in 48 dp, with the count badge). The switcher is a 56×32 pill in a 56×48 target, outlined in line, split into a ruler half and a level half, the current tool's half filled sandstone with a black icon; one tap goes to the other tool.
+  - **Tool side** (left when right-handed), from the centre outward (Measure): Undo, Clear, then Settings at the edge, the smallest icon (20 dp `settings_outlined` in a 48 dp target).
+- **Left/right hand** (Settings → Layout, `showdist.left_handed`, right by default): left-handed mirrors every bottom row, so navigation moves to the left and the tools to the right. The same setting puts a `BackBar`'s actions on the left and reverses History's selection bar.
+- Icons used here that aren't Material Symbols' rounded set: `straighten` (the ruler) and the level vial, drawn for the app (`ShowdistIcons.Level`).
 
 ### 1.2 Shared app-bar style (Settings, About, Licenses, License detail, History, Leveler, calibration screens)
 
 - Background black, no elevation, no surface tint. Foreground (icons, title) white (text).
 - Title centred and set in the **Caption** style (§6.3) in white: "SETTINGS", "ABOUT", "LICENSES", "LICENSE", "HISTORY", "TUBE LEVELER", "BULLSEYE LEVELER".
-- No back arrow at the top (v1.4). **Back lives at the bottom** (`BackBar`, a Scaffold bottom bar): a bare sandstone `arrow_back_rounded` (30 dp) centred in a 56 dp round touch target with a ripple, content description "Back", on black, above the bottom safe-drawing and mandatory-gesture insets with 4 dp above and below, so it sits where the menu's History and Settings icons do. In History's selection mode it leaves selection first. On the Tube level in landscape (the only screen that rotates, §4.1) a bottom bar would take the height the vial and readout need, so the same back button floats in the bottom-start corner instead (8 dp in from the safe-drawing insets). The system back gesture works everywhere as before. Actions (History's menu, the Leveler's Zero and Reset, selection actions) stay in the top bar.
+- No back arrow at the top (v1.4). **Back lives at the bottom** (`BackBar`, a Scaffold bottom bar): a bare sandstone `arrow_back_rounded` (30 dp) centred in a 56 dp round touch target with a ripple, content description "Back", on black, above the bottom safe-drawing and mandatory-gesture insets with 4 dp above and below, . The system back gesture works everywhere as before. **Actions are at the bottom too (v1.5, §1.1a):** a screen's actions sit beside Back on the thumb side (History's "More" menu; the Group screen's Export PDF and share menu), tooltips opening above them. History's selection mode swaps the bar for an evenly spread row: Cancel (`close_rounded`), Select all, Export PDF, Copy, Share, Delete; the title reads "N SELECTED". The Leveler has its own bottom row instead of a Back bar (§4.1); on the Tube level in landscape the title bar is dropped so the vial and readout keep their height.
 
 ### 1.2a Dialogs (v1.4, `ui/ShowdistDialog.kt`)
 
@@ -63,55 +74,9 @@ Every pop-up uses one compact style, with no wasted space: a card on Surface wit
 - Android 12+: the system splash screen shows the app icon on `windowSplashScreenBackground` = black.
 - The window background behind the app while it starts is also black, so nothing flashes white.
 
-### 1.4 Main Menu (landing screen)
+### 1.4 Main Menu
 
-Plain black, no background graphics. Content sits inside the system safe area in a column: a slim top row, the orbital selector filling the space, and the quick guide beneath it. The main menu never touches the camera or the AR session.
-
-**Bottom buttons** (v1.4, one-handed; `menu/MenuButtons.kt`): no top row; 16 dp of space at the top. Under the quick guide (whose bottom padding is 12 dp, so it sits just above them), a horizontally centred row, 40 dp apart, of two **bare icons** with no container: **History** (`history_rounded`, only once ≥1 recording is saved; content description "History, N saved") and **Settings** (`settings_outlined`). With History hidden, Settings centres alone. Each is a 30 dp sandstone icon in a 56 dp round touch target (a ripple shows when pressed). Below the row: 4 dp (lowered at the user's request from the brief's 16–24 dp), on top of the bottom mandatory-gesture inset (after the safe-drawing padding), so the icons sit low but stay clear of the gesture area; with the 56 dp touch target, the icon's centre is about 65 dp from the bottom edge on a Pixel 10a. There's no count badge. On wide screens the row is centred like the guide (§6.5). History is not a moon: it's saved data, not a tool. Export PDF is not on the menu; History exports any selection.
-- **History pulse:** while recordings exist, History glows on a loop: one animated value goes 0 → 1 → 0 over **3.6 s** (ease in-out, reversing). It drives two layers' alpha only: a soft-white (#FFF8EE) copy of the icon over the sandstone one, and a pre-rendered halo of the icon's own shape (the icon drawn white and blurred 6 dp, once per size, into a bitmap, at 70% × value) behind it. Both layers modulate alpha (no offscreen buffer), so nothing redraws. The pulse pauses while the fun facts cover the menu and stops whenever the menu isn't on screen; with reduced motion it holds a steady soft-white tint (value 0.6).
-
-**Orbital selector** (`menu/Orbit.kt`), sized from the space it's given (w × h):
-- **Sun**, a dying star, flat and minimal (no glow, gradient or particles): a sandstone disc of radius `sunR = min(0.27w, 0.30h, 124 dp)`, with one shed-shell ring at 1.22 × sunR (1.5 dp, sandstone at alpha 0.45). "SHOWDIST" sits across it in black, weight 700, letter-spacing 0.12 em, sized to span 1.5 × sunR and raised 0.12 × sunR above centre. It ignores the system font scale (it's the app's mark). TalkBack reads it as a heading, "Showdist".
-- **Orbit:** an ellipse centred on the sun, rx = min(0.40w, w/2 − 0.75 × moonR), ry = 0.8 × sunR, drawn as a 1 dp line in the line colour: its far half behind the sun, its near half over it. The shell top and front moon bottom are centred together vertically.
-- **Moons**, one per tool, in order AR Measure, Tube Level, Bullseye Level, spaced 120° apart. Radius moonR = 0.4 × sunR at the front. A moon at angle θ from the front sits at (cx + rx·sin θ, cy + ry·cos θ); with depth d = cos θ and n = (d + 1)/2, it's scaled 0.6 + 0.4n and always drawn **fully opaque** (v1.4) and **darkened by depth**: an opaque black disc over its body, ring and lines at alpha 0.75 × (1 − n) on its own layer, lifted by the collapse's glow (× (1 − glow)); the white dots are drawn above the shading and stay bright, in front of the sun when d ≥ 0 and behind it otherwise. Each is a black disc (3 dp gap ring) over a surface-coloured disc, with a ring (2.5 dp sandstone when focused, 1.5 dp textMuted otherwise) and the tool's picture at half the radius, its lines in sandstone and its **dots pure white** as on the app icon (v1.4): a dimension line with end ticks (±0.55 of the half-length) and a white dot on each end (radius 0.3 of the half-length, the icon's 6 of 20) (Measure); a stadium vial with a white bubble (Tube); two rings and a white centre dot (Bullseye). The dots are drawn as vector circles, white in every state (focus only changes the ring; the press ripple and the egg's light don't tint them), each with a faint dark edge (black 35%, 0.75 dp) so they still read when the collapse lights the moon toward white.
-- **Swipe:** a horizontal drag turns the orbit directly, one moon per **1.6 rx** of travel (v1.4, less sensitive than before); dragging left brings the right-hand moon to the front.
-- **Snap (v1.4, more resistant):** on release, the drag plus a 0.12 s look-ahead of its velocity must have turned the orbit at least **0.35 of a moon** from where the drag started; then it moves on exactly one moon in that direction, otherwise it springs back. A spring (damping 0.85, stiffness 300) carries it there from the release velocity. Each time the orbit settles on a different moon, by swipe or tap, a light **selection tick** plays (§11).
-- **Taps:** tapping a moon that isn't focused turns the orbit the shortest way until it's at the front. Tapping the focused moon once the orbit has settled opens its tool. First tap focuses, second tap launches.
-- **Reduced motion:** with the system's "Remove animations" on (animator duration scale 0), snaps and focus changes jump to the end, and the guide appears without sliding.
-- **Accessibility:** each moon is a button with content description "AR Measure" / "Tube Level" / "Bullseye Level", selected when focused, and click label "Show guide" (unfocused) or "Open" (focused). The selector also offers custom actions "Next tool" and "Previous tool".
-- **The collapse** (Easter egg, `menu/CollapseEgg.kt`): pressing and holding the sun is timed like Android 16's own Easter egg (`PlatLogoActivity`: a 5 s warp ramp, launching 1 s later).
-  - **One progress value** p, 0 at rest to 1 at collision, rises linearly over **6 s** of holding (v1.4). Everything follows it: the spin speed (up to four turns a second, ∝ p²); the **pull** towards the sun, a smoothstep of p, shrinking the moons to 40% at the centre; and the **glow** (= pull). As the glow rises, a white disc fades over the sun on its own layer (sandstone → white), a pre-rendered radial glow behind the sun (2 sun radii, scaled 0.8–1.2) crossfades from sandstone to white, the moons are tinted white (a white disc over each body at 85% × glow). The SHOWDIST wordmark washes out with the light: a white copy fades in over it at 85% × glow, leaving a faint grey on the white sun at collision (hidden from TalkBack). The glows are two bitmaps drawn once per size; nothing is blurred live and only layer alphas and scales change per frame.
-  - **Haptics:** a pulse that quickens from every 250 ms to every 40 ms and strengthens with p (§11), then a crisp confirming tap at collision.
-  - At **collision** (p = 1) the fun facts scene opens with a **flash**: white over the whole screen in 120 ms, then fading into black over 320 ms, so it never strobes. The orbit resets unseen behind it 300 ms later.
-  - Each collision **plays the fun facts** (v1.4, replacing the ticker): after the flash (or a 600 ms fade to black with reduced motion) the facts roll up it, credits style, at **40 dp/s**, centred in a column at most 560 dp wide with 32 dp side padding. Each fact is in the Secondary style in sandstone, centre-aligned; its source, if any, sits 6 dp beneath in 12 sp TextMuted. Facts are separated by a dim "✦" (Divider colour) with 22 dp either side. Fixed 112 dp black-to-clear gradients at the top and bottom edges fade the text to black there (the screen is portrait-only, so there are no side fades). Only the column's layer translation changes per frame.
-  - **Shuffle:** each collision deals the whole pool in a new random order; when that round has scrolled off the top, the next shuffled round starts from the bottom, never beginning with the fact that just ended. No fact repeats until every one has shown.
-  - Tapping anywhere or going back fades the scene out over 350 ms, back to the menu. Content description "Fun facts. Tap to close."
-  - Movement is the finger's net distance from where it went down (never the summed reports: Samsung screens report a resting finger as constant jitter). Until the long-press timeout (~500 ms) a move beyond touch slop hands the gesture to the orbit's swipe; after it, the hold consumes every event so the orbit can't take it, and allows 48 dp of wander. Lifting, or sliding further than that, before 6 s lets go: over 700 ms (ease-out) p eases back to 0, so the moons drift back out, the sun's colour and glow return to sandstone, and the spin coasts on to the next whole turn; nothing is ever left mid-animation. While any of this runs, taps on moons are ignored. A swipe that starts on the sun still turns the orbit.
-  - With reduced motion, holding 6 s gives the haptics and shows the facts without the spin, pull, glow or flash: one fact at a time, still, centred; each tap shows the next (a new shuffled round after the last), and back closes it.
-  - **The facts** live in `res/raw/fun_facts.txt`: one block per fact, blank-line separated, the fact's text then an optional `source: NAME` line; `#` lines are comments. Surprising or hard-to-believe facts carry a short source (BIPM, NIST, NASA, Britannica, IAU, CIA World Factbook, …); common knowledge needs none; legends are phrased "According to legend". Every fact was checked against a reliable source before being added (v1.4 review: the Great Pyramid "level to 2 cm" claim was dropped, as sources disagree; the granite cubit-rod claim was reduced to the cubit's definition and surviving rods' ~52 cm; the three non-metric countries are attributed to the CIA World Factbook; the Giza water-trench levelling is attributed to Lehner and Edwards as a suggestion).
-- The focused moon is held by the app, not the menu, so the tool last used is still in front on return; it also survives rotation and process death.
-
-**Orbit and guide placed for the thumb** (v1.4): the orbit gets only the height its span needs (2.42 sun radii + 32 dp, sun radius min(27% of width, 124 dp), shrinking on short screens, at least 160 dp), and the guide exactly the height of the tallest tool's guide (all three are laid out invisibly to size it, so nothing is reserved beyond the text and nothing moves as tools change). The height left over is shared by weight: **70% above the orbit** (so the whole group sits low, within thumb reach), then 10% each between the orbit and the guide, the guide and the closing line, and the closing line and the bottom buttons. Each tool's title sits at the same height. **Swiping anywhere on the guide** turns the orbit exactly as swiping on the orbit does (same step and fling); taps and holds there do nothing, and only holding the sun starts the collapse.
-
-**Quick guide**, beneath the orbit, in a slot as tall as the tallest guide so the orbit never jumps. Once the orbit settles it slides up a third of its height with a spring (damping 0.9, stiffness 300) and fades in over 220 ms; while the orbit turns it fades out (120 ms). It's a polite live region, so TalkBack reads it out. One block of even width (at most 388 dp including 24 dp padding each side), centred on the sun's axis so its margins match on both sides, everything centred (v1.4):
-- The tool's name: Title style scaled by 0.86 (18 sp), sandstone, letter-spacing 2.
-- 8 dp gap, one concise paragraph: Body scaled by 0.86 (about 14 sp), white, line height 1.45. Each is worded to wrap to full lines with no word left alone on the last.
-
-| Tool | Paragraph |
-|---|---|
-| AR MEASURE | Measure distances with the camera. Move slowly until the reticle turns solid, tap to drop points, hold to save. |
-| TUBE LEVEL | Level or plumb walls and beams. Hold an edge of the phone to the surface until the bubble turns green. |
-| BULLSEYE LEVEL | Level a flat surface both ways. Lay the phone on it and centre the bubble; X is side to side, Y front to back. |
-
-**"TAP THE MOON AGAIN TO OPEN"** stands on its own between the guide and the bottom buttons: Caption at 12 sp, centred, in grey (`Palette.Hint` #8A8A8A, 5.8:1 on black). Its gap above (10% of the spare height + 12 dp) and below (10%) match the gap between the orbit and the guide (10%), so the three gaps look equal (measured on a Pixel 10a: 142, 139 and 153 px, the last including the icons' clear touch padding). Swiping on it turns the orbit too.
-
-### 1.4a Menu backdrop (v1.4, `menu/Sky.kt`)
-
-Decorative only (no semantics), and only in the empty band **above the sun** (the space the 70% top share leaves, §1.4), clipped to it, so nothing ever crosses the sun, the guide or the buttons. Shapes fade out within 40 dp of the band's top and bottom edges rather than being cut off.
-- **Modern measuring tools**, as large, barely visible line art (#141414, 2 dp strokes, 110 dp boxes): a tape measure, a laser distance meter, a box level, a digital caliper, a speed square, a cross-line laser level on a tripod, a measuring wheel, a total station, a steel rule and a digital angle finder. Three float at a time, spread across the width to start, drifting mostly sideways at about 2–5 dp/s (vertical speed 35% of that) and turning at 0.6–1.8°/s, wrapping from side to side (seeded, so the arrangement is the same each launch).
-- **Meteors**, very dark brown (#2E2016 at the head, the tail fading to nothing over 80 dp, 1.5 dp wide), each starting somewhere in the band on a **random heading** and gliding 45% of the width over 8–12 s, fading in over the first 15% and out over the last 30%. One starts every 4–9 s, at most two at once.
-- Every shape is drawn once into a bitmap per density; motion only moves, turns and fades layers, about 30 times a second, so nothing redraws.
-- Still (no drift, no meteors) with reduced motion and while the fun facts cover the menu; stopped whenever the menu isn't on screen.
+Removed in v1.5 (§1.1). The app opens into Measure; `menu/` (orbit, backdrop, quick guides, collapse Easter egg and fun facts) and `res/raw/fun_facts.txt` are deleted.
 
 ### 1.5 Settings
 
@@ -121,6 +86,8 @@ A list with 8 dp vertical padding:
 - Option rows "Imperial (ft, in)" and "Metric (m, cm)" (Label style). v1.4: single-line Settings rows are compact (min height 52 dp, 4 dp vertical padding); rows with a subtitle keep 64 dp. The trailing radio icon is `radio_button_checked_rounded` in **sandstone** when selected, or `radio_button_unchecked_rounded` in textMuted otherwise.
 
 Tapping an option sets the unit system immediately and persists it (§2.7).
+
+**LAYOUT** (v1.5), after a divider: radio rows "Right-handed" and "Left-handed" (§1.1a), persisted as `showdist.left_handed`.
 
 **FEEDBACK** (v1.4), after a divider: a "Vibration" row (subtitle "Taps and pulses as you measure and level") with a Material switch (sandstone track when on). On by default, persisted as `showdist.haptics`. Off silences every haptic in the app (§11).
 
@@ -283,10 +250,8 @@ The screen is a vertical column:
 1. **Camera area** fills all the height above the control bar, so nothing measured is ever hidden behind the bar. It is a stack of layers, bottom to top:
    1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping. Until ARCore has delivered two camera images, the feed is covered in black: before then the texture holds uninitialised memory, which slower phones (e.g. Galaxy A17) show as coloured static.
    2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total each sit on their own scrim pill.
-   3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L24 T16 R24 (v1.4: the menu button is no longer at the top):
-      - The **hint** line (§2.3).
-      - When there are ≥2 points: a 6 dp gap, then the **running total** as a pill. The pill is scrim (§5), fully rounded, with 16 h × 4 v padding. The total text is 34 sp, weight 200, pure white, with tabular figures, formatted per §2.5.
-   5. The **menu button**, **bottom-left of the camera area** (v1.4, within thumb reach, just above the control bar), inside the horizontal safe area, 8 dp from the bottom and left: a 48 dp tap target around a 40 dp scrim disc holding a white `arrow_back_rounded` (22 dp, alpha 0.9). It returns to the main menu, closing the session like Back. Its content description is "Back to menu". It sits as far as possible from the control bar so it isn't hit by accident, and it turns with the bar icons (§2.9). A quick tap is needed; a long press still charges hold-to-save.
+   3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L24 T12 R24, passive only (v1.5, §1.1a): the **tracking pill** (§2.3a), a 6 dp gap, then the **hint** line (§2.3).
+   4. The **foot stack** (v1.5), bottom-centre, 4 dp above the bottom row, items 6 dp apart, top to bottom: the warm-up prompt when offered; in a group, the line card; the **live readout**; then a row holding the **unit toggle** and, in a group with ≥1 line, the line count and Done. The readout is a scrim pill (§5), fully rounded, 16 h × 4 v padding, 34 sp, weight 200, pure white, tabular figures, one line, and **always shows its unit in words**: "4 ft 3 in", "7 1/2 in", "1.30 m", "45 cm" (rounded as §2.5; placed labels keep ′ and ″). It shows when there are ≥2 points (in a group, as before). The **unit toggle** is plain text naming the current system, **"ft in"** or **"m cm"** (15 sp, weight 700, white on a scrim pill, 14 h × 7 v padding, in a 48 dp tall target); a tap flips the system and persists it. The whole stack turns as one when the phone is held sideways (§2.9).
 2. **Control bar** (§2.6).
 
 The whole screen, camera area and bar alike, is covered by one **long-press** detector that drives hold-to-save (§2.6). It does not block taps on child controls.
@@ -407,19 +372,23 @@ The rationale for this precision is that AR tracking is good to about 1 cm.
 - Bottom safe-area inset applied, plus 24 dp vertical padding.
 - The bar itself never rotates.
 
-It is divided into **five equal-width columns**, each control centred in its own column. Left to right:
+Laid out as the shared bottom row (§1.1a, v1.5): 8 dp, the 68 dp slot, then the gesture clearance. Left-handed, left to right; **right-handed, the default, is the mirror image** (Settings at the left edge, Clear, Undo, capture, switcher, History):
 
 | # | Control | Details |
 |---|---|---|
-| 1 | M / FT unit toggle | Two tappable labels, "M" and "FT". The active one is weight 700 in its unit colour: **cyan** for M, **crimson** for FT. The inactive one is textMuted at alpha 0.6, weight 500. Both are 12 sp with letter-spacing 1.5 and padding 7 h × 16 v. Tapping sets and persists the unit system. |
-| 2 | Undo | `undo_rounded`. Tooltip "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
-| 3 | Main button | 96×96. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
-| 4 | Clear | `close_rounded`. Tooltip "Clear all points". Also removes a projection. Disabled when there are no points and no projection. |
-| 5 | History | `history_rounded` icon. If ≥1 saved, a count badge appears (white, 11 sp, weight 700, top-right of the 52×52 hit area, at right 4 / top 6). Opens History (pausing the session). |
+| 2 | History | `history_rounded`. If ≥1 saved, a count badge (white, 12 sp, weight 700, top-right). Opens History (pausing the session). |
+| 3 | Measure/Level switcher | §1.1a. Opens the Leveler last used (pausing the session). |
+| 4 | Capture button | 68×68, **peach red** (`Palette.Capture` #FB5628), the largest control. Place point on tap (§2.4). Enabled with a reticle hit and, before a first point, after warm-up. Shows the save charge. |
+| 5 | Undo | `undo_rounded`, "Undo last point". With no points left, steps a projection back a stage (§2.11). Disabled when there are no points and no projection. |
+| 6 | Clear | `close_rounded`, "Clear all points". Also removes a projection. Disabled like Undo. |
+| 7 | Settings | `settings_outlined`, 20 dp in a 48 dp target; the smallest icon, at the edge. Opens Settings (pausing the session). Hidden in a task. |
 
-- The icon buttons are bare 24 dp icons centred in a 52×52 hit area. They are text at alpha 0.9 when enabled and 0.3 when disabled.
-- Controls 1, 2, 4 and 5 each sit in a fixed 60×60 slot and **rotate** to stay upright (§2.9). The round main button doesn't rotate.
-- The 96 dp main button may overhang its column evenly.
+- The icon buttons are bare 24 dp icons in 48 dp round hit areas, text at alpha 0.9 enabled and 0.3 disabled. Each small control's slot **rotates** to stay upright (§2.9); the row and the capture button don't.
+- In a **task** (§1.1) the navigation side holds only a sandstone Back arrow at the edge.
+- The unit toggle is no longer in the bar: it sits just above it, by the live readout (§2.2).
+- While the camera is waking or a Problem view shows, the row is still there (capture, Undo and Clear disabled), so the Leveler, History and Settings stay one tap away.
+
+**Capture button** (custom-drawn, 68×68; v1.5, replacing the 96 dp sandstone main button described next, whose charge arc it keeps): a peach-red ring (radius 32 dp, 3 dp stroke) around a peach-red disc (radius 25 dp), both at alpha 0.4 when disabled; the white charge arc runs over the ring.
 
 **Main button** (custom-drawn, 96×96). Its accent is sandstone at full strength when enabled (reticle on a surface) and sandstone at alpha 0.4 when disabled. It has:
 - An outer ring with radius `48 − 2 = 46` dp and a 2 dp stroke in the accent colour.
@@ -601,7 +570,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 
 ### 2.13 Chained and Group measuring (v1.4)
 
-**Choosing.** Opening AR Measure from the menu shows a dialog with two large outlined buttons (sandstone, 20 dp corners, ≥88 dp tall, title in the Title style and a Secondary line) — **Chained** "One continuous path, with a running total" and **Group** "Separate lines for one thing: a room, a table, a cabinet". In the compact dialog style (§1.2a): title "How will you measure?", buttons ≥64 dp tall with 16 × 12 dp padding, 8 dp apart. There's no "remember" option in it. Dismissing it opens nothing. Settings → Measuring → **Measure mode** (`showdist.measure_kind`) can make one the default instead ("Ask each time", "Always chained", "Always group"); then the dialog is skipped. "View in AR" from History always opens a Chained session; calibration and warm-up measure as before.
+**Choosing** (v1.5). There is no prompt: Measure opens straight into the mode set in Settings → Measuring → **Measure mode** (`showdist.measure_kind`; "Chained", the default, or "Group"). A change applies once no points are placed. "View in AR" from History always opens a Chained session; calibration and warm-up measure as before.
 
 **Chained** is unchanged: points link into one path; the pill shows the total; hold to save.
 
@@ -615,7 +584,7 @@ Rotation animates over 250 ms with an ease-out curve. The listener stops while t
 
 **Data** (`history/Group.kt`): a group has an id (creation time in µs, like a recording's), a name, a createdAt timestamp, the unit at save, and a list of lines; each line has an id, two world points (as placed; lengths × its calibration scale, §1.5a), an optional label and an optional tag (§2.14). Groups live in `groups.json`, kept exactly like `recordings.json` (§2.7). A chain is still a single Recording.
 
-**Group screen** (from History): app bar "GROUP" with Export PDF and the share menu (Share / Copy, for the whole group); back at the bottom (§1.2). The group's name (Title, 24 sp, sandstone, with a pencil; tap to rename), "N lines · date", then a row per line: its number (sandstone), its label (white) or "Line N" (grey), its length (20 sp) and a delete button (confirm "Delete …? This can't be undone."). Tapping a row renames the line. **Add lines** (outlined sandstone pill with a plus) opens Measure in group mode adding to this group; it's hidden while a Measure is already open beneath History. Deleting every line keeps the (empty) group.
+**Group screen** (from History): app bar "GROUP" with Export PDF and the share menu (Share / Copy, for the whole group); back at the bottom (§1.2). The group's name (Title, 24 sp, sandstone, with a pencil; tap to rename), "N lines · date", then a row per line: its number (sandstone), its label (white) or "Line N" (grey), its length (20 sp) and a delete button (confirm "Delete …? This can't be undone."). Tapping a row renames the line. **Add lines** (outlined sandstone pill with a plus) opens Measure in group mode adding to this group; with unsaved points in Measure it shows a snackbar instead (§1.1). Deleting every line keeps the (empty) group.
 
 **Share text** for a group: "Name · YYYY-MM-DD HH:MM", "Group of N lines", then "n. Label: length" per line.
 
@@ -699,7 +668,7 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
 
 ### 4.1 Behaviour
 
-- **Purpose:** two levels, each opened from its own tile on the main menu (§1.4). The **tube** is a single-axis bubble level for hanging shelves or frames, used by holding the phone flat against a wall. The **bullseye** is a two-axis level used by laying the phone face up on a surface.
+- **Purpose:** two levels, opened from Measure's switcher (§1.1a). **Bottom row (v1.5):** Zero in the centre (`center_focus_strong`, 32 dp, sandstone, 68 dp target), the switcher back to Measure where Measure has it, a Tube/Bullseye toggle beside it (showing the other level's icon), and Reset on the tool side (disabled until zeroed). Nothing in the title bar is tappable. The **tube** is a single-axis bubble level for hanging shelves or frames, used by holding the phone flat against a wall. The **bullseye** is a two-axis level used by laying the phone face up on a surface.
 - **Sensor:** the accelerometer at "game" rate, about 50 Hz (20 ms). If no accelerometer is present, errors are ignored and the bubble stays centred.
 - **Smoothing:** a one-pole low-pass filter on `x/g`, `y/g` and `z/g`, with g = 9.80665 m/s² and α = 0.15.
   - `est = est + (sample − est) × 0.15`

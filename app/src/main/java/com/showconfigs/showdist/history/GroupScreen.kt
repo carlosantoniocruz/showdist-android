@@ -65,11 +65,11 @@ private sealed interface GroupEdit {
 /**
  * A saved group (SPEC.md §2.13): its name, then each line with its label and length. The
  * name and each label can be changed by tapping them, lines deleted, and more lines added
- * in AR ([onAddLines], null while another Measure is open). Share, Copy and PDF act on
+ * in AR ([onAddLines]). Share, Copy and PDF act on
  * the whole group.
  */
 @Composable
-fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Unit)?, onBack: () -> Unit) {
+fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: (String) -> Unit, onBack: () -> Unit) {
     val group = GroupStore.byId(groupId)
     // Gone (deleted elsewhere): nothing to show.
     LaunchedEffect(group == null) { if (group == null) onBack() }
@@ -79,8 +79,9 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Un
     var edit by remember { mutableStateOf<GroupEdit?>(null) }
 
     Scaffold(
-        topBar = {
-            ShowdistAppBar("GROUP") {
+        topBar = { ShowdistAppBar("GROUP") },
+        bottomBar = {
+            BackBar(onBack) {
                 AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF") { exportPdf(listOf(HistoryEntry.Group(group))) }
                 ShareMenuButton(
                     enabled = true,
@@ -89,7 +90,6 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Un
                 )
             }
         },
-        bottomBar = { BackBar(onBack) },
         containerColor = Palette.Black,
     ) { padding ->
         ReadingSides(Modifier.fillMaxSize().padding(padding)) { side ->
@@ -138,11 +138,9 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: ((String) -> Un
                         }
                     }
                 }
-                if (onAddLines != null) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
-                            AddLinesButton { onAddLines(group.id) }
-                        }
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 20.dp), contentAlignment = Alignment.Center) {
+                        AddLinesButton { onAddLines(group.id) }
                     }
                 }
             }
