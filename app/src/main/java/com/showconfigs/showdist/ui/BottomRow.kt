@@ -196,38 +196,31 @@ fun BarIconButton(
 }
 
 /**
- * The Measure/Level switcher (SPEC.md §1.1a): a small two-part pill, the ruler and the
- * level, with the current tool's half filled accent. One tap anywhere on it goes to the
- * other tool. A 56×48 target around a 56×32 pill.
+ * The Measure/Level switcher (SPEC.md §1.1a): two bare icons side by side, the ruler and the
+ * level, with no pill or outline round them. The current tool's icon is bright, the other
+ * dim. One tap anywhere on the pair goes to the other tool. A 56×48 target.
  */
 @Composable
 fun ModeSwitcher(levelActive: Boolean, onSwitch: () -> Unit) {
-    val shape = RoundedCornerShape(50)
     val haptics = rememberHaptics()
-    Box(
+    Row(
         Modifier
             .size(56.dp, 48.dp)
-            .clip(shape)
+            .clip(Corner)
             .clickable(role = Role.Button) {
                 haptics.tick()
                 onSwitch()
             }
             .semantics { contentDescription = if (levelActive) "Switch to Measure" else "Switch to Leveler" },
-        contentAlignment = Alignment.Center,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.size(56.dp, 32.dp).border(BorderStroke(1.dp, Palette.Line), shape).clip(shape)) {
-            SwitcherHalf(ShowdistIcons.Straighten, active = !levelActive)
-            SwitcherHalf(ShowdistIcons.Level, active = levelActive)
-        }
+        SwitcherIcon(ShowdistIcons.Straighten, active = !levelActive)
+        SwitcherIcon(ShowdistIcons.Level, active = levelActive)
     }
 }
 
 @Composable
-private fun SwitcherHalf(icon: ImageVector, active: Boolean) {
-    Box(
-        Modifier.size(28.dp, 32.dp).background(if (active) Palette.Accent else Color.Transparent),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = if (active) Palette.Black else Palette.TextMuted, modifier = Modifier.size(18.dp))
-    }
+private fun SwitcherIcon(icon: ImageVector, active: Boolean) {
+    Icon(icon, contentDescription = null, tint = Palette.Text, modifier = Modifier.size(24.dp).alpha(if (active) 0.95f else 0.3f))
 }
