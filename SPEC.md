@@ -107,11 +107,11 @@ All values are persisted (`showdist.calibration.scale`, `.level_x`, `.level_y`) 
 
 Reached from Settings. Title bar "ABOUT", Back at the bottom. Centred in the reading column:
 
-- **The app's mark, large** (168 dp wide; the same picture as the launcher icon, §8.1, drawn by `ui/AppMark.kt`): a thin cyan line with an upright tick at each end and a white dot near each end. This one mark stands for the whole app.
+- **The app's mark, large** (its line 88 dp long; the same picture and proportions as the launcher icon, §8.1, drawn by `ui/AppMark.kt`): a thin cyan line with an upright tick at each end and a white dot on each intersection. This one mark stands for the whole app.
 - "SHOWDIST" (Title, white, letter-spacing 4), "Version x.y", the developer's name, the X row (the X logo and `@shcarlosconfigs` in cyan, a ≥48 dp target that opens the profile), and "Created with AI assistance".
 - Under a hairline: the ARCore notice required by its terms ("This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."), and a "Privacy policy" row. Licenses are their own Settings row.
 
-**The hold.** Pressing and holding the mark gives a tick and slides its two dots toward each other along the line over 2.2 s, swelling by up to 35% as the gap closes (brighter by size; no blur or glow). Its touch target is much larger than the mark, 300 × 176 dp, with the mark in its upper part (56 dp from the top), so a thumb anywhere near starts it and the dots stay visible above the thumb. Sliding the thumb changes nothing; only lifting ends the hold, and lifting early eases the dots back over 350 ms. When they meet: a confirming tap, one cyan ring expanding and fading over 380 ms, and the facts appear.
+**The hold.** Pressing and holding the mark gives a tick and slides its two dots toward each other along the line over 2.2 s, swelling by up to 25% as the gap closes (brighter by size; no blur or glow). Its touch target is much larger than the mark, 280 × 168 dp, with the mark in its upper part (52 dp from the top), so a thumb anywhere near starts it and the dots stay visible above the thumb. Sliding the thumb changes nothing; only lifting ends the hold, and lifting early eases the dots back over 350 ms. When they meet: a confirming tap, one cyan ring expanding and fading over 380 ms, and the facts appear.
 
 **The facts** (`settings/FunFacts.kt`, `res/raw/fun_facts.txt`: measurement history and trivia, sources where surprising; the formula tips are gone): shuffled, rolling up the **upper 68%** of the page at 32 dp/s (the earlier Easter egg ran at 40), fading out over 72 dp at its top and bottom, white-grey text with small grey sources. Behind them (`settings/FactsSky.kt`): tiny (56 dp), barely visible (#141414) line drawings of measuring tools drifting at a few dp a second, and now and then a small dim grey asteroid. A tap pauses or resumes; it also holds still while a finger rests on it. Back (bottom arrow or system) closes the facts, then leaves the page. With reduced motion one fact shows at a time and a tap moves to the next.
 
@@ -856,8 +856,9 @@ The icon is an Android **adaptive icon** built from vector drawables on a 108×1
 
 - **Background layer:** solid black `#000000`.
 - **Foreground layer:** a dimension line, well inside the 66 dp safe zone:
-  - sandstone (`#C8A97E`) strokes, width 3.5, round caps: a horizontal rule from (34, 54) to (74, 54) and an end tick at each end, x = 34 and x = 74, from y = 43 to y = 65.
-  - Two white (`#FFFFFF`) dots, radius 6, at (34, 54) and (74, 54).
+  - **cyan** (`#00E5FF`, the shared accent; v1.5) strokes, width 3, round caps: a horizontal rule from (34, 54) to (74, 54) and an end tick at each end, x = 34 and x = 74, from y = 43 to y = 65.
+  - Two white (`#FFFFFF`) dots, radius 6, at (34, 54) and (74, 54): **on the intersections**, where the rule meets its end ticks (the user's correction, 15 Nov 2026; not inset from the ends). The mark spans x 28 to 80 of the 108 canvas, compact and centred, so it survives a circle, a squircle and a square mask. No lighter edge was added to the black tile; if it disappears on a dark wallpaper, the next step is a bolder line.
+  - The About page draws the same mark at the same proportions (`ui/AppMark.kt`, §1.6), and the PDF header a monochrome one (§2.12).
 - **Monochrome layer** (Android 13+ themed icons): the same shapes in one colour.
 - **Pre-API-26 fallback:** a 72×72 flattened vector with a black disc (radius 36) under the same shapes.
 

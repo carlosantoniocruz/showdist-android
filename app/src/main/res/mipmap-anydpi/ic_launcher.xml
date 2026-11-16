@@ -15,8 +15,8 @@
             android:fillColor="@color/black"
             android:pathData="M18,54 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
         <path
-            android:strokeColor="@color/sandstone"
-            android:strokeWidth="3.5"
+            android:strokeColor="@color/accent"
+            android:strokeWidth="3"
             android:strokeLineCap="round"
             android:pathData="M34,54 H74 M34,43 V65 M74,43 V65" />
         <path

@@ -68,15 +68,15 @@ private const val X_HANDLE = "@shcarlosconfigs"
 private const val X_URL = "https://x.com/shcarlosconfigs"
 private const val PRIVACY_POLICY_URL = "https://carlosantoniocruz.github.io/showdist-privacy/"
 
-/** The mark's width on the page. */
-private val MARK_WIDTH = 168.dp
+/** The length of the mark's line on the page; its dots and ticks reach a little past each end. */
+private val MARK_WIDTH = 88.dp
 
 /** The hold's touch target: the mark with a wide margin, most of it below, where a thumb lands. */
-private val TARGET_WIDTH = 300.dp
-private val TARGET_HEIGHT = 176.dp
+private val TARGET_WIDTH = 280.dp
+private val TARGET_HEIGHT = 168.dp
 
 /** The mark sits this far below the target's top, so it stays above a thumb pressing the middle. */
-private val MARK_FROM_TOP = 56.dp
+private val MARK_FROM_TOP = 52.dp
 
 /** How long the dots take to meet, and to ease back if the finger lifts first. */
 private const val HOLD_MS = 2200
@@ -192,7 +192,7 @@ private fun HoldMark(onMeet: () -> Unit) {
         drawAppMark(centre, length, close.value)
         val b = burst.value
         if (b > 0f) {
-            drawCircle(Palette.Accent, radius = length * 0.5f * b, center = centre, alpha = 1f - b, style = Stroke(2.dp.toPx()))
+            drawCircle(Palette.Accent, radius = length * 0.9f * b, center = centre, alpha = 1f - b, style = Stroke(2.dp.toPx()))
         }
     }
 }
