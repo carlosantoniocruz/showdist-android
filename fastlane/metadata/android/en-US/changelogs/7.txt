@@ -1,0 +1,7 @@
+Version 1.5:
+- Opens straight into the AR view. The main menu is gone.
+- One slim bottom row for one-handed use, with a left-handed option in Settings.
+- Points now lock on plain walls.
+- Simpler reticle and a single cyan line; steadier live reading shown in ft in or m cm.
+- AR pauses itself after a minute idle to save battery. Tap to continue.
+- Simpler Settings, History and About. Handy formulas and the Clear button are removed.
