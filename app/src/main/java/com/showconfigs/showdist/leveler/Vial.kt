@@ -145,6 +145,6 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
         bubbleOutline.ellipse(bx, by, bubbleR, ux, uy, abs(physics.vx) * travel)
         bubbleOutline.keepInsideStadium(cx, cy, halfLength, halfThickness, vertical)
         val bubble = bubbleOutline.toPath()
-        drawPath(bubble, if (level) Palette.Accent else Palette.White)
+        drawPath(bubble, Palette.Accent)
     }
 }

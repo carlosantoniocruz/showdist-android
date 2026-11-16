@@ -46,64 +46,47 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
 
 /**
- * Settings (SPEC.md §1.5), kept short: units, calibration, feedback, and Additional Info,
- * which leads to About (and from there the licenses).
+ * Settings (SPEC.md §1.5), and only these: vibration, the hand the bottom rows are laid out
+ * for, the calibration tools, About and Licenses. Units are not here: the toggle in Measure
+ * is their one home.
  */
 @Composable
 fun SettingsScreen(
-    unitSettings: UnitSettings,
     onCalibrateScale: () -> Unit,
     onWarmUp: () -> Unit,
     onLevelZero: () -> Unit,
-    onFormulas: () -> Unit,
     onAbout: () -> Unit,
+    onLicenses: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(topBar = { ShowdistAppBar("SETTINGS") }, bottomBar = { BackBar(onBack) }, containerColor = Palette.Black) { padding ->
-        // Scrolls edge to edge; the rows sit in a centred column on wide screens (SPEC.md §6.5).
-        // A compact list; every divider has the same gap above and below, so the sections are
-        // evenly spaced without stretching to fill the screen.
+        // A compact list in a centred column on wide screens (SPEC.md §6.5); every divider
+        // has the same small gap above and below, and nothing stretches to fill the screen.
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Column(Modifier.readingColumn().padding(top = 8.dp, bottom = 24.dp)) {
-                    Column {
-                        SectionTitle("MEASURING")
-                        UnitOption("Imperial (ft, in)", UnitSystem.Imperial, unitSettings)
-                        UnitOption("Metric (m, cm)", UnitSystem.Metric, unitSettings)
-                        MeasureKindOption()
-                    }
+                Column(Modifier.readingColumn().padding(top = 4.dp, bottom = 16.dp)) {
+                    SectionTitle("HAPTICS")
+                    VibrationOption()
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
-                    Column {
-                        SectionTitle("CALIBRATE")
-                        SettingsRow(
-                            "Measurement scale",
-                            subtitle = if (Calibration.hasScale) "${correctionText(Calibration.scale)} applied" else "Measure something you know",
-                            onClick = onCalibrateScale,
-                        ) { Chevron() }
-                        SettingsRow("Tracking warm-up", subtitle = "Move your phone slowly", onClick = onWarmUp) { Chevron() }
-                        SettingsRow(
-                            "Level zero",
-                            subtitle = if (Calibration.hasLevelZero) "Zero set" else "Set zero on a surface you trust",
-                            onClick = onLevelZero,
-                        ) { Chevron() }
-                    }
+                    SectionTitle("LAYOUT")
+                    HandOption("Right-handed", left = false)
+                    HandOption("Left-handed", left = true)
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
-                    Column {
-                        SectionTitle("LAYOUT")
-                        HandOption("Right-handed", left = false)
-                        HandOption("Left-handed", left = true)
-                    }
+                    SectionTitle("CALIBRATION")
+                    SettingsRow(
+                        "Measurement scale",
+                        subtitle = if (Calibration.hasScale) "${correctionText(Calibration.scale)} applied" else "Measure something you know",
+                        onClick = onCalibrateScale,
+                    ) { Chevron() }
+                    SettingsRow("Tracking warm-up", subtitle = "Move your phone slowly", onClick = onWarmUp) { Chevron() }
+                    SettingsRow(
+                        "Level zero",
+                        subtitle = if (Calibration.hasLevelZero) "Zero set" else "Set zero on a surface you trust",
+                        onClick = onLevelZero,
+                    ) { Chevron() }
                     SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
-                    Column {
-                        SectionTitle("FEEDBACK")
-                        VibrationOption()
-                    }
-                    SettingsDivider(Modifier.padding(vertical = SECTION_GAP))
-                    Column {
-                        SectionTitle("ADDITIONAL INFO")
-                        SettingsRow("Handy formulas", subtitle = "Shapes, percentages, conversions", onClick = onFormulas) { Chevron() }
-                        SettingsRow("About", subtitle = "Showdist, the developer and licenses", onClick = onAbout) { Chevron() }
-                    }
+                    SettingsRow("About", onClick = onAbout) { Chevron() }
+                    SettingsRow("Licenses", onClick = onLicenses) { Chevron() }
                 }
             }
         }
@@ -112,37 +95,6 @@ fun SettingsScreen(
 
 /** The gap above and below each divider between Settings sections. */
 private val SECTION_GAP = 8.dp
-
-/**
- * How Measure joins points (SPEC.md §2.13): Chained, the default, or Group. Measure opens
- * straight into it; a change applies once no points are placed.
- */
-@Composable
-private fun MeasureKindOption() {
-    val context = LocalContext.current
-    var open by remember { mutableStateOf(false) }
-    val current = MeasureKindSetting.remembered ?: MeasureKind.Chained
-    val label = { k: MeasureKind ->
-        when (k) {
-            MeasureKind.Chained -> "Chained: one path, running total"
-            MeasureKind.Group -> "Group: separate lines for one thing"
-        }
-    }
-    Box {
-        SettingsRow("Measure mode", subtitle = label(current), onClick = { open = true }) { Chevron() }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
-            for (k in MeasureKind.entries) {
-                DropdownMenuItem(
-                    text = { Text(label(k), style = Type.Label.copy(color = if (k == current) Palette.Accent else Palette.Text)) },
-                    onClick = {
-                        MeasureKindSetting.set(context, k)
-                        open = false
-                    },
-                )
-            }
-        }
-    }
-}
 
 /** Which thumb the bottom rows are laid out for (SPEC.md §1.5); the selected radio is accent. */
 @Composable
@@ -195,19 +147,6 @@ internal fun SectionTitle(title: String) {
     )
 }
 
-/** The selected radio is accent (SPEC.md §5). */
-@Composable
-private fun UnitOption(label: String, value: UnitSystem, unitSettings: UnitSettings) {
-    val selected = unitSettings.units == value
-    SettingsRow(label, role = Role.RadioButton, onClick = { unitSettings.select(value) }) {
-        Icon(
-            if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (selected) Palette.Accent else Palette.TextMuted,
-        )
-    }
-}
-
 /**
  * A tappable list row: a white title, an optional grey subtitle, a trailing icon.
  * [horizontalPadding] is 16 dp like a standard list tile.
@@ -225,7 +164,7 @@ internal fun SettingsRow(
         Modifier
             .fillMaxWidth()
             // Single-line rows are compact; rows with a subtitle get room for both lines.
-            .heightIn(min = if (subtitle == null) 52.dp else 64.dp)
+            .heightIn(min = if (subtitle == null) 48.dp else 58.dp)
             .clickable(role = role, onClick = onClick)
             .padding(horizontal = horizontalPadding, vertical = if (subtitle == null) 4.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,

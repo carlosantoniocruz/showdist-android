@@ -80,24 +80,14 @@ Removed in v1.5 (§1.1). The app opens into Measure; `menu/` (orbit, backdrop, q
 
 ### 1.5 Settings
 
-A list with 8 dp vertical padding:
+Slim (v1.5), and **only these**, in a compact list with a title bar and the bottom Back row (§1.2):
 
-- Section header "UNITS" in the Caption style, textMuted, left-aligned, padding L16 T12 R16 B4, marked as a heading.
-- Option rows "Imperial (ft, in)" and "Metric (m, cm)" (Label style). v1.4: single-line Settings rows are compact (min height 52 dp, 4 dp vertical padding); rows with a subtitle keep 64 dp. The trailing radio icon is `radio_button_checked_rounded` in **sandstone** when selected, or `radio_button_unchecked_rounded` in textMuted otherwise.
+- **HAPTICS:** a "Vibration" row (subtitle "Taps and pulses as you measure and level") with a switch, cyan when on. On by default, persisted as `showdist.haptics`. Off silences every haptic in the app (§11).
+- **LAYOUT:** radio rows "Right-handed" and "Left-handed" (§1.1a), persisted as `showdist.left_handed`.
+- **CALIBRATION** (§1.5a): "Measurement scale" (subtitle "Measure something you know", or "+2.0% applied" once set), "Tracking warm-up" ("Move your phone slowly"), "Level zero" ("Set zero on a surface you trust", or "Zero set"), each with a chevron.
+- **About** (§1.6) and **Licenses** (§1.7), each a row with a chevron.
 
-Tapping an option sets the unit system immediately and persists it (§2.7).
-
-**LAYOUT** (v1.5), after a divider: radio rows "Right-handed" and "Left-handed" (§1.1a), persisted as `showdist.left_handed`.
-
-**FEEDBACK** (v1.4), after a divider: a "Vibration" row (subtitle "Taps and pulses as you measure and level") with a Material switch (sandstone track when on). On by default, persisted as `showdist.haptics`. Off silences every haptic in the app (§11).
-
-Settings stays short and compact (v1.4; it doesn't stretch to fill the screen): UNITS, CALIBRATE (§1.5a), FEEDBACK, then **ADDITIONAL INFO**, each pair of sections separated by a divider with the same 8 dp above and below it, with an "About" row (subtitle "Showdist, the developer and licenses", chevron) that opens About (§1.6), then 24 dp of space.
-
-
-**CALIBRATE** (v1.4), after a divider, before FEEDBACK: three rows with chevrons, each opening a screen with one instruction and one button.
-- "Measurement scale", subtitle "Measure something you know" (or "+2.0% applied" once set).
-- "Tracking warm-up", subtitle "Move your phone slowly".
-- "Level zero", subtitle "Set zero on a surface you trust" (or "Zero set").
+Sections are separated by hairline dividers with 8 dp above and below. Rows are compact: 48 dp, or 58 dp with a subtitle. **Not here:** the unit system (its one home is the toggle in Measure, §2.6), and Chained or Group (the "chain" / "group" text toggle beside the unit toggle in Measure, shown while no point is placed, §2.13). The Handy formulas screen is removed.
 
 ### 1.5a Calibration (v1.4, `settings/Calibration.kt`, `settings/CalibrateScreens.kt`)
 
@@ -113,15 +103,19 @@ All values are persisted (`showdist.calibration.scale`, `.level_x`, `.level_y`) 
   - **Automatic prompt:** in Measure, when the status pill (§2.3a) has shown Tracking lost, Aim at more detail, or Move phone slowly with points placed, for **5 s**, a "Warm up tracking" button (sandstone outline, ≥48 dp) appears 64 dp above the bottom of the camera area. It opens the same overlay over the running session, so points are kept; Done closes it. Hold-to-save is off while it's open.
 - **Level zero** (app bar "LEVEL ZERO"): "Place your phone flat on a surface you trust, then tap Set zero." **Set zero** averages one second of the accelerometer (x/g, y/g, z/g); if the phone is face up and tilted under about 5° (√(x²+y²) < 0.09) it stores x and y as the zero ("Zero set. Both levels now read 0 here."), otherwise "Lay the phone flat, screen up, then try again." **Reset** clears it. Both levels subtract the stored x and y from every accelerometer reading before filtering (§4.1), so the offset applies to the bubble, readouts and the tube level alike. The levelers' own Zero (§4) still works on top, as a temporary relative zero.
 
-### 1.6 About
+### 1.6 About (v1.5, `settings/AboutScreen.kt`)
 
-Its own screen (v1.4, `settings/AboutScreen.kt`), reached **only from Settings** (Additional Info → About); nothing about the app, the developer or licences is on the main menu. App bar "ABOUT" with the standard back arrow; back (arrow or system gesture) returns to Settings. Content scrolls, in the centred reading column on wide screens (§6.5):
-- "SHOWDIST" (Title, sandstone, letter-spacing 3), then "An AR tape measure and two levels: measure distances with the camera, and check walls, beams and flat surfaces for level." (Body), then "Created with AI assistance" (Secondary, italic); padding 20 × 12 dp.
-- A divider, then "DEVELOPER": "Carlos Cruz" (Body), "Version {versionName}" (Secondary, read from the installed package), then the **only contact**: the official **X logo** (its published path data, as a vector, 18 dp, sandstone) with the handle **@shcarlosconfigs** beside it (Label style, JetBrains Mono, sandstone). Icon and handle are one tappable row, at least 48 dp tall, with a ripple when pressed and the accessibility label "Developer on X, @shcarlosconfigs" (click label "Open on X"). It opens https://x.com/shcarlosconfigs in the X app or the browser. **No email address appears anywhere in the app.**
-- No usage guides (removed in v1.4; the menu's guide paragraphs cover each tool).
-- A divider, then the ARCore notice (Secondary), required by the ARCore terms: "This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."
-- A "Privacy policy" row (subtitle "Opens in your browser", chevron) that opens https://carlosantoniocruz.github.io/showdist-privacy/; Google Play requires the policy to be linked inside the app.
-- A "Licenses" row with subtitle "ARCore, SceneView, AndroidX and JetBrains Mono" and a chevron. It opens Licenses.
+Reached from Settings. Title bar "ABOUT", Back at the bottom. Centred in the reading column:
+
+- **The app's mark, large** (168 dp wide; the same picture as the launcher icon, §8.1, drawn by `ui/AppMark.kt`): a thin cyan line with an upright tick at each end and a white dot near each end. This one mark stands for the whole app.
+- "SHOWDIST" (Title, white, letter-spacing 4), "Version x.y", the developer's name, the X row (the X logo and `@shcarlosconfigs` in cyan, a ≥48 dp target that opens the profile), and "Created with AI assistance".
+- Under a hairline: the ARCore notice required by its terms ("This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy."), and a "Privacy policy" row. Licenses are their own Settings row.
+
+**The hold.** Pressing and holding the mark gives a tick and slides its two dots toward each other along the line over 2.2 s, swelling by up to 35% as the gap closes (brighter by size; no blur or glow). Its touch target is much larger than the mark, 300 × 176 dp, with the mark in its upper part (56 dp from the top), so a thumb anywhere near starts it and the dots stay visible above the thumb. Sliding the thumb changes nothing; only lifting ends the hold, and lifting early eases the dots back over 350 ms. When they meet: a confirming tap, one cyan ring expanding and fading over 380 ms, and the facts appear.
+
+**The facts** (`settings/FunFacts.kt`, `res/raw/fun_facts.txt`: measurement history and trivia, sources where surprising; the formula tips are gone): shuffled, rolling up the **upper 68%** of the page at 32 dp/s (the earlier Easter egg ran at 40), fading out over 72 dp at its top and bottom, white-grey text with small grey sources. Behind them (`settings/FactsSky.kt`): tiny (56 dp), barely visible (#141414) line drawings of measuring tools drifting at a few dp a second, and now and then a small dim grey asteroid. A tap pauses or resumes; it also holds still while a finger rests on it. Back (bottom arrow or system) closes the facts, then leaves the page. With reduced motion one fact shows at a time and a tap moves to the next.
+
+Nothing on the page animates until the mark is held, and the facts and their backdrop exist only while showing: they stop completely on Back or on leaving.
 
 ### 1.7 Licenses
 
@@ -131,33 +125,9 @@ Its own screen (v1.4, `settings/AboutScreen.kt`), reached **only from Settings**
 - Tapping a row opens **License detail**. Its padding is 24 dp on all sides. The component name is shown in **sandstone** in the Title style at 26 sp, followed by a 20 dp gap. Then comes each license paragraph in the Body style and a 16 dp gap after each. Paragraphs marked "centred" are centre-aligned, and all others are start-aligned.
 - The list is curated by hand in `settings/Licenses.kt` (§7.2).
 
-### 1.8 Handy formulas (v1.4, `settings/FormulasScreen.kt`)
+### 1.8 Handy formulas
 
-From Settings → Additional Info → "Handy formulas" (subtitle "Shapes, percentages, conversions"), above About. App bar "HANDY FORMULAS", back at the bottom (§1.2), the centred reading column on wide screens (§6.5). Static: no animation; a lazy list, so scrolling stays smooth on low-end phones.
-
-Sections (Caption headers, dividers between): **SHAPES**, **SQUARE CORNERS**, **PERCENTAGES AND TIPS**, **CONVERSIONS**, **SPEED**. Each row: the name (Label, bold), the formula (Label, sandstone), a short example (Secondary), and, where a shape fits, a 64 dp line drawing on the right. Examples follow the unit setting where it makes sense (imperial shown; metric in brackets):
-
-| Row | Formula | Example | Drawing |
-|---|---|---|---|
-| Rectangle area | length × width | 10 ft × 12 ft = 120 sq ft (3 m × 4 m = 12 m²) | rectangle, l and w |
-| Triangle area | ½ × base × height | ½ × 6 ft × 4 ft = 12 sq ft (½ × 6 m × 4 m = 12 m²) | triangle, b and a dashed h |
-| Circle area | π × radius² | π × (2 ft)² ≈ 12.57 sq ft (m²) | circle, r |
-| Circumference | 2 × π × radius (π ≈ 3.14) | 2 × π × 2 ft ≈ 12.57 ft (m) | circle, r |
-| Box volume | length × width × height | 10 ft × 12 ft × 8 ft = 960 cu ft (3 m × 4 m × 2.5 m = 30 m³) | box, l, w, h |
-| Pythagorean theorem | a² + b² = c² | 3² + 4² = 9 + 16 = 25 = 5² | right triangle, a, b, c, square-corner mark |
-| The 3-4-5 trick | sides 3 and 4, diagonal 5: square | mark 3 ft and 4 ft; 5 ft across means square (60 cm, 80 cm, 1 m) | right triangle, 3, 4, 5 |
-| 10 percent | move the decimal one place left | 10% of 45.00 = 4.50 | percent sign |
-| 15 percent tip | 10% plus half of that | on 40: 4 + 2 = 6 | — |
-| Percent change | (new − original) ÷ original × 100 | 50 to 60: 10 ÷ 50 = 20% up | — |
-| Inches to centimetres | × 2.54 (exact) | 12 in × 2.54 = 30.48 cm | — |
-| Kilometres to miles | × 0.62 (about) | 10 km ≈ 6.2 mi | — |
-| Kilograms to pounds | × 2.2 (about) | 5 kg ≈ 11 lb | — |
-| Celsius to Fahrenheit | × 1.8 + 32 (quick: double + 30) | 20 °C × 1.8 + 32 = 68 °F (quick: 70 °F) | thermometer |
-| Speed | distance ÷ time | 120 mi in 2 h = 60 mph (100 km in 2 h = 50 km/h) | — |
-
-Drawings: thin strokes (1.4 dp) in the text colour at 38% (clearly secondary, still visible outdoors), dimension letters at 11 sp in the same colour, no bitmaps; each drawing's paths are built once per size and reused. Every formula and factor was checked (1 in = 2.54 cm exactly; 1 km = 0.621 mi; 1 kg = 2.205 lb; °F = °C × 1.8 + 32; π × 2² = 12.566).
-
-The same material is in the fun facts pool (§1.4) as ten short tips, shuffled with the other facts, without sources (common knowledge).
+Removed in v1.5, with its illustrations (`settings/FormulasScreen.kt` deleted).
 
 ### 1.9 History
 
@@ -721,7 +691,7 @@ v1.5 (`measure/Reticle.kt`): one small dot, drawn as a few plain circles at the 
 
 ### 4.2 Tube Leveler visuals
 
-Flat on black: thin outlines, a ruled scale, and a white bubble that turns green when level.
+Flat on black: thin outlines, a ruled scale, and a **cyan bubble** (v1.5: the shared accent, the same constant as the traced line, the toggles and the reticle's lock; it no longer changes colour when level, which the readout turning cyan and the tick already show). The background stays black: there is no teal in this build to keep.
 
 - **Background:** black. The app bar is the standard bar titled "TUBE LEVELER", with the Zero and Reset actions on the right.
 - **Body** (inside the safe area):

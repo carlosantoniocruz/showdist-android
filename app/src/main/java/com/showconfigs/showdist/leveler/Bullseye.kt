@@ -98,6 +98,6 @@ fun Bullseye(x: () -> Float, y: () -> Float, modifier: Modifier = Modifier) {
         bubbleOutline.ellipse(c.x + physics.x * travel, c.y + physics.y * travel, bubbleR, ux, uy, speed * travel)
         bubbleOutline.keepInsideCircle(c.x, c.y, inner)
         val bubble = bubbleOutline.toPath()
-        drawPath(bubble, if (level) Palette.Accent else Palette.White)
+        drawPath(bubble, Palette.Accent)
     }
 }

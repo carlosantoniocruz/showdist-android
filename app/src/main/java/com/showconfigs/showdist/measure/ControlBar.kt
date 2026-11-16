@@ -149,12 +149,35 @@ private fun CaptureButton(enabled: Boolean, charge: () -> Float, onPlace: () -> 
 
 /**
  * The unit toggle (SPEC.md §2.6), just above the bottom row beside the live readout: plain
- * text naming the current system, "ft in" or "m cm"; a tap flips it. A 48 dp target around
- * a scrim pill.
+ * text naming the current system, "ft in" or "m cm"; a tap flips it.
  */
 @Composable
 fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit, modifier: Modifier = Modifier) {
     val metric = units == UnitSystem.Metric
+    TextToggle(
+        if (metric) "m cm" else "ft in",
+        if (metric) "Units: metres and centimetres. Switch to feet and inches" else "Units: feet and inches. Switch to metres and centimetres",
+        modifier,
+    ) { onUnits(if (metric) UnitSystem.Imperial else UnitSystem.Metric) }
+}
+
+/**
+ * How points join (SPEC.md §2.13), beside the unit toggle while nothing is placed: "chain"
+ * or "group"; a tap flips it. Its only home since Settings was slimmed.
+ */
+@Composable
+fun KindToggle(kind: MeasureKind, onKind: (MeasureKind) -> Unit, modifier: Modifier = Modifier) {
+    val group = kind == MeasureKind.Group
+    TextToggle(
+        if (group) "group" else "chain",
+        if (group) "Measuring separate lines as a group. Switch to one chained path" else "Measuring one chained path. Switch to separate lines as a group",
+        modifier,
+    ) { onKind(if (group) MeasureKind.Chained else MeasureKind.Group) }
+}
+
+/** A plain-text toggle over the camera: a 48 dp target around a scrim pill, with a light tick. */
+@Composable
+private fun TextToggle(text: String, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val haptics = rememberHaptics()
     Box(
         modifier
@@ -162,17 +185,13 @@ fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit, modifier: Modif
             .clip(RoundedCornerShape(50))
             .clickable(role = Role.Button) {
                 haptics.tick()
-                onUnits(if (metric) UnitSystem.Imperial else UnitSystem.Metric)
+                onClick()
             }
-            .semantics {
-                contentDescription =
-                    if (metric) "Units: metres and centimetres. Switch to feet and inches"
-                    else "Units: feet and inches. Switch to metres and centimetres"
-            },
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
-            if (metric) "m cm" else "ft in",
+            text,
             Modifier.background(Palette.Scrim, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 7.dp),
             style = BaseText.copy(color = Palette.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
         )

@@ -1,6 +1,5 @@
 package com.showconfigs.showdist
 
-import com.showconfigs.showdist.settings.FormulasScreen
 import com.showconfigs.showdist.history.GroupScreen
 import com.showconfigs.showdist.history.GroupStore
 import com.showconfigs.showdist.measure.MeasureKind
@@ -83,7 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Measure, Leveler, History, Group, Settings, Formulas, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
+private enum class Screen { Measure, Leveler, History, Group, Settings, About, Licenses, LicenseDetail, CalibrateScale, CalibrateLevel }
 
 /**
  * A back-stack entry; [arg] is the license index for LicenseDetail, the [LevelerMode]
@@ -213,17 +212,15 @@ private fun ShowdistApp() {
                     onBack = ::pop,
                 )
                 Screen.Settings -> SettingsScreen(
-                    unitSettings,
                     onCalibrateScale = { push(Screen.CalibrateScale) },
                     // The warm-up only watches tracking, so it can run over points already placed.
                     onWarmUp = { push(Screen.Measure, MeasureMode.WarmUp.ordinal) },
                     onLevelZero = { push(Screen.CalibrateLevel) },
-                    onFormulas = { push(Screen.Formulas) },
                     onAbout = { push(Screen.About) },
+                    onLicenses = { push(Screen.Licenses) },
                     onBack = ::pop,
                 )
-                Screen.Formulas -> FormulasScreen(unitSettings.units, onBack = ::pop)
-                Screen.About -> AboutScreen(onLicenses = { push(Screen.Licenses) }, onBack = ::pop)
+                Screen.About -> AboutScreen(onBack = ::pop)
                 Screen.CalibrateScale -> CalibrateScaleScreen(
                     unitSettings.units,
                     onMeasure = { measureTask(MeasureMode.CalibrateScale) },

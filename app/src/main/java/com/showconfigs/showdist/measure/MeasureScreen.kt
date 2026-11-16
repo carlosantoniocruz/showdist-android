@@ -94,6 +94,8 @@ import androidx.compose.ui.layout.Layout
 import com.showconfigs.showdist.ui.rememberDeviceOrientation
 import com.showconfigs.showdist.ui.turned
 import com.showconfigs.showdist.history.GroupStore
+import com.showconfigs.showdist.settings.MeasureKindSetting
+import androidx.compose.ui.platform.LocalContext
 import com.showconfigs.showdist.history.MeasurementSheet
 import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
@@ -271,6 +273,7 @@ private fun MeasureArea(
     onSessionFailed: (Exception) -> Unit,
 ) {
     val tracker = remember { MeasureTracker() }
+    val context = LocalContext.current
     // Chained or Group (SPEC.md §2.13) can change in Settings while Measure stays open; a
     // change takes effect once no points are placed. Calibration always measures one plain line.
     var activeKind by remember { mutableStateOf(kind) }
@@ -472,6 +475,10 @@ private fun MeasureArea(
                 if (totalShown) RunningTotal(tracker.totalMetres, units, minOf((if (turns == 0) areaWidth else areaHeight) - 48.dp, READOUT_WIDTH_MAX))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     UnitToggle(units, onUnits)
+                    // Chained or Group can be chosen only before the first point (SPEC.md §2.13).
+                    if (mode == MeasureMode.Normal && !task && empty) {
+                        KindToggle(kind, onKind = { MeasureKindSetting.set(context, it) })
+                    }
                     if (grouping && tracker.completedLines >= 1) GroupBar(tracker.completedLines, onDone = group::finish)
                 }
             }

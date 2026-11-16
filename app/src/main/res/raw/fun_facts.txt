@@ -1,0 +1,110 @@
+# Showdist fun facts (SPEC.md §1.6). One fact per block, blocks separated by a blank line.
+# An optional second line "source: NAME" adds a small citation under the fact; use one for
+# anything surprising or hard to believe. Lines starting with # are ignored.
+# Every fact here was checked against a reliable source before being added.
+
+In 1791 France defined the metre as one ten-millionth of the distance from the North Pole to the equator, along the meridian through Paris.
+source: BIPM
+
+Since 1983 the metre has been the distance light travels in a vacuum in 1/299,792,458 of a second.
+source: BIPM
+
+The speed of light is now fixed by definition, so the length of a metre depends on how precisely we measure time.
+source: BIPM
+
+Since 1959 the inch has been exactly 25.4 mm and the foot exactly 0.3048 m, so US customary units are legally defined in metric terms.
+source: NIST
+
+The US survey foot, two parts per million longer than the international foot, was retired at the end of 2022.
+source: NIST
+
+The CIA World Factbook lists only three countries as not officially metric: the United States, Liberia and Myanmar. Liberia and Myanmar have both pledged to switch.
+source: CIA World Factbook
+
+Many old units came from the body: the foot from a foot, the inch from the width of a thumb.
+
+The Egyptian cubit was the length from elbow to the tip of the middle finger; surviving royal cubit rods measure about 52 cm.
+source: Britannica
+
+In 1670 Gabriel Mouton, a French priest, proposed a decimal system of length based on the size of the Earth.
+source: MacTutor, St Andrews
+
+Melchisédech Thévenot built the first known spirit level some time before 1661, as his letters to Christiaan Huygens show.
+source: Dictionary of Scientific Biography
+
+A spirit level's vial is very slightly curved, so the bubble always settles at the highest point.
+
+Spirit levels are filled with alcohol, the "spirit", because it flows freely and won't freeze in the cold.
+
+In 1999 the Mars Climate Orbiter was lost when one team used pound-force seconds and another newton-seconds.
+source: NASA
+
+Around 240 BC Eratosthenes estimated Earth's circumference by comparing the noon Sun's angle at Syene and Alexandria.
+source: Britannica
+
+The nautical mile began as one minute of latitude. Since 1929 it has been exactly 1,852 metres, and sailors and pilots still use it.
+source: International Hydrographic Organization
+
+In 2019 the kilogram was redefined by the Planck constant. It was the last base unit still tied to a physical object, a metal cylinder kept near Paris since 1889.
+source: BIPM
+
+Revolutionary France briefly tried decimal time: 10 hours a day, 100 minutes an hour. It was compulsory for only about six months, in 1794 and 1795.
+source: Britannica
+
+Edmund Gunter's 1620 surveying chain is 66 feet long. 80 chains make a mile and 10 square chains an acre, which is why an acre is 43,560 square feet.
+source: NIST
+
+"Inch" comes from the Latin uncia, one twelfth, the same word that gave us "ounce".
+source: Merriam-Webster
+
+According to legend, the yard was the distance from King Henry I's nose to the tip of his thumb.
+
+A fathom is six feet, roughly the span of a person's outstretched arms.
+
+The mile comes from the Roman mille passus: a thousand paces, each pace two steps.
+
+The furlong, 220 yards, takes its name from the length of a furrow in a ploughed field.
+
+One degree off over a ten-foot shelf puts the far end about two inches out.
+
+A one-degree slope is about a 1.75 percent grade, so a bubble that looks barely off-centre can still mean a visibly crooked picture.
+
+Phones sense tilt with an accelerometer that feels gravity: the digital cousin of the bubble in a vial.
+
+Self-levelling laser levels hang their optics on a tiny pendulum, so gravity keeps the beam true: the bubble's idea, automated.
+
+Egyptologists Mark Lehner and I. E. S. Edwards suggested the Giza builders levelled the site with water-filled trenches, since water finds its own level.
+source: Mark Lehner, The Complete Pyramids
+
+A plumb bob, a weight on a string, is one of the oldest building tools and still in use, because gravity never needs calibrating.
+
+Apollo 11, 14 and 15 left mirrors on the Moon; lasers bounced off them measure its distance to the millimetre.
+source: NASA
+
+Those lunar lasers show the Moon drifting about 3.8 cm farther from Earth every year.
+source: NASA
+
+Sunlight takes about 8 minutes 20 seconds to reach Earth.
+source: NASA
+
+Since 2012 the astronomical unit has been exactly 149,597,870,700 metres.
+source: IAU
+
+From 1889 to 1960 the metre was the length of a platinum-iridium bar kept near Paris.
+source: BIPM
+
+In 1960 the metre was redefined as 1,650,763.73 wavelengths of light from krypton-86.
+source: BIPM
+
+In 1615 Willebrord Snellius began measuring the Earth by triangulation across the Netherlands.
+source: Britannica
+
+Light travels about 30 cm in a nanosecond; Grace Hopper handed out wires that long to show it.
+source: Smithsonian
+
+A light-year is about 9.46 trillion kilometres; a parsec is about 3.26 light-years.
+source: IAU
+
+In 2020 China and Nepal jointly measured Mount Everest at 8,848.86 metres.
+source: Survey Department of Nepal
+
