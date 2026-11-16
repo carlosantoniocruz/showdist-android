@@ -263,7 +263,7 @@ The screen is a vertical column:
    1. The camera feed: a full-screen textured quad from ARCore's external OES texture, transformed with ARCore's display-geometry mapping. Until ARCore has delivered two camera images, the feed is covered in black: before then the texture holds uninitialised memory, which slower phones (e.g. Galaxy A17) show as coloured static.
    2. The **overlay canvas** (§2.4, §3). Touches pass through it. There is no top scrim; the hint and total each sit on their own scrim pill.
    3. The **top info column**, top-centre, inside the safe area (excluding bottom), padded L24 T12 R24, passive only (v1.5, §1.1a): the **tracking pill** (§2.3a), a 6 dp gap, then the **hint** line (§2.3).
-   4. The **foot stack** (v1.5), bottom-centre, 4 dp above the bottom row, items 6 dp apart, top to bottom: the warm-up prompt when offered; in a group, the line card; the **live readout**; then a row holding the **unit toggle** and, in a group with ≥1 line, the line count and Done. The readout is a scrim pill (§5), fully rounded, 16 h × 4 v padding, 34 sp, weight 200, pure white, tabular figures, one line, and **always shows its unit in words**: "4 ft 3 in", "7 1/2 in", "1.30 m", "45 cm" (rounded as §2.5; placed labels keep ′ and ″). It shows when there are ≥2 points (in a group, as before). The **unit toggle** is plain text naming the current system, **"ft in"** or **"m cm"** (15 sp, weight 700, white on a scrim pill, 14 h × 7 v padding, in a 48 dp tall target); a tap flips the system and persists it. The whole stack turns as one when the phone is held sideways (§2.9).
+   4. The **foot stack** (v1.5), bottom-centre, 4 dp above the bottom row, items 6 dp apart, top to bottom: the warm-up prompt when offered; in a group, the line card; the **live readout**; then a row holding the **unit toggle** and, in a group with ≥1 line, the line count and Done. The readout is a scrim pill (§5), fully rounded, 16 h × 4 v padding, weight 200, pure white, tabular figures, one line. **Its size is capped and auto-fits (v1.5):** at most 30 dp tall text (in dp, so the system font size can't inflate it), shrinking in 1 dp steps down to 14 dp to fit its container on one line: the camera area's width less 48 dp upright, or, held sideways, 60% of the camera area's height (at most 340 dp). It **always shows its unit in words**: "4 ft 3 in", "7 1/2 in", "1.30 m", "45 cm" (rounded as §2.5; placed labels keep ′ and ″). It shows when there are ≥2 points (in a group, as before). The **unit toggle** is plain text naming the current system, **"ft in"** or **"m cm"** (15 sp, weight 700, white on a scrim pill, 14 h × 7 v padding, in a 48 dp tall target); a tap flips the system and persists it. The whole stack turns as one when the phone is held sideways (§2.9).
 2. **Control bar** (§2.6).
 
 The whole screen, camera area and bar alike, is covered by one **long-press** detector that drives hold-to-save (§2.6). It does not block taps on child controls.
@@ -376,6 +376,13 @@ Work runs only when ARCore delivers a **new camera image**, about 30 per second.
   - The glyphs are PRIME ′ (U+2032) for feet and DOUBLE PRIME ″ (U+2033) for inches, not ASCII quotes.
 
 The rationale for this precision is that AR tracking is good to about 1 cm.
+
+### 2.5a Steadying the live reading (v1.5)
+
+The live length (the dashed line's label, a group's line being drawn) and the running total are steadied for display only; placed points always store their true positions.
+- **Filter:** one-pole low-pass, 0.15 per camera image (about 0.2 s at 30 images a second).
+- **Dead zone:** the shown value holds until the filtered one is more than 2% of the length away from it, within 0.5 to 4 mm, so slight hand tremor never changes the number and a value on a rounding boundary doesn't flicker.
+- **Real movement** (a change of more than 3 cm or 3% in one image) is shown at once, with no lag; placing or removing a point resets the filter.
 
 ### 2.6 Control bar & actions: undo, clear, save (reset)
 
@@ -625,39 +632,33 @@ Everything is drawn on a transparent canvas over the camera feed, with the retic
 
 ### 3.1 Reticle
 
-On this screen, legibility outdoors and indoors overrides the theme: strokes are brighter and thicker than elsewhere, and every mark sits on a dark halo.
+v1.5 (`measure/Reticle.kt`): one small dot, drawn as a few plain circles at the centre of the camera area. No orbiting dots, no glow, no blur, nothing spinning.
 
-- **Position:** always the **fixed centre of the camera area**, not the projected hit point.
-- **Motif:** three small dots orbiting a **white** centre dot. The orbiting dots are in the **unit colour**: **crimson** for imperial, **cyan** for metric (§5), following the current unit setting.
-  - Ring radius (centre to each dot): **16 dp**.
-  - Orbiting dot radius: **3.5 dp**. Centre dot radius: **2 dp**.
-- **Rotation:**
-  - `angle_k = −90° + 360° × t / 11 s + k × 120°` for k = 0, 1, 2.
-  - Screen y points down, so increasing angle is **clockwise**. Dot 0 starts straight up.
-  - One full turn every **11 seconds**.
-  - `t` is the seconds since the Measure screen opened. It is sampled only when a camera frame arrives, so the spin freezes while paused and then jumps forward to the current time.
-- **States:**
-  - **On a surface** (reticle hit): the orbiting dots are **filled** at alpha 1, each with a soft **glow**: a 6 dp disc in the unit colour at alpha 0.55, Gaussian blur sigma 3. The centre dot is white at alpha 1.
-  - **Searching** (no hit): the orbiting dots are **hollow** rings with a 1.4 dp stroke at alpha 0.6, with no glow. The centre dot is white at alpha 0.6.
-- **Halo**, drawn first under every dot: a disc 1.5 dp larger than the dot, halo colour (§5), blur sigma 2. It keeps the reticle visible against bright surfaces.
-- **Rendering (v1.4):** each look (crimson or cyan × on a surface or searching) is drawn once, blurs included, into a bitmap the first time it's needed, then reused. The spin is a single rotation of the reticle's own layer, set from `t` above, so turning it re-records nothing and never repaints the rest of the overlay. It turns only as camera frames arrive, so it stops while paused or hidden. Changing units or the surface state swaps the bitmap. Measured on a Pixel 10a with nothing placed (gfxinfo framestats, 120 frames): the old live-drawn reticle cost about 0.67 ms on the UI thread, 2.3–2.9 ms on the RenderThread and 2.2–4.2 ms of GPU per frame; the cached layer costs about 0.01 ms, 0.8 ms and 1.3–1.8 ms.
+- **Centre dot**, always shown: pure white, radius 3 dp, on a **crisp near-black backing** (`Palette.Backing`, black at 85%; a disc 1.25 dp larger, never blurred), in the same spirit as the scrim behind the live numbers, so it shows on bright walls, white paper and in sunlight.
+- **Locked and ready** (a point can be placed here: a surface under the dot and, before a first point, tracking warmed up): a thin **cyan** rim (§5; 1.5 dp) grows in tight round the white dot over 160 ms, inside the backing, which moves out with it. There is no separate ring (tried, and found distracting). A plain white dot means a tap won't place a point; the tracking pill (§2.3a) says why.
+- It redraws only while the lock animates or its state changes.
 
 ### 3.2 Placed points, segments, live line
 
-**Placed points and segment lines** (the icon's colours, §8.1):
-- Placed points are filled circles in the scheme's **point** colour (§5; white), radius 6 dp. They are drawn only when visible.
-- Segment lines are the scheme's **segment** colour (§5; red for imperial, cyan for metric), 2.5 dp wide with round caps. One is drawn between consecutive points only if both endpoints are visible.
+**One accent (v1.5).** The traced measurement line is **cyan** (#00E5FF) whatever the unit system; the same cyan is the reticle's locked ring. Nothing over the camera is coloured by unit any more: the unit system shows only in the unit toggle and the unit words and marks on the numbers.
+
+**Placed points and the traced line:**
+- Placed points are filled white circles, radius 6 dp, drawn only when visible.
+- The traced line is cyan, 2.5 dp wide with round caps and joins. A segment joins consecutive points only if both are visible. **All the segments are one path, stroked once** (once more for the backing), not a line per segment.
 
 **Live line:**
-- A dashed line from the last point to the reticle hit's projected screen position.
-- It is the scheme's **live** colour (§5; pale yellow or pale gold), 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (the dash intervals are 3 dp on, 9 dp off, allowing for the caps).
-- It is drawn only when there is a hit, ≥1 point, and the last point is visible.
+- A dashed line from the last point to the reticle hit's projected screen position, **white** (`Palette.LiveLine`; neutral, so cyan stays the only accent), 3 dp wide with round caps; its visible dashes and gaps are 6 dp each (intervals 3 dp on, 9 dp off, allowing for the caps).
+- Drawn only when there is a hit, ≥1 point, and the last point is visible.
 
-**Overlay halo** (for points and lines): a copy drawn first, centred (no offset), in the halo colour with blur sigma 1.2; lines 3 dp wider (1.5 dp each side), dots 1.5 dp larger in radius.
+**A projected recording** (§2.11) is neutral grey (`Palette.ProjectionLine` #B8B8B8), one path like the traced line.
+
+**Backing** (for points and lines): a copy drawn first in `Palette.Backing`, crisp (no blur anywhere in the AR view); lines 2.5 dp wider (1.25 dp each side), dots 1.25 dp larger in radius.
+
+**Redraws.** The overlay redraws only when its picture changes: the tracker hashes everything drawn (each mark's position rounded to a whole pixel, visibility, each label's text) on every camera image and bumps `drawSerial` only when the hash differs. With the phone still, nothing is redrawn.
 
 **Draw order:**
 1. A projected recording (§2.11)
-2. Segment lines
+2. The traced line
 3. The dashed live line
 4. Point dots
 5. The reticle
@@ -672,7 +673,7 @@ On this screen, legibility outdoors and indoors overrides the theme: strokes are
   - Text size plus 20 dp horizontal and 10 dp vertical (10 dp side padding, 5 dp top/bottom).
   - Fully rounded, with radius half the pill's height.
   - Filled with **scrim** (§5).
-- Each label has a 1.5 dp border: the scheme's segment colour on a placed segment's label, its live colour on the live label, its projection colour on a projected recording's label.
+- Each label has a 1.5 dp border: cyan on a placed segment's label, white on the live label, grey on a projected recording's label.
 
 ---
 
@@ -778,15 +779,10 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | **divider** | sandstone at 35% (`#59C8A97E`) | Dividers in Settings (including About), Licenses and History. |
 | **line** | white at 30% (`#4DFFFFFF`) | Outlines that should read but stay quiet: the Leveler vial, dish, rings, crosshairs and scale lines, the orbit, the control bar's top rule, outlined-button borders. |
 | **level green** | `#3DDC84` | The Leveler bubble when level, and nothing else (11.8:1 on black). |
-| **crimson** | `#E71837` | **Reserved for unit state in Measure: imperial (ft, in).** Reticle dots, the FT label when active. Never a general accent. |
-| **cyan** | `#00E5FF` | **Reserved for unit state in Measure: metric (m, cm).** Reticle dots, the M label when active. Never a general accent. |
+| **cyan** | `#00E5FF` | **The one accent over the camera (v1.5):** the traced measurement line, its labels' border, and the reticle's locked ring, whatever the unit system (§3). Never used elsewhere. |
+| **capture** | `#FB5628` | The capture button in Measure's bottom row, and nothing else (§2.6). |
 
-**AR marks** (`ArScheme`): drawn into the camera view only, where outdoor readability comes first. The set follows the unit system, to go with the reticle's unit colour (§3.1); there is no setting. Colours are point (placed dots) / segment (solid lines and their label borders) / live (the dashed live line and its label border) / projection (a projected recording, §2.11):
-
-| Scheme | Units | Point | Segment | Live | Projection |
-|---|---|---|---|---|---|
-| **Supernova** | imperial (FT) | `#FFFFFF` white | `#FF5252` flare red | `#FFF59D` pale yellow | `#EA80FC` orchid |
-| **Comet** | metric (M) | `#FFFFFF` white | `#18FFFF` bright cyan | `#FFE57F` pale gold | `#82B1FF` periwinkle |
+**AR marks** (v1.5): white points and reticle dot, the cyan traced line, a white dashed live line, and a grey (`#B8B8B8`) projected recording. Crimson and the unit-coloured schemes (Supernova, Comet) are gone: the unit system is never shown by colour.
 
 **Errors** use sandstone beside an icon (`error_outline`, `delete_outline`); there is no separate error colour.
 
@@ -795,9 +791,10 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | Name | Value | Used for |
 |---|---|---|
 | scrim | `#B8000000`, black 72% | Behind every piece of live text over the camera: distance labels, the running total, the hint, the menu button |
-| halo | `#99000000`, black 60% | Under the reticle (blur 2) and every point and line (blur 1.2), §3 |
+| backing | `#D9000000`, black 85% | The crisp edge behind the reticle and every point and line over the camera (§3); never blurred |
+| halo | `#99000000`, black 60% | Under the hold-to-save edge band (§2.6) |
 
-**Contrast** (on black): text 21:1, textMuted 10.6:1, sandstone 9.4:1 (black on sandstone the same), crimson 4.6:1, cyan 13.7:1. On surface: text 18.7:1, textMuted 9.4:1, sandstone 8.4:1; on surfaceHigh the lowest pair is sandstone at 7.6:1. White on the scrim over a pure-white scene is 9.3:1.
+**Contrast** (on black): text 21:1, textMuted 10.6:1, sandstone 9.4:1 (black on sandstone the same), cyan 13.7:1. On surface: text 18.7:1, textMuted 9.4:1, sandstone 8.4:1; on surfaceHigh the lowest pair is sandstone at 7.6:1. White on the scrim over a pure-white scene is 9.3:1.
 
 ---
 
@@ -969,6 +966,6 @@ settings (outlined), info (outlined), error_outline, history, chevron_right, arr
 
 ## 13. Discrepancies noted while writing this spec
 
-- **Palette names:** the code's `Palette` tokens use the §5 names (`Palette.Surface`, `Palette.TextMuted`, …); `Palette.unit(units)` picks crimson or cyan.
+- **Palette names:** the code's `Palette` tokens use the §5 names (`Palette.Surface`, `Palette.TextMuted`, …).
 - **README's Leveler section is out of date:** it describes "the dot centres in the ring" and a seaGreen bubble when plumb. The code draws the flat vial and bullseye of §4.2–4.3, with a white bubble that turns green when level.
 - **About text:** the description and the licenses subtitle mention Flutter, and the subtitle claims ARCore's license is listed even though it isn't registered (§7.2). Both should be revised for the Kotlin build.

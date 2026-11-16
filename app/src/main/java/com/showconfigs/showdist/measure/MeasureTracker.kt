@@ -19,12 +19,10 @@ import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
 import com.showconfigs.showdist.BuildConfig
 import kotlin.math.atan2
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-
-/** Reticle period: one clockwise turn every 11 s (SPEC.md §3.1). */
-const val RETICLE_PERIOD_S = 11f
 
 /** Max points per measurement (SPEC.md §2.5). */
 const val MAX_POINTS = 24
@@ -133,16 +131,14 @@ class MeasureTracker {
         private set
 
     /**
-     * Bumped on each new camera image while the overlay has marks to move (points, a
-     * projection, or ones just removed), so the overlay redraws then and only then.
+     * Bumped when what the overlay draws has changed: a mark moved by a pixel or more, came
+     * or went, or a label's text changed. With the phone still nothing changes, so the
+     * overlay isn't redrawn at all (SPEC.md §3.2).
      */
     var drawSerial by mutableIntStateOf(0)
         private set
     private var hadMarks = false
-
-    /** Seconds into the current reticle turn, sampled once per new camera image. */
-    var spinSeconds by mutableFloatStateOf(0f)
-        private set
+    private var drawnSignature = 0L
 
     var pointCount by mutableIntStateOf(0)
         private set
@@ -295,6 +291,9 @@ class MeasureTracker {
     private val viewProj = FloatArray(16)
     private val segmentKey = LongArray(MAX_POINTS) { Long.MIN_VALUE }
     private var liveKey = Long.MIN_VALUE
+    private val liveSteady = SteadyLength()
+    private val totalSteady = SteadyLength()
+    private var steadiedCount = -1
     private var totalKey = Long.MIN_VALUE
     private var addRequested = false
 
@@ -322,7 +321,6 @@ class MeasureTracker {
     private var centerX = 0f
     private var centerY = 0f
     private var lastImageTimestamp = 0L
-    private val openedAtNanos = System.nanoTime()
 
     /** Size of the camera area in pixels; the hit test runs at its exact centre. */
     fun setViewSize(width: Int, height: Int) {
@@ -439,10 +437,6 @@ class MeasureTracker {
         lastImageTimestamp = timestamp
         if (!cameraLive && ++imagesSeen >= LIVE_AFTER_IMAGES) cameraLive = true
 
-        // Modulo in Long/Double keeps Float precision stable however long the screen is open.
-        val periodNanos = (RETICLE_PERIOD_S * 1_000_000_000L).toLong()
-        spinSeconds = ((System.nanoTime() - openedAtNanos) % periodNanos / 1e9).toFloat()
-
         val camera = frame.camera
         val state = camera.trackingState
         val tracking = state == TrackingState.TRACKING
@@ -558,8 +552,16 @@ class MeasureTracker {
                 else -> 0.0
             }
         }
+        if (anchors.size != steadiedCount) {
+            steadiedCount = anchors.size
+            liveSteady.reset()
+            totalSteady.reset()
+        }
         if (liveVisible) {
-            val d = distance(world, last * 3, smoothHit, 0) * scale
+            // The live reading is filtered and held within a small dead zone (SPEC.md §2.5a), so
+            // hand tremor doesn't flicker it. Placed points always store their true positions.
+            val d = liveSteady.of(distance(world, last * 3, smoothHit, 0) * scale)
+            if (groupMode && anchors.size % 2 == 1) total = d
             liveMidInFront = projectMidpoint(world, last * 3, smoothHit, 0, liveMidXY, 0)
             val key = DistanceFormat.displayKey(d, units)
             if (key != liveKey) {
@@ -568,6 +570,7 @@ class MeasureTracker {
             }
         }
 
+        if (!(groupMode && anchors.size % 2 == 1 && liveVisible)) total = totalSteady.of(total)
         val key = DistanceFormat.displayKey(total, units)
         if (key != totalKey) {
             totalKey = key
@@ -577,7 +580,13 @@ class MeasureTracker {
         // The plane count only feeds the hint, so it's recounted every 10th image (~3 Hz).
         if (imageCount++ % 10 == 0) planeCount = countPlanes(session)
         val marks = anchors.isNotEmpty() || projectionCount > 0
-        if (marks || hadMarks) drawSerial++
+        if (marks || hadMarks) {
+            val signature = drawSignature()
+            if (signature != drawnSignature || marks != hadMarks) {
+                drawnSignature = signature
+                drawSerial++
+            }
+        }
         hadMarks = marks
 
         val reason = camera.trackingFailureReason
@@ -585,6 +594,39 @@ class MeasureTracker {
         if (tracking) everTracked = true
         this.tracking = tracking
         status = statusFor(state, reason, hit != null, needsWarmUp)
+    }
+
+    /**
+     * A hash of everything the overlay draws, positions rounded to whole pixels, so two
+     * images that would draw the same picture compare equal. Allocation-free.
+     */
+    private fun drawSignature(): Long {
+        val w = centerX * 2f
+        val h = centerY * 2f
+        var s = 17L + anchors.size
+        for (i in anchors.indices) {
+            s = s * 31 + if (visible[i]) 1 else 0
+            s = s * 31 + (screenXY[i * 2] * w).toInt()
+            s = s * 31 + (screenXY[i * 2 + 1] * h).toInt()
+            s = s * 31 + segmentKey[i]
+            s = s * 31 + if (segmentMidInFront[i]) 1 else 0
+        }
+        s = s * 31 + if (liveVisible) 1 else 0
+        if (liveVisible) {
+            s = s * 31 + (hitXY[0] * w).toInt()
+            s = s * 31 + (hitXY[1] * h).toInt()
+            s = s * 31 + liveKey
+            s = s * 31 + if (liveMidInFront) 1 else 0
+        }
+        s = s * 31 + projectionCount
+        s = s * 31 + projectionStage.ordinal
+        for (i in 0 until projectionCount) {
+            s = s * 31 + if (projVisible[i]) 1 else 0
+            s = s * 31 + (projScreenXY[i * 2] * w).toInt()
+            s = s * 31 + (projScreenXY[i * 2 + 1] * h).toInt()
+            s = s * 31 + if (projMidInFront[i]) 1 else 0
+        }
+        return s
     }
 
     /**
@@ -925,3 +967,44 @@ class MeasureTracker {
         return sqrt(dx * dx + dy * dy + dz * dz)
     }
 }
+
+/**
+ * Steadies a live length for display (SPEC.md §2.5a): a one-pole low-pass filter, then a
+ * dead zone, so the shown value moves only when the change is real and holds through hand
+ * tremor. A jump larger than tremor (the reticle swept to somewhere new) is followed at
+ * once, so it never feels laggy.
+ */
+private class SteadyLength {
+    private var filtered = 0.0
+    private var shown = 0.0
+    private var has = false
+
+    fun reset() {
+        has = false
+    }
+
+    fun of(raw: Double): Double {
+        if (!has || abs(raw - filtered) > maxOf(STEADY_JUMP_M, STEADY_JUMP_SHARE * filtered)) {
+            has = true
+            filtered = raw
+            shown = raw
+            return shown
+        }
+        filtered += STEADY_ALPHA * (raw - filtered)
+        val dead = (STEADY_DEAD_SHARE * shown).coerceIn(STEADY_DEAD_MIN_M, STEADY_DEAD_MAX_M)
+        if (abs(filtered - shown) > dead) shown = filtered
+        return shown
+    }
+}
+
+/** Each new reading moves the filtered length this far toward it (about 0.2 s at 30 images a second). */
+private const val STEADY_ALPHA = 0.15
+
+/** The shown length holds until the filtered one is this far from it: 2% of the length, within 0.5 to 4 mm. */
+private const val STEADY_DEAD_SHARE = 0.02
+private const val STEADY_DEAD_MIN_M = 0.0005
+private const val STEADY_DEAD_MAX_M = 0.004
+
+/** A change bigger than this is real movement, not tremor, and is shown at once: 3 cm or 3%. */
+private const val STEADY_JUMP_M = 0.03
+private const val STEADY_JUMP_SHARE = 0.03

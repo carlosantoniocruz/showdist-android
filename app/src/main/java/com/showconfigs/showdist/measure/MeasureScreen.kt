@@ -40,6 +40,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,7 +95,6 @@ import com.showconfigs.showdist.history.Recording
 import com.showconfigs.showdist.history.RecordingStore
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.FEATURES_TABULAR
-import com.showconfigs.showdist.ui.ArScheme
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.Type
@@ -362,7 +365,16 @@ private fun MeasureArea(
     // The top info column's bottom edge, so the SAVING pill can sit below it.
     var infoBottomPx by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().notesTouches(idle).then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx)) {
-        Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
+        // The camera area's size in dp, which caps the live readout's width.
+        var areaSize by remember { mutableStateOf(IntSize.Zero) }
+        val areaWidth = with(LocalDensity.current) { areaSize.width.toDp() }
+        val areaHeight = with(LocalDensity.current) { areaSize.height.toDp() }
+        Box(
+            Modifier.weight(1f).fillMaxWidth().onSizeChanged {
+                areaSize = it
+                tracker.setViewSize(it.width, it.height)
+            },
+        ) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
                 // Low-power setup (SPEC.md §2.1): 30 fps camera, plane finding only. Depth is
@@ -395,8 +407,8 @@ private fun MeasureArea(
             // Until real camera images arrive, the feed would show uninitialised texture memory.
             if (!tracker.cameraLive) Box(Modifier.fillMaxSize().background(Palette.Black))
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
-            MeasureOverlay(tracker, ArScheme.forUnits(units), { barRotation.value }, Modifier.fillMaxSize())
-            Reticle(tracker, metric = units == UnitSystem.Metric, Modifier.align(Alignment.Center))
+            MeasureOverlay(tracker, { barRotation.value }, Modifier.fillMaxSize())
+            Reticle(tracker, Modifier.align(Alignment.Center))
             // The top holds only passive items (SPEC.md §2.2): the tracking state, then the hint.
             val totalShown = if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2
             Column(
@@ -417,6 +429,7 @@ private fun MeasureArea(
                 RunningTotal(
                     tracker.totalMetres,
                     units,
+                    minOf(areaHeight * READOUT_SIDEWAYS_SHARE, READOUT_SIDEWAYS_MAX),
                     Modifier
                         .align(if (sideways > 0) Alignment.CenterEnd else Alignment.CenterStart)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
@@ -456,7 +469,7 @@ private fun MeasureArea(
             ) {
                 if (warmUpOffered && !warmUpOpen) WarmUpPrompt(onClick = { warmUpOpen = true })
                 if (grouping) LineCard(group, units, tracker.totalMetres)
-                if (totalShown && sideways == 0) RunningTotal(tracker.totalMetres, units)
+                if (totalShown && sideways == 0) RunningTotal(tracker.totalMetres, units, areaWidth - 48.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     UnitToggle(units, onUnits)
                     if (grouping && tracker.completedLines >= 1) GroupBar(tracker.completedLines, onDone = group::finish)
@@ -505,25 +518,35 @@ private fun HintLine(hint: Hint, instruction: String? = null) {
     }
 }
 
+/** The readout's largest and smallest text, in dp so the system font size can't inflate it. */
+private val READOUT_MAX = 30.dp
+private val READOUT_MIN = 14.dp
+
+/** Held sideways the readout runs along the screen's height: at most this share of it, and this long. */
+private const val READOUT_SIDEWAYS_SHARE = 0.6f
+private val READOUT_SIDEWAYS_MAX = 340.dp
+
 /**
- * The live readout (SPEC.md §2.2): Palette.Scrim, pill corners, 34 sp, pure white, the unit
- * always in words beside the number; [compact] (held sideways) 30 sp with tighter padding.
+ * The live readout (SPEC.md §2.2): Palette.Scrim, pill corners, pure white, the unit always
+ * in words beside the number. Its text is capped at 30 dp and shrinks, down to 14 dp, to fit
+ * [maxWidth] on one line, so it never outgrows the camera view in either orientation;
+ * [compact] (held sideways) has tighter padding.
  */
 @Composable
-private fun RunningTotal(metres: Double, units: UnitSystem, modifier: Modifier = Modifier, compact: Boolean = false) {
+private fun RunningTotal(metres: Double, units: UnitSystem, maxWidth: Dp, modifier: Modifier = Modifier, compact: Boolean = false) {
+    val sizes = with(LocalDensity.current) {
+        TextAutoSize.StepBased(minFontSize = READOUT_MIN.toSp(), maxFontSize = READOUT_MAX.toSp(), stepSize = 1.dp.toSp())
+    }
     BasicText(
         text = DistanceFormat.formatWords(metres, units),
         maxLines = 1,
         softWrap = false,
+        autoSize = sizes,
         modifier = modifier
+            .widthIn(max = maxWidth)
             .background(Palette.Scrim, RoundedCornerShape(50))
             .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 2.dp else 4.dp),
-        style = BaseText.copy(
-            color = Palette.White,
-            fontSize = if (compact) 30.sp else 34.sp,
-            fontWeight = FontWeight.ExtraLight,
-            fontFeatureSettings = FEATURES_TABULAR,
-        ),
+        style = BaseText.copy(color = Palette.White, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
     )
 }
 

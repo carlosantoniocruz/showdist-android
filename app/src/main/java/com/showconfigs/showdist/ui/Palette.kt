@@ -1,12 +1,11 @@
 package com.showconfigs.showdist.ui
 
 import androidx.compose.ui.graphics.Color
-import com.showconfigs.showdist.measure.UnitSystem
 
 /**
  * Fixed app palette (SPEC.md §5): black screens, white and light-grey text, and one accent,
- * sandstone. Every text/background pair clears WCAG AA. Crimson and cyan are reserved for
- * unit state in Measure. The marks drawn into the camera view use [ArScheme].
+ * sandstone. Every text/background pair clears WCAG AA. Over the camera there is one accent
+ * too, cyan; the unit system is shown only in words.
  */
 object Palette {
     val Black = Color(0xFF000000)
@@ -45,34 +44,24 @@ object Palette {
     /** The capture button in Measure's bottom row, and nothing else: peach red. */
     val Capture = Color(0xFFFB5628)
 
-    /** Unit state only: imperial (ft, in). */
-    val Crimson = Color(0xFFE71837)
-
-    /** Unit state only: metric (m, cm). */
+    /**
+     * The one accent over the camera (SPEC.md §3): the traced measurement line and the
+     * reticle's locked ring, whatever the unit system.
+     */
     val Cyan = Color(0xFF00E5FF)
+
+    /** The live (dashed) line and its label's border: neutral, so cyan stays the only accent. */
+    val LiveLine = Color(0xFFFFFFFF)
+
+    /** A saved measurement projected into the view (SPEC.md §2.11): neutral grey, apart from the user's own line. */
+    val ProjectionLine = Color(0xFFB8B8B8)
+
+    /** The thin, crisp near-black edge behind the reticle and every mark over the camera; never blurred. */
+    val Backing = Color(0xD9000000)
 
     /** Behind every piece of live text over the camera feed (SPEC.md §3.3). */
     val Scrim = Color(0xB8000000)
 
     /** The dark halo behind the reticle and other marks over the camera (SPEC.md §3.1). */
     val Halo = Color(0x99000000)
-
-    fun unit(units: UnitSystem) = if (units == UnitSystem.Metric) Cyan else Crimson
-}
-
-/**
- * The colours of the marks drawn into the AR camera view (SPEC.md §3.2, §5): placed points
- * (dots), segment lines (solid), the live line (dashed) and a projected recording. The set
- * follows the unit system, to go with the reticle's unit colour: [Supernova] (reds) for
- * imperial, [Comet] (cyans) for metric. Each is bright enough to read on sunlit scenes
- * over its halo.
- */
-enum class ArScheme(val point: Color, val segment: Color, val live: Color, val projection: Color) {
-    Supernova(Color(0xFFFFFFFF), Color(0xFFFF5252), Color(0xFFFFF59D), Color(0xFFEA80FC)),
-    Comet(Color(0xFFFFFFFF), Color(0xFF18FFFF), Color(0xFFFFE57F), Color(0xFF82B1FF)),
-    ;
-
-    companion object {
-        fun forUnits(units: UnitSystem) = if (units == UnitSystem.Metric) Comet else Supernova
-    }
 }

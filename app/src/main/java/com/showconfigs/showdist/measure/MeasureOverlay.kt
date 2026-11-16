@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.Path
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -15,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.content.res.ResourcesCompat
 import com.showconfigs.showdist.R
-import com.showconfigs.showdist.ui.ArScheme
 import com.showconfigs.showdist.ui.Palette
 import kotlin.math.abs
 import kotlin.math.cos
@@ -27,9 +27,8 @@ private const val LINE_WIDTH_DP = 2.5f
 private const val LIVE_LINE_WIDTH_DP = 3f
 private const val DASH_DP = 6f
 
-/** The dark halo around every line and dot, each side, so they read on bright surfaces. */
-private const val HALO_DP = 1.5f
-private const val HALO_SIGMA_DP = 1.2f
+/** The crisp near-black backing round every line and dot, each side, so they read on bright surfaces. */
+private const val BACKING_DP = 1.25f
 
 private const val LABEL_TEXT_SP = 14f
 private const val LABEL_PAD_H_DP = 10f
@@ -42,15 +41,15 @@ private const val LABEL_BORDER_DP = 1.5f
  * recording (§2.11), segment lines, the dashed live line, point dots, then labels
  * (projected ones first); the [Reticle] is its own layer on top. Reads [tracker] only
  * inside the draw lambda, so it never recomposes, and redraws only when
- * [MeasureTracker.drawSerial] moves: on new camera images while there are marks to draw.
+ * [MeasureTracker.drawSerial] moves: when a mark has actually moved on screen or a label changed.
  */
 @Composable
-fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Float, modifier: Modifier = Modifier) {
+fun MeasureOverlay(tracker: MeasureTracker, rotation: () -> Float, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val points = remember(density.density, scheme) { PointsPainter(density.density, scheme) }
-    val labels = remember(density.density, density.fontScale, scheme) {
-        LabelPainter(context, density.density, density.fontScale, scheme)
+    val points = remember(density.density) { PointsPainter(density.density) }
+    val labels = remember(density.density, density.fontScale) {
+        LabelPainter(context, density.density, density.fontScale)
     }
 
     Canvas(modifier) {
@@ -100,15 +99,16 @@ fun MeasureOverlay(tracker: MeasureTracker, scheme: ArScheme, rotation: () -> Fl
 }
 
 /**
- * Placed points, segment lines and the live line (SPEC.md §3.2), in the [scheme]'s colours
- * (white points; red or cyan segments; a dashed pale live line),
- * each over a dark halo drawn first. Paints are created once per scheme.
+ * Placed points, segment lines and the live line (SPEC.md §3.2): white points, the traced
+ * line in the one cyan accent, a dashed white live line, each over a crisp near-black
+ * backing drawn first (no blur). The traced line is one path stroked once (twice with its
+ * backing) however many segments it has, and likewise a projection. Paints and paths are
+ * created once and reused.
  */
-private class PointsPainter(private val density: Float, scheme: ArScheme) {
-    private val haloColor = Palette.Halo.toArgb()
+private class PointsPainter(private val density: Float) {
+    private val backingColor = Palette.Backing.toArgb()
     private val lineWidth = LINE_WIDTH_DP * density
-    private val halo = 2 * HALO_DP * density
-    private val haloBlur = blurForSigma(HALO_SIGMA_DP * density)
+    private val backing = 2 * BACKING_DP * density
     private val liveLineWidth = LIVE_LINE_WIDTH_DP * density
     private val dash = DashPathEffect(floatArrayOf(DASH_DP * density, DASH_DP * density), 0f)
 
@@ -123,75 +123,74 @@ private class PointsPainter(private val density: Float, scheme: ArScheme) {
         style = Paint.Style.STROKE
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
-        color = scheme.segment.toArgb()
+        strokeJoin = Paint.Join.ROUND
+        color = Palette.Cyan.toArgb()
     }
-    private val lineShadow = Paint(line).apply {
-        strokeWidth = lineWidth + halo
-        color = haloColor
-        maskFilter = haloBlur
+    private val lineBacking = Paint(line).apply {
+        strokeWidth = lineWidth + backing
+        color = backingColor
     }
     private val liveLine = Paint(line).apply {
         strokeWidth = liveLineWidth
-        color = scheme.live.toArgb()
+        color = Palette.LiveLine.toArgb()
         pathEffect = liveDash
     }
-    private val liveLineShadow = Paint(lineShadow).apply {
-        strokeWidth = liveLineWidth + halo
+    private val liveLineBacking = Paint(lineBacking).apply {
+        strokeWidth = liveLineWidth + backing
         pathEffect = liveDash
     }
-    private val dashedShadow = Paint(lineShadow).apply { pathEffect = dash }
+    private val dashedBacking = Paint(lineBacking).apply { pathEffect = dash }
 
     // A projected recording (SPEC.md §2.11): dashed while being placed, solid once placed,
     // with smaller dots than the user's own points.
-    private val projLine = Paint(line).apply { color = scheme.projection.toArgb() }
+    private val projLine = Paint(line).apply { color = Palette.ProjectionLine.toArgb() }
     private val projPreviewLine = Paint(projLine).apply { pathEffect = dash }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = scheme.point.toArgb()
+        color = Palette.White.toArgb()
     }
-    private val projDot = Paint(dot).apply { color = scheme.projection.toArgb() }
-    private val dotShadow = Paint(dot).apply {
-        color = haloColor
-        maskFilter = haloBlur
+    private val projDot = Paint(dot).apply { color = Palette.ProjectionLine.toArgb() }
+    private val dotBacking = Paint(dot).apply { color = backingColor }
+
+    private val path = Path()
+
+    /**
+     * Collects the polyline through [xy] into [path]: a segment joins consecutive points when
+     * both are visible and the second doesn't start a new line. Returns whether there's anything to draw.
+     */
+    private fun trace(xy: FloatArray, visible: BooleanArray, count: Int, w: Float, h: Float, t: MeasureTracker?): Boolean {
+        path.rewind()
+        var penAt = -1
+        for (i in 1 until count) {
+            if ((t != null && t.isLineStart(i)) || !visible[i - 1] || !visible[i]) continue
+            if (penAt != i - 1) path.moveTo(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h)
+            path.lineTo(xy[i * 2] * w, xy[i * 2 + 1] * h)
+            penAt = i
+        }
+        return penAt >= 0
     }
 
-    /** The projected shape: lines between visible points, then its dots; shadows first. */
+    /** The projected shape: its lines as one path, then its dots; backings first. */
     fun drawProjection(c: Canvas, w: Float, h: Float, count: Int, placed: Boolean, t: MeasureTracker) {
         val xy = t.projScreenXY
         val v = t.projVisible
-        val r = PROJ_POINT_RADIUS_DP * density
-        val haloR = HALO_DP * density
-        for (pass in 0..1) {
-            val paint = when {
-                pass == 0 -> if (placed) lineShadow else dashedShadow
-                placed -> projLine
-                else -> projPreviewLine
-            }
-            for (i in 1 until count) {
-                if (!v[i - 1] || !v[i]) continue
-                c.drawLine(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h, xy[i * 2] * w, xy[i * 2 + 1] * h, paint)
-            }
+        if (trace(xy, v, count, w, h, null)) {
+            c.drawPath(path, if (placed) lineBacking else dashedBacking)
+            c.drawPath(path, if (placed) projLine else projPreviewLine)
         }
-        for (pass in 0..1) {
-            val paint = if (pass == 0) dotShadow else projDot
-            val radius = if (pass == 0) r + haloR else r
-            for (i in 0 until count) {
-                if (!v[i]) continue
-                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, radius, paint)
-            }
+        val r = PROJ_POINT_RADIUS_DP * density
+        for (i in 0 until count) {
+            if (!v[i]) continue
+            c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, r + BACKING_DP * density, dotBacking)
+            c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, r, projDot)
         }
     }
 
-    /** Segments are drawn only when both endpoints are visible; halos first. */
+    /** The traced line: every drawable segment in one path, stroked once over its backing. */
     fun drawSegments(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
-        val xy = t.screenXY
-        for (pass in 0..1) {
-            val paint = if (pass == 0) lineShadow else line
-            for (i in 1 until count) {
-                if (t.isLineStart(i) || !t.visible[i - 1] || !t.visible[i]) continue
-                c.drawLine(xy[(i - 1) * 2] * w, xy[(i - 1) * 2 + 1] * h, xy[i * 2] * w, xy[i * 2 + 1] * h, paint)
-            }
-        }
+        if (!trace(t.screenXY, t.visible, count, w, h, t)) return
+        c.drawPath(path, lineBacking)
+        c.drawPath(path, line)
     }
 
     /** Last point to the reticle hit's projected position (not the screen centre). */
@@ -202,20 +201,17 @@ private class PointsPainter(private val density: Float, scheme: ArScheme) {
         val y0 = t.screenXY[last * 2 + 1] * h
         val x1 = t.hitXY[0] * w
         val y1 = t.hitXY[1] * h
-        c.drawLine(x0, y0, x1, y1, liveLineShadow)
+        c.drawLine(x0, y0, x1, y1, liveLineBacking)
         c.drawLine(x0, y0, x1, y1, liveLine)
     }
 
     fun drawDots(c: Canvas, w: Float, h: Float, count: Int, t: MeasureTracker) {
         val xy = t.screenXY
         val r = POINT_RADIUS_DP * density
-        for (pass in 0..1) {
-            val paint = if (pass == 0) dotShadow else dot
-            val radius = if (pass == 0) r + HALO_DP * density else r
-            for (i in 0 until count) {
-                if (!t.visible[i]) continue
-                c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, radius, paint)
-            }
+        for (i in 0 until count) {
+            if (!t.visible[i]) continue
+            c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, r + BACKING_DP * density, dotBacking)
+            c.drawCircle(xy[i * 2] * w, xy[i * 2 + 1] * h, r, dot)
         }
     }
 }
@@ -225,7 +221,7 @@ private class PointsPainter(private val density: Float, scheme: ArScheme) {
  * slashed zero, on the dark Palette.Scrim, so they stay legible outdoors.
  * Text is drawn straight from the tracker's char buffers, so nothing is allocated.
  */
-private class LabelPainter(context: Context, private val density: Float, fontScale: Float, scheme: ArScheme) {
+private class LabelPainter(context: Context, private val density: Float, fontScale: Float) {
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_bold)
         textSize = LABEL_TEXT_SP * density * fontScale
@@ -240,10 +236,10 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         style = Paint.Style.STROKE
         strokeWidth = LABEL_BORDER_DP * density
     }
-    // Border colours: the scheme's segment, live-line and projection colours.
-    val segment = scheme.segment.toArgb()
-    val live = scheme.live.toArgb()
-    val projection = scheme.projection.toArgb()
+    // Border colours: cyan on the traced line's labels, neutral on the live and projected ones.
+    val segment = Palette.Cyan.toArgb()
+    val live = Palette.LiveLine.toArgb()
+    val projection = Palette.ProjectionLine.toArgb()
     private val metrics = text.fontMetrics
     private val pillHeight = (metrics.descent - metrics.ascent) + 2 * LABEL_PAD_V_DP * density
 
