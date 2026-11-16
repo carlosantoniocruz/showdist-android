@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.ui.BaseText
 import com.showconfigs.showdist.ui.Palette
+import com.showconfigs.showdist.ui.turned
 
 /** With no touch and no meaningful movement for this long, Measure pauses itself (SPEC.md §2.1a). */
 const val IDLE_PAUSE_MS = 60_000L
@@ -59,7 +60,7 @@ fun Modifier.notesTouches(clock: IdleClock) = pointerInput(clock) {
  * does nothing else: it never reaches the controls underneath.
  */
 @Composable
-fun IdlePauseOverlay(visible: Boolean, onResume: () -> Unit) {
+fun IdlePauseOverlay(visible: Boolean, turns: Int, onResume: () -> Unit) {
     AnimatedVisibility(visible, enter = fadeIn(tween(600)), exit = fadeOut(tween(200))) {
         Box(
             Modifier
@@ -76,6 +77,7 @@ fun IdlePauseOverlay(visible: Boolean, onResume: () -> Unit) {
         ) {
             BasicText(
                 "Tap to continue",
+                Modifier.turned(turns),
                 style = BaseText.copy(color = Palette.TextMuted, fontSize = 20.sp, fontWeight = FontWeight.Light, letterSpacing = 0.5.sp),
             )
         }

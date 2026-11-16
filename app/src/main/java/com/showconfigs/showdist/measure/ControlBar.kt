@@ -43,11 +43,11 @@ import com.showconfigs.showdist.ui.rememberHaptics
  * Measure's bottom row (SPEC.md §2.6). From the centre outward: the peach-red capture
  * button, the largest control; on the navigation side the Measure/Level switcher, then
  * History; on the tool side Undo, Clear, and Settings, the smallest, at the edge. The gaps
- * between the controls as drawn are all equal ([BottomRow]). The small
- * controls turn by [rotation] degrees to stay upright (SPEC.md §2.9); the row itself and the
- * capture button never rotate. In a [task] (calibrating, warming up, adding lines to a saved
- * group) the navigation side holds only Back. [rotation] and [charge] are read only in the
- * draw/layer phase, so neither recomposes the row.
+ * between the controls as drawn are all equal ([BottomRow]). Held
+ * sideways ([turns]) the whole row moves, as one, to the long edge now at the bottom
+ * (SPEC.md §2.9). In a [task] (calibrating, warming up, adding lines to a saved group) the
+ * navigation side holds only Back. [charge] is read only in the draw phase, so it never
+ * recomposes the row.
  */
 @Composable
 fun ControlBar(
@@ -56,7 +56,6 @@ fun ControlBar(
     savedCount: Int,
     task: Boolean,
     charge: () -> Float,
-    rotation: () -> Float,
     onPlace: () -> Unit,
     onUndo: () -> Unit,
     onClear: () -> Unit,
@@ -65,23 +64,25 @@ fun ControlBar(
     onSettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    turns: Int = 0,
 ) {
     BottomRow(
         modifier,
+        turns = turns,
         nav = if (task) {
-            listOf(BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.ArrowBack, "Back", tint = Palette.Sandstone, onClick = onBack) } })
+            listOf(BarItem { BarSlot(BottomRowSlot) { BarIconButton(ShowdistIcons.ArrowBack, "Back", tint = Palette.Sandstone, onClick = onBack) } })
         } else {
             listOf(
-                BarItem(visual = 56.dp) { BarSlot(BottomRowSlot, rotation) { ModeSwitcher(levelActive = false, onSwitch = onLevel) } },
-                BarItem { BarSlot(BottomRowSlot, rotation) { HistoryButton(savedCount, onHistory) } },
+                BarItem(visual = 56.dp) { BarSlot(BottomRowSlot) { ModeSwitcher(levelActive = false, onSwitch = onLevel) } },
+                BarItem { BarSlot(BottomRowSlot) { HistoryButton(savedCount, onHistory) } },
             )
         },
         centre = { CaptureButton(canPlace, charge, onPlace) },
         tools = listOfNotNull(
-            BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onClick = onUndo) } },
-            BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClick = onClear) } },
+            BarItem { BarSlot(BottomRowSlot) { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onClick = onUndo) } },
+            BarItem { BarSlot(BottomRowSlot) { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClick = onClear) } },
             if (task) null else BarItem {
-                BarSlot(BottomRowSlot, rotation) {
+                BarSlot(BottomRowSlot) {
                     BarIconButton(ShowdistIcons.SettingsOutlined, "Settings", iconSize = 20.dp, onClick = onSettings)
                 }
             },
@@ -155,11 +156,15 @@ private fun CaptureButton(enabled: Boolean, charge: () -> Float, onPlace: () -> 
 @Composable
 fun UnitToggle(units: UnitSystem, onUnits: (UnitSystem) -> Unit, modifier: Modifier = Modifier) {
     val metric = units == UnitSystem.Metric
+    val haptics = rememberHaptics()
     Box(
         modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(50))
-            .clickable(role = Role.Button) { onUnits(if (metric) UnitSystem.Imperial else UnitSystem.Metric) }
+            .clickable(role = Role.Button) {
+                haptics.tick()
+                onUnits(if (metric) UnitSystem.Imperial else UnitSystem.Metric)
+            }
             .semantics {
                 contentDescription =
                     if (metric) "Units: metres and centimetres. Switch to feet and inches"

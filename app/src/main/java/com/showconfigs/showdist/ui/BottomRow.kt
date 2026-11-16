@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.mandatorySystemGestures
@@ -38,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
@@ -88,6 +88,10 @@ class BarItem(val visual: Dp = IconWidth, val content: @Composable () -> Unit)
  * so a wide control (the switcher pill) stands as far from the centre button as a bare icon
  * does. The gap is the one that spreads three icons across a side.
  *
+ * Held sideways ([turns], from the shared orientation handler, SPEC.md §2.9) the whole row
+ * moves once to the long edge now at the bottom; its controls never turn individually. A
+ * caller that has already turned the whole screen passes [systemInsets] false instead.
+ *
  * It fits any screen: the controls sit above the system's gesture strip (at least 16 dp
  * clear of the bottom edge), keep to a 480 dp column on wide screens, and on screens
  * narrower than 392 dp the whole row scales down evenly, to 0.8 at most.
@@ -95,19 +99,31 @@ class BarItem(val visual: Dp = IconWidth, val content: @Composable () -> Unit)
 @Composable
 fun BottomRow(
     modifier: Modifier = Modifier,
+    turns: Int = 0,
+    systemInsets: Boolean = turns == 0,
     nav: List<BarItem>,
     centre: @Composable () -> Unit,
     tools: List<BarItem>,
 ) {
     val gesture = WindowInsets.mandatorySystemGestures.union(WindowInsets.safeDrawing).asPaddingValues().calculateBottomPadding()
     val navOnRight = !HandSetting.leftHanded
-    Column(modifier.fillMaxWidth().background(Palette.Black)) {
+    // Held sideways ([turns]) the row runs along the long edge now at the bottom: laid out
+    // across the screen's height and turned to read upright. That edge has no home-gesture
+    // strip, only the back swipe, which the row opts out of so its controls take the touch.
+    val upright = systemInsets
+    Column(
+        modifier
+            .quarterTurned(turns)
+            .fillMaxWidth()
+            .background(Palette.Black)
+            .then(if (upright) Modifier else Modifier.systemGestureExclusion()),
+    ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Palette.Line))
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                .padding(top = 8.dp, bottom = maxOf(gesture + 4.dp, MinBottom)),
+                .then(if (upright) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)) else Modifier)
+                .padding(top = 8.dp, bottom = if (upright) maxOf(gesture + 4.dp, MinBottom) else MinBottom),
             contentAlignment = Alignment.Center,
         ) {
             val scale = (maxWidth / FullWidth).coerceIn(MIN_SCALE, 1f)
@@ -151,15 +167,11 @@ fun BottomRow(
     }
 }
 
-/**
- * A fixed square slot in a [BottomRow], turned about its centre by [rotation] degrees
- * clockwise so its control reads upright however the phone is held (SPEC.md §2.9).
- * [rotation] is read in the layer phase only.
- */
+/** A fixed square slot in a [BottomRow]; its control stays left-to-right when the row is mirrored. */
 @Composable
-fun BarSlot(size: Dp, rotation: () -> Float = { 0f }, content: @Composable () -> Unit) {
+fun BarSlot(size: Dp, content: @Composable () -> Unit) {
     Box(
-        Modifier.size(size).graphicsLayer { rotationZ = rotation() }.wrapContentSize(unbounded = true),
+        Modifier.size(size).wrapContentSize(unbounded = true),
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, content = content)
@@ -197,11 +209,15 @@ fun BarIconButton(
 @Composable
 fun ModeSwitcher(levelActive: Boolean, onSwitch: () -> Unit) {
     val shape = RoundedCornerShape(50)
+    val haptics = rememberHaptics()
     Box(
         Modifier
             .size(56.dp, 48.dp)
             .clip(shape)
-            .clickable(role = Role.Button, onClick = onSwitch)
+            .clickable(role = Role.Button) {
+                haptics.tick()
+                onSwitch()
+            }
             .semantics { contentDescription = if (levelActive) "Switch to Measure" else "Switch to Leveler" },
         contentAlignment = Alignment.Center,
     ) {

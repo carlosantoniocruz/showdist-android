@@ -404,7 +404,7 @@ Laid out as the shared bottom row (§1.1a, v1.5): 8 dp, the 68 dp slot, then the
 | 6 | Clear | `close_rounded`, "Clear all points". Also removes a projection. Disabled like Undo. |
 | 7 | Settings | `settings_outlined`, 20 dp in a 48 dp target; the smallest icon, at the edge. Opens Settings (pausing the session). Hidden in a task. |
 
-- The icon buttons are bare 24 dp icons in 48 dp round hit areas, text at alpha 0.9 enabled and 0.3 disabled. Each small control's slot **rotates** to stay upright (§2.9); the row and the capture button don't.
+- The icon buttons are bare 24 dp icons in 48 dp round hit areas, text at alpha 0.9 enabled and 0.3 disabled. Held sideways the whole row moves to the long edge (§2.9); controls never turn individually.
 - In a **task** (§1.1) the navigation side holds only a sandstone Back arrow at the edge.
 - The unit toggle is no longer in the bar: it sits just above it, by the live readout (§2.2).
 - While the camera is waking or a Problem view shows, the row is still there (capture, Undo and Clear disabled), so the Leveler, History and Settings stay one tap away.
@@ -521,19 +521,24 @@ Drawing within the 44×44 box, with 7 dp padding:
 - An open polyline with a 1.2 dp stroke, round caps and joins, in the row colour at alpha 0.7.
 - A dot (radius 2.6 dp) at each point, in the row colour.
 
-### 2.9 Orientation handling in Measure (button rotation)
+### 2.9 Orientation: the one shared handler (v1.5, `ui/DeviceOrientation.kt`)
 
-The screen stays portrait. The four small bar controls rotate, and so do the readings over the camera: each distance label (about its own centre, §3.3), the running total and the SAVING pill (§2.6). Turned sideways, the SAVING pill takes its rotated footprint in layout; a label's clamp to the canvas uses its rotated bounds. **Running total held sideways (v1.4):** once the turn passes 45°, the total leaves the top info column and is centred on the reader's top edge: the screen's right edge when turned clockwise, the left edge otherwise, vertically centred on the camera area, 12 dp inside the horizontal safe-drawing insets. It's compact there: 32 sp, 12 h × 2 v padding. It never overlaps the reticle (centre), the menu button (top-left corner) or the control bar.
+The activity stays portrait, always; the system never rotates the app. One handler says how the phone is actually held, in **quarter turns**: 0 upright, +1 resting on its left edge (content turns clockwise to read upright), −1 on its right edge. Measure and the Tube level lay themselves out from that value and nothing else.
 
-The accelerometer is read at about **5 Hz**. Using raw device-frame `x` and `y` in m/s²:
-- If `√(x² + y²) < 3.0` (the phone is roughly flat), keep the current value.
-- Otherwise compute `deg = atan2(x, y)` in degrees, where 0 means upright portrait.
-  - `|deg| < 35` → 0 turns
-  - `55 < deg < 125` → +1 quarter-turn clockwise (the phone is on its left edge)
-  - `−125 < deg < −55` → −1 (the phone is on its right edge)
-  - Anything else, including upside-down and the 10° hysteresis bands around the 45° diagonals, keeps the current value.
+**The handler.** The accelerometer at UI rate, low-pass filtered (0.1 per sample). With `deg = atan2(x, y)`, 0 being upright:
+- flatter than 3.0 m/s² in the screen's plane: keep the current value;
+- an orientation is *seen* only within **30°** of its upright (0°, +90°, −90°); the 30° either side of each diagonal, and upside-down, change nothing (hysteresis);
+- a seen orientation must **hold for 400 ms** before the value changes, once. The first reading after the screen appears is taken at once.
+It listens only while its screen is resumed and not covered or idle-paused. The same filtered gravity reports movement for the idle pause (§2.1a).
 
-Rotation animates over 250 ms with an ease-out curve. The listener stops while the app is backgrounded or History is on top.
+**Measure, held sideways.** Everything moves once, with no animation and no per-control turning:
+- the **bottom row** (§2.6) moves whole to the long edge now at the bottom (the screen's left side at +1, right side at −1), laid out along the screen's height and turned to read upright, 16 dp clear of the edge, opted out of the back swipe there; the camera area takes the rest of the screen (the AR view is resized, not recreated);
+- the **foot stack** (§2.2: prompts, the live readout or summary pill, unit toggle, group Done) turns as one and sits at the **bottom centre of the view as held**, beside the row; the readout fits the long side (less 48 dp, at most 340 dp);
+- the **top column** (tracking pill, hint, SAVING) turns as one and sits at the top centre of the view as held, the edge opposite the row;
+- distance labels turn about their own centres over 250 ms to the settled orientation (§3.3); "Tap to continue" turns too.
+The readout is one element in one place per orientation, so it can't sputter between two positions part-way through a turn.
+
+**Tube level.** The whole screen is laid out with width and height swapped and turned, inside the system's safe-drawing insets, with its title bar dropped (§4.1). The bullseye lies flat and never turns.
 
 ### 2.10 Memory watchdog
 

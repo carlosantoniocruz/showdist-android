@@ -89,6 +89,10 @@ import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
 import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.layout.Layout
+import com.showconfigs.showdist.ui.rememberDeviceOrientation
+import com.showconfigs.showdist.ui.turned
 import com.showconfigs.showdist.history.GroupStore
 import com.showconfigs.showdist.history.MeasurementSheet
 import com.showconfigs.showdist.history.Recording
@@ -228,7 +232,6 @@ fun MeasureScreen(
                     savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
                     task = task,
                     charge = { 0f },
-                    rotation = { 0f },
                     onPlace = {},
                     onUndo = {},
                     onClear = {},
@@ -320,7 +323,11 @@ private fun MeasureArea(
     var idlePaused by remember { mutableStateOf(false) }
     if (covered && idlePaused) idlePaused = false
     val sessionLifecycle = rememberCappedLifecycle(capped = covered || idlePaused)
-    val barRotation = rememberBarRotation(sessionLifecycle, onMotion = idle::touch)
+    // How the phone is held (SPEC.md §2.9): the one shared handler, settled and free of flicker.
+    val orientation = rememberDeviceOrientation(sessionLifecycle, onMotion = idle::touch)
+    val turns = orientation.quarterTurns
+    // The overlay's labels turn smoothly to the settled orientation; nothing else animates.
+    val barRotation = animateFloatAsState(turns * 90f, tween(250), label = "labelRotation")
     var saved by remember { mutableStateOf<Recording?>(null) }
     // Reading a sheet or typing a name is using the app, though no touch reaches Measure.
     val occupied by rememberUpdatedState(saved != null || group.naming || group.editingLine != null)
@@ -354,23 +361,39 @@ private fun MeasureArea(
         },
     )
 
-    // −1, 0 or +1 as the bar controls are turned; recomposes only when it crosses 45°.
-    val sideways by remember {
-        derivedStateOf {
-            val r = barRotation.value
-            if (abs(r) <= 45f) 0 else if (r > 0f) 1 else -1
-        }
-    }
     val cornerRadiusPx = rememberScreenCornerRadius()
-    // The top info column's bottom edge, so the SAVING pill can sit below it.
-    var infoBottomPx by remember { mutableIntStateOf(0) }
-    Column(Modifier.fillMaxSize().notesTouches(idle).then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx)) {
+    // Camera area and bottom row (SPEC.md §2.2, §2.9). Upright, the row is along the bottom;
+    // held sideways it moves, whole, to the long edge that is now at the bottom, and the
+    // camera area takes the rest. One layout places both, so the AR view is never recreated.
+    Layout(
+        modifier = Modifier.fillMaxSize().notesTouches(idle).then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx),
+        measurePolicy = { measurables, constraints ->
+            val loose = constraints.copy(minWidth = 0, minHeight = 0)
+            val w = constraints.maxWidth
+            val h = constraints.maxHeight
+            val bar = measurables[1].measure(loose)
+            if (turns == 0) {
+                val area = measurables[0].measure(Constraints.fixed(w, (h - bar.height).coerceAtLeast(0)))
+                layout(w, h) {
+                    area.place(0, 0)
+                    bar.place(0, h - bar.height)
+                }
+            } else {
+                val area = measurables[0].measure(Constraints.fixed((w - bar.width).coerceAtLeast(0), h))
+                // Resting on its left edge (+1), the bottom is the screen's left side.
+                layout(w, h) {
+                    area.place(if (turns > 0) bar.width else 0, 0)
+                    bar.place(if (turns > 0) 0 else w - bar.width, 0)
+                }
+            }
+        },
+        content = {
         // The camera area's size in dp, which caps the live readout's width.
         var areaSize by remember { mutableStateOf(IntSize.Zero) }
         val areaWidth = with(LocalDensity.current) { areaSize.width.toDp() }
         val areaHeight = with(LocalDensity.current) { areaSize.height.toDp() }
         Box(
-            Modifier.weight(1f).fillMaxWidth().onSizeChanged {
+            Modifier.onSizeChanged {
                 areaSize = it
                 tracker.setViewSize(it.width, it.height)
             },
@@ -410,40 +433,25 @@ private fun MeasureArea(
             // Layers (SPEC.md §2.2): camera, overlay canvas, top info column.
             MeasureOverlay(tracker, { barRotation.value }, Modifier.fillMaxSize())
             Reticle(tracker, Modifier.align(Alignment.Center))
-            // The top holds only passive items (SPEC.md §2.2): the tracking state, then the hint.
+            // The top of the view as it is held holds only passive items (SPEC.md §2.2): the
+            // tracking state, the hint, and SAVING while a hold charges.
             val totalShown = if (grouping) groupLengthShown(tracker) else tracker.pointCount >= 2
+            val saving by remember { derivedStateOf { holdToSave.charge() > 0f } }
             Column(
                 Modifier
-                    .align(Alignment.TopCenter)
+                    .align(viewTop(turns))
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                    .padding(start = 24.dp, top = 12.dp, end = 24.dp)
-                    .onPlaced { infoBottomPx = it.boundsInParent().bottom.toInt() },
+                    .padding(12.dp)
+                    .turned(turns),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 TrackingPill(tracker.status)
                 Spacer(Modifier.height(6.dp))
                 HintLine(tracker.hint, instruction = if (calibrating) "Place a point at each end of ${Calibration.target?.first?.what ?: "the object"}" else null)
-            }
-            // Held sideways (SPEC.md §2.9): the total sits centred on the reader's top edge,
-            // which is the screen's right edge (turned clockwise) or left edge, at a smaller size.
-            if (totalShown && sideways != 0) {
-                RunningTotal(
-                    tracker.totalMetres,
-                    units,
-                    minOf(areaHeight * READOUT_SIDEWAYS_SHARE, READOUT_SIDEWAYS_MAX),
-                    Modifier
-                        .align(if (sideways > 0) Alignment.CenterEnd else Alignment.CenterStart)
-                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                        .padding(horizontal = 12.dp)
-                        .turnWith { barRotation.value },
-                    compact = true,
-                )
-            }
-            val saving by remember { derivedStateOf { holdToSave.charge() > 0f } }
-            if (saving) {
-                SavingPill(
-                    Modifier.matchParentSize().belowInfo { infoBottomPx }.turnWith { barRotation.value },
-                )
+                if (saving) {
+                    Spacer(Modifier.height(10.dp))
+                    SavingPill()
+                }
             }
             if (warmUpOpen) {
                 WarmUpOverlay(
@@ -456,21 +464,21 @@ private fun MeasureArea(
                 )
             }
             // Everything tappable in the camera area sits at its foot, just above the bottom
-            // row (SPEC.md §2.2): prompts, the live readout, then the unit toggle and, in a
-            // group, its line count and Done. The stack turns as one when the phone is held
-            // sideways (SPEC.md §2.9); the readout then moves to the reader's top edge, above.
+            // row (SPEC.md §2.2): prompts, the live readout (the summary pill), then the unit
+            // toggle and, in a group, its line count and Done. Held sideways the whole stack
+            // turns as one and sits at the bottom centre of the view as it is then held.
             Column(
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                    .padding(bottom = 4.dp)
-                    .turnWith { barRotation.value },
+                    .align(viewBottom(turns))
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .padding(4.dp)
+                    .turned(turns),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 if (warmUpOffered && !warmUpOpen) WarmUpPrompt(onClick = { warmUpOpen = true })
                 if (grouping) LineCard(group, units, tracker.totalMetres)
-                if (totalShown && sideways == 0) RunningTotal(tracker.totalMetres, units, areaWidth - 48.dp)
+                if (totalShown) RunningTotal(tracker.totalMetres, units, minOf((if (turns == 0) areaWidth else areaHeight) - 48.dp, READOUT_WIDTH_MAX))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     UnitToggle(units, onUnits)
                     if (grouping && tracker.completedLines >= 1) GroupBar(tracker.completedLines, onDone = group::finish)
@@ -483,7 +491,6 @@ private fun MeasureArea(
             savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
             task = task,
             charge = holdToSave::charge,
-            rotation = { barRotation.value },
             onPlace = tracker::requestAdd,
             onUndo = tracker::undo,
             onClear = tracker::clear,
@@ -491,10 +498,12 @@ private fun MeasureArea(
             onHistory = onHistory,
             onSettings = onSettings,
             onBack = onBack,
+            turns = turns,
         )
-    }
+        },
+    )
 
-    IdlePauseOverlay(idlePaused && !covered, onResume = { idlePaused = false })
+    IdlePauseOverlay(idlePaused && !covered, turns, onResume = { idlePaused = false })
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
     if (grouping) GroupDialogs(group)
@@ -523,18 +532,30 @@ private fun HintLine(hint: Hint, instruction: String? = null) {
 private val READOUT_MAX = 30.dp
 private val READOUT_MIN = 14.dp
 
-/** Held sideways the readout runs along the screen's height: at most this share of it, and this long. */
-private const val READOUT_SIDEWAYS_SHARE = 0.6f
-private val READOUT_SIDEWAYS_MAX = 340.dp
+/** However wide the view, the readout is never longer than this. */
+private val READOUT_WIDTH_MAX = 340.dp
+
+/** The middle of the view's top edge as the phone is held ([turns], SPEC.md §2.9). */
+private fun viewTop(turns: Int) = when {
+    turns > 0 -> Alignment.CenterEnd
+    turns < 0 -> Alignment.CenterStart
+    else -> Alignment.TopCenter
+}
+
+/** The middle of the view's bottom edge as the phone is held: beside the bottom row. */
+private fun viewBottom(turns: Int) = when {
+    turns > 0 -> Alignment.CenterStart
+    turns < 0 -> Alignment.CenterEnd
+    else -> Alignment.BottomCenter
+}
 
 /**
  * The live readout (SPEC.md §2.2): Palette.Scrim, pill corners, pure white, the unit always
  * in words beside the number. Its text is capped at 30 dp and shrinks, down to 14 dp, to fit
- * [maxWidth] on one line, so it never outgrows the camera view in either orientation;
- * [compact] (held sideways) has tighter padding.
+ * [maxWidth] on one line, so it never outgrows the camera view in either orientation.
  */
 @Composable
-private fun RunningTotal(metres: Double, units: UnitSystem, maxWidth: Dp, modifier: Modifier = Modifier, compact: Boolean = false) {
+private fun RunningTotal(metres: Double, units: UnitSystem, maxWidth: Dp, modifier: Modifier = Modifier) {
     val sizes = with(LocalDensity.current) {
         TextAutoSize.StepBased(minFontSize = READOUT_MIN.toSp(), maxFontSize = READOUT_MAX.toSp(), stepSize = 1.dp.toSp())
     }
@@ -546,7 +567,7 @@ private fun RunningTotal(metres: Double, units: UnitSystem, maxWidth: Dp, modifi
         modifier = modifier
             .widthIn(max = maxWidth)
             .background(Palette.Scrim, RoundedCornerShape(50))
-            .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 2.dp else 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         style = BaseText.copy(color = Palette.White, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
     )
 }
@@ -629,36 +650,6 @@ private fun rememberScreenCornerRadius(): Float {
 /** A group's length pill shows a finished line, or one being drawn while it has a surface to reach. */
 private fun groupLengthShown(t: MeasureTracker): Boolean =
     if (t.pointCount % 2 == 1) t.hasHit else t.pointCount >= 2
-
-/** Clearance kept above the reticle's centre: its 16 dp ring plus its dots and halo. */
-private val RETICLE_CLEARANCE = 28.dp
-
-/**
- * Centres the content halfway between [infoBottom] (px) and the top of the reticle at the
- * area's centre (SPEC.md §2.6). Read only while placing, so it never recomposes.
- */
-private fun Modifier.belowInfo(infoBottom: () -> Int) = layout { measurable, constraints ->
-    val placeable = measurable.measure(Constraints())
-    layout(constraints.maxWidth, constraints.maxHeight) {
-        val reticleTop = constraints.maxHeight / 2 - RETICLE_CLEARANCE.roundToPx()
-        val centreY = (infoBottom() + reticleTop) / 2
-        placeable.place((constraints.maxWidth - placeable.width) / 2, centreY - placeable.height / 2)
-    }
-}
-
-/**
- * Turns the content by [rotation] degrees about its centre so it reads upright however the
- * phone is held (SPEC.md §2.9); turned sideways, it takes its rotated footprint in layout.
- */
-private fun Modifier.turnWith(rotation: () -> Float) = layout { measurable, _ ->
-    val placeable = measurable.measure(Constraints())
-    val sideways = abs(rotation()) > 45f
-    val w = if (sideways) placeable.height else placeable.width
-    val h = if (sideways) placeable.width else placeable.height
-    layout(w, h) {
-        placeable.placeWithLayer((w - placeable.width) / 2, (h - placeable.height) / 2) { rotationZ = rotation() }
-    }
-}
 
 private fun problemFor(e: Exception): StartState.Problem = when (e) {
     is UnavailableUserDeclinedInstallationException -> StartState.Problem(

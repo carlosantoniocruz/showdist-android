@@ -1,8 +1,13 @@
 package com.showconfigs.showdist.leveler
 
-import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
 import com.showconfigs.showdist.ui.rememberHaptics
+import com.showconfigs.showdist.ui.rememberDeviceOrientation
+import com.showconfigs.showdist.ui.quarterTurned
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ScaffoldDefaults
 import com.showconfigs.showdist.ui.BarIconButton
 import com.showconfigs.showdist.ui.BarItem
 import com.showconfigs.showdist.ui.BarSlot
@@ -11,9 +16,7 @@ import com.showconfigs.showdist.ui.BottomRowCentre
 import com.showconfigs.showdist.ui.BottomRowSlot
 import com.showconfigs.showdist.ui.ModeSwitcher
 import android.content.Context
-import android.content.pm.ActivityInfo
 import android.hardware.SensorManager
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +26,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -68,9 +70,12 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
     var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
     val zeroed = if (mode == LevelerMode.Tube) offset != 0f else offsetX != 0f || offsetY != 0f
 
-    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    // The tube rotates with the phone; the bullseye lies flat, where rotation can't be sensed.
-    if (mode == LevelerMode.Tube) AllowLandscapeWhileShown()
+    // The tube turns with the phone, through the app's one orientation handler (SPEC.md §2.9):
+    // the activity stays portrait and the whole screen is laid out turned, so it changes once,
+    // without the system's rotation. The bullseye lies flat, where a turn can't be sensed.
+    val orientation = rememberDeviceOrientation()
+    val turns = if (mode == LevelerMode.Tube) orientation.quarterTurns else 0
+    val landscape = turns != 0
     // The sensor runs only while the screen is visible and the app is in the foreground.
     LifecycleResumeEffect(sensor) {
         sensor.start()
@@ -78,11 +83,20 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
     }
 
     Scaffold(
+        modifier = Modifier
+            .background(Palette.Black)
+            // Turned, the system's insets no longer line up with the content's edges: keep
+            // the whole screen inside them, and let the turned content ignore them.
+            .then(if (landscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing) else Modifier)
+            .quarterTurned(turns),
+        contentWindowInsets = if (landscape) WindowInsets(0) else ScaffoldDefaults.contentWindowInsets,
         // Only the title up here, nothing to tap (SPEC.md §1.2). In landscape (the tube
         // rotates) it gives its height to the vial and readout.
         topBar = { if (!landscape) ShowdistAppBar(if (mode == LevelerMode.Tube) "TUBE LEVELER" else "BULLSEYE LEVELER") },
         bottomBar = {
             BottomRow(
+                // Turned with the screen already, which also keeps it inside the system's insets.
+                systemInsets = !landscape,
                 nav = listOf(
                     BarItem(visual = 56.dp) { BarSlot(BottomRowSlot) { ModeSwitcher(levelActive = true, onSwitch = onMeasure) } },
                     BarItem {
@@ -232,17 +246,4 @@ private fun AxisLabel(axis: String) {
         modifier = Modifier.padding(end = 12.dp, bottom = 22.dp),
         style = Type.Caption.copy(color = Palette.Sandstone, fontSize = 22.sp, letterSpacing = 0.sp),
     )
-}
-
-/**
- * While shown, the screen may rotate between portrait and either landscape, never
- * upside-down; on exit it's forced back to portrait-only (SPEC.md §4.1).
- */
-@Composable
-private fun AllowLandscapeWhileShown() {
-    val activity = LocalActivity.current ?: return
-    DisposableEffect(activity) {
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        onDispose { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
-    }
 }
