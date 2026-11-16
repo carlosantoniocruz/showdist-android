@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.ui.Corner
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,25 +41,27 @@ import com.showconfigs.showdist.ui.ShowdistIcons
 import com.showconfigs.showdist.ui.rememberHaptics
 
 /**
- * Measure's bottom row (SPEC.md §2.6). From the centre outward: the peach-red capture
- * button, the largest control; on the navigation side the Measure/Level switcher, then
- * History; on the tool side Undo, Clear, and Settings, the smallest, at the edge. The gaps
- * between the controls as drawn are all equal ([BottomRow]). The row
- * never moves: held sideways, each small control turns in place by [rotation] degrees to read
- * upright (SPEC.md §2.9), and the round capture button needs no turning. In a [task] (calibrating, warming up, adding lines to a saved group) the
- * navigation side holds only Back. [rotation] and [charge] are read only in
- * the draw/layer phase, so neither recomposes the row.
+ * Measure's bottom row (SPEC.md §2.6): five controls, two either side of the peach-red
+ * capture button. On the navigation side the Measure/Level switcher, then History; on the
+ * tool side Undo, then Settings, the smallest, at the edge. The gaps between the controls
+ * as drawn are all equal ([BottomRow]). The row never moves: held sideways, each small
+ * control turns in place by [rotation] degrees to read upright (SPEC.md §2.9). In a [task]
+ * (calibrating, warming up, adding lines to a saved group) the navigation side holds only
+ * Back. [rotation] and [charge] are read only in the draw/layer phase, so neither
+ * recomposes the row.
+ *
+ * There is no Clear: one tap that silently wipes a whole measurement, with no way back, is
+ * not worth a permanent place by the thumb. Undo removes points one at a time, and saving
+ * starts afresh.
  */
 @Composable
 fun ControlBar(
     canPlace: Boolean,
     hasPoints: Boolean,
-    savedCount: Int,
     task: Boolean,
     charge: () -> Float,
     onPlace: () -> Unit,
     onUndo: () -> Unit,
-    onClear: () -> Unit,
     onLevel: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -73,13 +76,12 @@ fun ControlBar(
         } else {
             listOf(
                 BarItem(visual = 56.dp) { BarSlot(BottomRowSlot, rotation) { ModeSwitcher(levelActive = false, onSwitch = onLevel) } },
-                BarItem { BarSlot(BottomRowSlot, rotation) { HistoryButton(savedCount, onHistory) } },
+                BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.History, "History", onClick = onHistory) } },
             )
         },
         centre = { CaptureButton(canPlace, charge, onPlace) },
         tools = listOfNotNull(
             BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.Undo, "Undo last point", hasPoints, onClick = onUndo) } },
-            BarItem { BarSlot(BottomRowSlot, rotation) { BarIconButton(ShowdistIcons.Close, "Clear all points", hasPoints, onClick = onClear) } },
             if (task) null else BarItem {
                 BarSlot(BottomRowSlot, rotation) {
                     BarIconButton(ShowdistIcons.SettingsOutlined, "Settings", iconSize = 20.dp, onClick = onSettings)
@@ -87,21 +89,6 @@ fun ControlBar(
             },
         ),
     )
-}
-
-/** History, with a count badge (white, 12 sp, bold) at the top-right once anything is saved. */
-@Composable
-private fun HistoryButton(savedCount: Int, onClick: () -> Unit) {
-    Box {
-        BarIconButton(ShowdistIcons.History, "History", onClick = onClick)
-        if (savedCount > 0) {
-            Text(
-                "$savedCount",
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 2.dp),
-                style = BaseText.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
-            )
-        }
-    }
 }
 
 /**
@@ -182,7 +169,7 @@ private fun TextToggle(text: String, description: String, modifier: Modifier = M
     Box(
         modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(Corner)
             .clickable(role = Role.Button) {
                 haptics.tick()
                 onClick()
@@ -192,7 +179,7 @@ private fun TextToggle(text: String, description: String, modifier: Modifier = M
     ) {
         BasicText(
             text,
-            Modifier.background(Palette.Scrim, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 7.dp),
+            Modifier.background(Palette.Scrim, Corner).padding(horizontal = 14.dp, vertical = 7.dp),
             style = BaseText.copy(color = Palette.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
         )
     }

@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.ui.Corner
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -60,7 +61,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
         modifier
             .widthIn(max = 320.dp)
             .padding(horizontal = 24.dp)
-            .background(Palette.Scrim, RoundedCornerShape(24.dp))
+            .background(Palette.Scrim, Corner)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -93,7 +94,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
             }
         }
         Spacer(Modifier.height(20.dp))
-        val shape = RoundedCornerShape(50)
+        val shape = Corner
         Box(
             Modifier
                 .heightIn(min = 48.dp)
@@ -117,7 +118,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
 /** Offered over the status pill when tracking has stayed poor (SPEC.md §1.5a). */
 @Composable
 fun WarmUpPrompt(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corner
     Box(
         modifier
             .heightIn(min = 48.dp)

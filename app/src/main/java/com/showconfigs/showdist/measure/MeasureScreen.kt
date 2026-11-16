@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.ui.Corner
 import com.showconfigs.showdist.settings.Calibration
 import kotlinx.coroutines.delay
 import android.Manifest
@@ -93,6 +94,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.layout.Layout
 import com.showconfigs.showdist.ui.rememberDeviceOrientation
 import com.showconfigs.showdist.ui.turned
+import com.showconfigs.showdist.ui.KeepScreenOn
 import com.showconfigs.showdist.history.GroupStore
 import com.showconfigs.showdist.settings.MeasureKindSetting
 import androidx.compose.ui.platform.LocalContext
@@ -231,12 +233,10 @@ fun MeasureScreen(
                 ControlBar(
                     canPlace = false,
                     hasPoints = false,
-                    savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
                     task = task,
                     charge = { 0f },
                     onPlace = {},
                     onUndo = {},
-                    onClear = {},
                     onLevel = onLevel,
                     onHistory = onHistory,
                     onSettings = onSettings,
@@ -326,6 +326,8 @@ private fun MeasureArea(
     var idlePaused by remember { mutableStateOf(false) }
     if (covered && idlePaused) idlePaused = false
     val sessionLifecycle = rememberCappedLifecycle(capped = covered || idlePaused)
+    // Awake only while actually measuring: not under another page, not once idle-paused.
+    if (!covered && !idlePaused) KeepScreenOn()
     // How the phone is held (SPEC.md §2.9): the one shared handler, settled and free of flicker.
     val orientation = rememberDeviceOrientation(sessionLifecycle, onMotion = idle::touch)
     val turns = orientation.quarterTurns
@@ -486,12 +488,10 @@ private fun MeasureArea(
         ControlBar(
             canPlace = tracker.canPlace,
             hasPoints = tracker.pointCount > 0 || tracker.projectionStage != ProjectionStage.None,
-            savedCount = RecordingStore.recordings.size + GroupStore.groups.size,
             task = task,
             charge = holdToSave::charge,
             onPlace = tracker::requestAdd,
             onUndo = tracker::undo,
-            onClear = tracker::clear,
             onLevel = onLevel,
             onHistory = onHistory,
             onSettings = onSettings,
@@ -518,7 +518,7 @@ private fun HintLine(hint: Hint, instruction: String? = null) {
         Text(
             if (h.tracking) " " else instruction ?: h.text,
             modifier = Modifier
-                .then(if (h.tracking) Modifier else Modifier.background(Palette.Scrim, RoundedCornerShape(50)))
+                .then(if (h.tracking) Modifier else Modifier.background(Palette.Scrim, Corner))
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             textAlign = TextAlign.Center,
             style = BaseText.copy(color = Palette.White, fontSize = 15.sp, letterSpacing = 0.3.sp),
@@ -564,7 +564,7 @@ private fun RunningTotal(metres: Double, units: UnitSystem, maxWidth: Dp, modifi
         autoSize = sizes,
         modifier = modifier
             .widthIn(max = maxWidth)
-            .background(Palette.Scrim, RoundedCornerShape(50))
+            .background(Palette.Scrim, Corner)
             .padding(horizontal = 16.dp, vertical = 4.dp),
         style = BaseText.copy(color = Palette.White, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR),
     )
@@ -579,8 +579,8 @@ private fun SavingPill(modifier: Modifier = Modifier) {
     BasicText(
         "SAVING",
         modifier = modifier
-            .background(Palette.Scrim, RoundedCornerShape(50))
-            .border(BorderStroke(1.5.dp, Palette.White), RoundedCornerShape(50))
+            .background(Palette.Scrim, Corner)
+            .border(BorderStroke(1.5.dp, Palette.White), Corner)
             .padding(horizontal = 20.dp, vertical = 8.dp),
         style = BaseText.copy(color = Palette.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp),
     )
@@ -735,7 +735,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
 
 @Composable
 private fun OutlinedTextButton(label: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corner
     Box(
         modifier = Modifier
             .clip(shape)

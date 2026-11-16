@@ -137,6 +137,16 @@ Expected result: Everyone / PEGI 3.
 
 ---
 
+## Stale since the v1.5 interface (fix before the next release)
+
+The app's look changed after these assets were made (see SPEC.md §0a). Nothing here has been regenerated yet, because no release is planned:
+
+- **Icon** (`graphics/icon-512.png`): the line is now cyan `#00E5FF`, 3 wide, not sandstone.
+- **Feature graphic**: shows the main menu's orbital selector, which no longer exists. Needs a new subject (the mark, or a measurement in progress).
+- **Screenshots**: number 2 is the main menu, which is gone; the others show the sandstone accent, the old tall control bar and the orbiting reticle. Retake all of them. `Render.java` still paints with the old palette.
+- **Description text**: check it for the menu, Handy formulas and fun facts, none of which the app has now (the facts live behind a hold on the About page).
+- The README shows the same old screenshots.
+
 ## Before you submit
 
 1. **Upload an App Bundle, not an APK.** Play requires `.aab` for new apps: `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/app-release.aab`, signed with the same release keystore. The 1.3.1 bundle (version code 5) is built and verified (same certificate as the installed APK, SHA-256 `43:B8:ED:39:…:7F:B2`); a copy is at `~/Showdist-1.3.1.aab`. The 1.3 bundle (version code 4) is at `~/Showdist-1.3.aab`. The 1.2 bundle (version code 3) is at `~/Showdist-1.2.aab`.

@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.ui.Corner
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -75,7 +76,7 @@ fun TrackingPill(status: TrackingStatus, modifier: Modifier = Modifier) {
         modifier
             .graphicsLayer { this.alpha = alpha.value }
             .semantics { liveRegion = LiveRegionMode.Polite }
-            .background(Palette.Scrim, RoundedCornerShape(50))
+            .background(Palette.Scrim, Corner)
             .padding(start = 12.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

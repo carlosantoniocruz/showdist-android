@@ -36,6 +36,9 @@ private const val LABEL_PAD_V_DP = 5f
 private const val LABEL_EDGE_DP = 8f
 private const val LABEL_BORDER_DP = 1.5f
 
+/** The same 4 dp corner as every other box in the app. */
+private const val LABEL_CORNER_DP = 4f
+
 /**
  * The transparent canvas over the camera feed (SPEC.md §3). Draw order (§3.2): a projected
  * recording (§2.11), segment lines, the dashed live line, point dots, then labels
@@ -268,7 +271,7 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         val cy = clamp(ny * h, edge + boundsH / 2f, h - edge - boundsH / 2f)
         val left = cx - pillWidth / 2f
         val top = cy - pillHeight / 2f
-        val radius = pillHeight / 2f
+        val radius = LABEL_CORNER_DP * density
 
         val turned = rotationDeg != 0f
         if (turned) {
@@ -280,7 +283,7 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         val inset = border.strokeWidth / 2f
         c.drawRoundRect(
             left + inset, top + inset, left + pillWidth - inset, top + pillHeight - inset,
-            radius - inset, radius - inset, border,
+            (radius - inset).coerceAtLeast(0f), (radius - inset).coerceAtLeast(0f), border,
         )
         val baseline = cy - (metrics.ascent + metrics.descent) / 2f
         c.drawText(chars, 0, length, left + LABEL_PAD_H_DP * density, baseline, text)

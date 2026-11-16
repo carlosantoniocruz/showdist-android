@@ -130,7 +130,7 @@ object PdfReport {
         val perPage = tier.columns * tier.rows
         val pages = pdfPageCount(recordings.size)
         val exported = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(now)
-        val footerLeft = "Measured with Showdist v${BuildConfig.VERSION_NAME}"
+        val footerLeft = "Estimated with the camera in Showdist v${BuildConfig.VERSION_NAME}. Verify critical dimensions."
 
         val doc = PdfDocument()
         try {

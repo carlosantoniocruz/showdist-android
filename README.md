@@ -16,6 +16,7 @@ need to hang something straight.
 - History with thumbnails, "View in AR" to project a saved shape back into the room
 - PDF report export, or share/copy as text
 - Tube and bullseye levels with calibration
+- Measure separate lines as a group, with floor area and volume
 - No account, no ads, no analytics. Measurements stay on your phone.
 
 ## Requirements

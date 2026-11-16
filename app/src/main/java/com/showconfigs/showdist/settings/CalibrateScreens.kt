@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.settings
 
+import com.showconfigs.showdist.ui.Corner
 import com.showconfigs.showdist.ui.BackBar
 import android.content.Context
 import android.hardware.Sensor
@@ -238,7 +239,7 @@ private fun Result(text: String, ok: Boolean) {
 
 @Composable
 private fun PrimaryButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corner
     val color = if (enabled) Palette.Accent else Palette.Accent.copy(alpha = 0.35f)
     Box(
         Modifier
@@ -258,7 +259,7 @@ private fun ResetLink(label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(Corner)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,

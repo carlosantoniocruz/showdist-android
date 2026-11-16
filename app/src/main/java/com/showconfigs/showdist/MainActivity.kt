@@ -11,7 +11,6 @@ import com.showconfigs.showdist.settings.CalibrateLevelScreen
 import com.showconfigs.showdist.settings.CalibrateScaleScreen
 import com.showconfigs.showdist.ui.HapticsSetting
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -60,9 +59,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         RecordingStore.init(this)
         GroupStore.init(this)
-        // Screen kept on while the app is in the foreground (SPEC.md §0); the flag only
-        // applies while this window is visible.
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Saved settings, read once before the first frame.
+        HapticsSetting.load(this)
+        Calibration.load(this)
+        MeasureKindSetting.load(this)
+        HandSetting.load(this)
         hideSystemBars()
         setContent { ShowdistTheme { ShowdistApp() } }
     }
@@ -102,10 +103,6 @@ private data class Route(val screen: Screen, val arg: Int = 0)
 private fun ShowdistApp() {
     val context = LocalContext.current
     val unitSettings = remember { UnitSettings(context) }
-    remember { HapticsSetting.load(context) }
-    remember { Calibration.load(context) }
-    remember { MeasureKindSetting.load(context) }
-    remember { HandSetting.load(context) }
     val stack = rememberSaveable(
         saver = listSaver(
             save = { list -> list.flatMap { listOf(it.screen.name, it.arg.toString()) } },
@@ -142,7 +139,7 @@ private fun ShowdistApp() {
     /** Starts a task on the Measure session, unless it holds a measurement in progress. */
     fun measureTask(mode: MeasureMode, before: () -> Unit = {}) {
         if (measureBusy) {
-            scope.launch { snackbar.showSnackbar("Save or clear the measurement in progress first") }
+            scope.launch { snackbar.showSnackbar("Save or undo the measurement in progress first") }
         } else {
             before()
             push(Screen.Measure, mode.ordinal)

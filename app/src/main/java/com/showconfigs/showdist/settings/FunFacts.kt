@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.showconfigs.showdist.R
+import com.showconfigs.showdist.ui.KeepScreenOn
 import com.showconfigs.showdist.ui.Palette
 import com.showconfigs.showdist.ui.Type
 
@@ -110,6 +111,7 @@ fun FactsScene(deck: FactDeck, reduceMotion: Boolean, modifier: Modifier = Modif
     var paused by remember { mutableStateOf(false) }
     var held by remember { mutableStateOf(false) }
     val moving = !paused && !held && !reduceMotion
+    if (moving) KeepScreenOn()
 
     Box(
         modifier

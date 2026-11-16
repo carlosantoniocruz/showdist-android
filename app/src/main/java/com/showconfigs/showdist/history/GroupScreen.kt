@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.history
 
+import com.showconfigs.showdist.ui.Corner
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.showconfigs.showdist.ui.DialogText
@@ -229,7 +230,7 @@ private fun TagButton(tag: LineTag?, onTag: (LineTag?) -> Unit) {
         Box(
             Modifier
                 .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(Corner)
                 .clickable(role = Role.Button, onClickLabel = "Change tag") { open = true }
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center,
@@ -259,7 +260,7 @@ private fun TagButton(tag: LineTag?, onTag: (LineTag?) -> Unit) {
 
 @Composable
 private fun AddLinesButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corner
     Row(
         Modifier
             .heightIn(min = 48.dp)

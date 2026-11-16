@@ -120,6 +120,13 @@ fun AboutScreen(onBack: () -> Unit) {
                 Text(DEVELOPER_NAME, style = Type.Body)
                 XContactRow(onClick = { runCatching { uriHandler.openUri(X_URL) } })
                 Text("Created with AI assistance", style = Type.Secondary)
+                Spacer(Modifier.height(14.dp))
+                // What the app can't promise, said plainly.
+                Text(
+                    "Measurements are estimates made with the camera. Check anything critical with a tape measure.",
+                    Modifier.padding(horizontal = 24.dp),
+                    style = Type.Secondary.copy(color = Palette.Text, textAlign = TextAlign.Center),
+                )
 
                 SettingsDivider(Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
                 // Required by the ARCore terms of service.

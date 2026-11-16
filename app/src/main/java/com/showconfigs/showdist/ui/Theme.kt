@@ -46,9 +46,6 @@ val BaseText = TextStyle(fontFamily = JetBrainsMono, fontFeatureSettings = FEATU
  * so everything reads at arm's length. Screens use these rather than raw sizes.
  */
 object Type {
-    /** SHOWDIST on the sun. */
-    val Wordmark = BaseText.copy(color = Palette.Black, fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-
     /** Section and app-bar captions: spaced capitals in grey. App bars override to white. */
     val Caption = BaseText.copy(
         color = Palette.TextMuted,

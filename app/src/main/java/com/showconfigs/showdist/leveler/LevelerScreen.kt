@@ -3,6 +3,7 @@ package com.showconfigs.showdist.leveler
 import com.showconfigs.showdist.ui.rememberHaptics
 import com.showconfigs.showdist.ui.rememberDeviceOrientation
 import com.showconfigs.showdist.ui.quarterTurned
+import com.showconfigs.showdist.ui.KeepScreenOn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -55,7 +56,8 @@ enum class LevelerMode { Tube, Bullseye }
  * The Leveler (SPEC.md §4): the tube, a single-axis level held flat against a wall, or
  * the bullseye, a two-axis level laid flat on a surface. Its bottom row matches Measure's
  * (SPEC.md §1.1a): Zero in the centre, the switcher back to Measure ([onMeasure]) where
- * Measure has it, the Tube/Bullseye toggle ([onMode]) beside it, and Reset on the tool side.
+ * Measure has it, and on the tool side Reset, then the Tube/Bullseye toggle ([onMode]),
+ * which shows the level in use.
  */
 @Composable
 fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: () -> Unit) {
@@ -74,6 +76,8 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
     // the activity stays portrait and the whole screen is laid out turned, so it changes once,
     // without the system's rotation. The bullseye lies flat, where a turn can't be sensed.
     val orientation = rememberDeviceOrientation()
+    // A level is read without touching the phone.
+    KeepScreenOn()
     val turns = if (mode == LevelerMode.Tube) orientation.quarterTurns else 0
     val landscape = turns != 0
     // The sensor runs only while the screen is visible and the app is in the foreground.
@@ -99,15 +103,6 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
                 systemInsets = !landscape,
                 nav = listOf(
                     BarItem(visual = 56.dp) { BarSlot(BottomRowSlot) { ModeSwitcher(levelActive = true, onSwitch = onMeasure) } },
-                    BarItem {
-                        BarSlot(BottomRowSlot) {
-                            if (mode == LevelerMode.Tube) {
-                                BarIconButton(ShowdistIcons.RadioButtonChecked, "Switch to the bullseye level") { onMode(LevelerMode.Bullseye) }
-                            } else {
-                                BarIconButton(ShowdistIcons.Level, "Switch to the tube level") { onMode(LevelerMode.Tube) }
-                            }
-                        }
-                    },
                 ),
                 centre = {
                     BarIconButton(
@@ -131,6 +126,16 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
                                 offsetX = 0f
                                 offsetY = 0f
                                 haptics.tick()
+                            }
+                        }
+                    },
+                    BarItem {
+                        BarSlot(BottomRowSlot) {
+                            // Shows the level in use, as the unit toggle shows the unit in use; a tap changes it.
+                            if (mode == LevelerMode.Tube) {
+                                BarIconButton(ShowdistIcons.Level, "Tube level. Switch to the bullseye level") { onMode(LevelerMode.Bullseye) }
+                            } else {
+                                BarIconButton(ShowdistIcons.RadioButtonChecked, "Bullseye level. Switch to the tube level") { onMode(LevelerMode.Tube) }
                             }
                         }
                     },

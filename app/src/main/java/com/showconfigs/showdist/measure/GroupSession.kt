@@ -1,5 +1,6 @@
 package com.showconfigs.showdist.measure
 
+import com.showconfigs.showdist.ui.Corner
 import com.showconfigs.showdist.ui.DialogText
 import com.showconfigs.showdist.ui.ShowdistDialog
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -200,10 +201,10 @@ fun GroupBar(lines: Int, onDone: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(
             "$lines line${if (lines == 1) "" else "s"}",
-            Modifier.background(Palette.Scrim, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp),
+            Modifier.background(Palette.Scrim, Corner).padding(horizontal = 14.dp, vertical = 8.dp),
             style = BaseText.copy(color = Palette.White, fontSize = 15.sp),
         )
-        val shape = RoundedCornerShape(50)
+        val shape = Corner
         Box(
             Modifier
                 .heightIn(min = 48.dp)
@@ -229,13 +230,13 @@ fun LineCard(group: GroupSession, units: UnitSystem, length: Double, modifier: M
     val label = group.labels[line]
     Column(
         modifier
-            .background(Palette.Scrim, RoundedCornerShape(24.dp))
+            .background(Palette.Scrim, Corner)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(Corner)
                 .clickable(role = Role.Button, onClickLabel = "Label this line") { group.editLabel(line) }
                 .heightIn(min = 44.dp)
                 .padding(horizontal = 8.dp),
@@ -261,7 +262,7 @@ fun LineCard(group: GroupSession, units: UnitSystem, length: Double, modifier: M
 /** A tag choice: a 48 dp target around a small pill, accent when selected. */
 @Composable
 fun TagChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
+    val shape = Corner
     Box(
         Modifier
             .heightIn(min = 48.dp)
