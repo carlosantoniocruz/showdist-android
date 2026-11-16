@@ -214,7 +214,7 @@ When the screen opens:
    - Light estimation: disabled.
    - Update mode: latest camera image.
    - Focus: auto.
-   - Depth mode: **disabled** (v1.4). On phones without a depth sensor ARCore would otherwise run costly software depth.
+   - Depth mode: **AUTOMATIC where the phone supports it** (v1.5; it was disabled in v1.4 to save power). Plain painted walls rarely form a vertical plane, so without depth there was nothing to hit on them and points only locked on the floor. Cost on a Pixel 10a: about 117% of one core while tracking, against about 96% without. Off on phones that don't support it.
    - Instant Placement, cloud anchors, geospatial, Streetscape, augmented faces, semantics: disabled. Augmented images: none (empty database).
    - Camera config (v1.4): back camera, **30 fps**, depth sensor not used; the smallest GPU texture whose short side is at least 720 px (else the largest), then the smallest CPU image. The choice is logged.
 5. Resume the session. The start routine returns one of these outcomes:
@@ -318,10 +318,12 @@ Work runs only when ARCore delivers a **new camera image**, about 30 per second.
 - **Plane count:** the number of planes that are TRACKING and not subsumed by another plane. It is recounted every 10th new image, about 3 times a second, and is used for the hint and the warm-up.
 - **Reticle hit:** hit-test the **exact centre of the camera area**, then take, by priority (v1.1):
   1. the nearest Plane hit whose pose is inside the plane's polygon **and** whose plane faces the camera (the camera is on the side of the hit pose's +y normal), else
-  2. the nearest feature Point hit whose orientation mode is ESTIMATED_SURFACE_NORMAL, as a last resort.
+  2. (v1.5) the nearest **DepthPoint** hit: what a plain wall gives where no plane has formed.
+  3. the nearest feature Point hit whose orientation mode is ESTIMATED_SURFACE_NORMAL.
+  4. (v1.5) any other feature Point hit, as a last resort.
   If none qualifies, there is no reticle hit. Hit testing only runs while the camera is TRACKING (so never with a tracking failure reason).
 - **Smoothing (v1.4):** the drawn hit (live line end, live label, a projection's aim and turn) is an exponential moving average of the raw hits, moving **50%** of the way on each new image. A jump of more than **25 cm**, or a hit after no hit, is taken at once. Placement samples use the raw hits.
-- **Warm-up (v1.1):** before the first point of a measurement (or a projection's first tap), the session must have found at least one plane and the camera must have moved at least **8 cm** from where tracking began, for parallax. The camera position comes from the view matrix (−Rᵀt). Once warmed up, it stays so for the session. Until then the main button is disabled and the hint says why (§2.3).
+- **Warm-up (v1.1):** before the first point of a measurement (or a projection's first tap), the session must have found a surface (a plane anywhere or, v1.5, a hit under the reticle, so a wall with no plane still qualifies) and the camera must have moved at least **8 cm** from where tracking began, for parallax. The camera position comes from the view matrix (−Rᵀt). Once warmed up, it stays so for the session. Until then the main button is disabled and the hint says why (§2.3).
 - **Placing a point (v1.1):** a tap on the main button (enabled only with a reticle hit and, for a first point, after warm-up):
   - **Snap:** if a visible point's screen position is within **24 dp** of the reticle, the new point is anchored at that point's current pose (the nearest such point). Projections don't snap.
   - **Otherwise sample:** the reticle hit's position is recorded on each of the next new camera images until **6** samples are taken (about 200 ms), within at most 12 images. Tracking must hold throughout, or the placement is dropped. With at least 3 samples, the point is anchored at their **component-wise median**; with fewer, nothing is placed. Further taps are ignored while sampling.

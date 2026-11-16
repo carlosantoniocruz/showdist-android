@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.ar.core.Anchor
+import com.google.ar.core.Config
+import com.google.ar.core.DepthPoint
 import com.google.ar.core.Frame
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
@@ -17,7 +19,6 @@ import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
-import com.showconfigs.showdist.BuildConfig
 import kotlin.math.atan2
 import kotlin.math.abs
 import kotlin.math.cos
@@ -60,7 +61,7 @@ private const val SMOOTH_RESET_M = 0.25f
 private const val LIVE_AFTER_IMAGES = 2
 
 /** Which kind of surface a hit came from, in order of preference (SPEC.md §2.4). */
-private enum class HitKind { Plane, Point, Snap }
+private enum class HitKind { Plane, Depth, Point, Snap }
 
 /**
  * The hint line's text (SPEC.md §2.3). Hints about tracking or aiming ([tracking] true) are
@@ -644,9 +645,7 @@ class MeasureTracker {
             pointCount = anchors.size
         }
         logAnchors("placed")
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "placed: hit=$kind tracking=$state samples=$sampleCount spread=${"%.1f".format(spreadM * 1000)} mm")
-        }
+        Log.i(TAG, "placed: hit=$kind tracking=$state samples=$sampleCount spread=${(spreadM * 1000).toInt()} mm")
     }
 
     /**
@@ -776,7 +775,8 @@ class MeasureTracker {
 
     /**
      * Warm-up (SPEC.md §2.4): done once the camera has moved [WARM_UP_M] from where tracking
-     * began, giving ARCore some parallax, and at least one plane is found.
+     * began, giving ARCore some parallax to settle on, and it has found a surface: a plane
+     * anywhere, or a hit under the reticle.
      */
     private fun updateWarmUp() {
         if (warmedUp) return
@@ -793,7 +793,8 @@ class MeasureTracker {
         val dx = x - startCam[0]
         val dy = y - startCam[1]
         val dz = z - startCam[2]
-        if (planeCount > 0 && sqrt(dx * dx + dy * dy + dz * dz) >= WARM_UP_M) warmedUp = true
+        // A surface under the reticle will do where no plane has formed (a plain wall).
+        if ((planeCount > 0 || hasHit) && sqrt(dx * dx + dy * dy + dz * dz) >= WARM_UP_M) warmedUp = true
     }
 
     /**
@@ -884,11 +885,23 @@ class MeasureTracker {
     /** Planes that are tracking and not merged into another plane. */
     private fun countPlanes(session: Session): Int {
         var n = 0
+        var vertical = 0
         for (plane in session.getAllTrackables(Plane::class.java)) {
-            if (plane.trackingState == TrackingState.TRACKING && plane.subsumedBy == null) n++
+            if (plane.trackingState == TrackingState.TRACKING && plane.subsumedBy == null) {
+                n++
+                if (plane.type == Plane.Type.VERTICAL) vertical++
+            }
+        }
+        if (n != loggedPlanes || vertical != loggedVertical) {
+            loggedPlanes = n
+            loggedVertical = vertical
+            val c = session.config
+            Log.i(TAG, "planes: $n ($vertical vertical); config planes=${c.planeFindingMode} depth=${c.depthMode} instant=${c.instantPlacementMode}; depth supported=${session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)}")
         }
         return n
     }
+    private var loggedPlanes = -1
+    private var loggedVertical = -1
 
     /**
      * Drop references when the camera area leaves the screen. SceneView closes the session
@@ -905,14 +918,17 @@ class MeasureTracker {
 
     /**
      * The best hit from the screen centre, or null (SPEC.md §2.4): the nearest plane hit
-     * inside its polygon and seen from its front, else the nearest feature point with an
-     * estimated surface normal. Sets [lastHitKind]. ARCore's hitTest allocates its result
+     * inside its polygon and seen from its front (horizontal or vertical alike); else the
+     * nearest depth point, which is what a plain painted wall gives where no plane forms; else
+     * the nearest feature point, one with an estimated surface normal before one without. Sets [lastHitKind]. ARCore's hitTest allocates its result
      * list and poses; that's inherent to the API, and it runs once per camera image.
      */
     private fun centreSurfaceHit(frame: Frame): HitResult? {
         if (centerX == 0f || centerY == 0f) return null
         val hits = frame.hitTest(centerX, centerY)
+        var depth: HitResult? = null
         var point: HitResult? = null
+        var loosePoint: HitResult? = null
         for (i in hits.indices) {
             val hit = hits[i]
             when (val trackable = hit.trackable) {
@@ -920,11 +936,16 @@ class MeasureTracker {
                     lastHitKind = HitKind.Plane
                     return hit
                 }
-                is Point -> if (point == null && trackable.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL) point = hit
+                is DepthPoint -> if (depth == null) depth = hit
+                is Point -> if (trackable.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL) {
+                    if (point == null) point = hit
+                } else if (loosePoint == null) {
+                    loosePoint = hit
+                }
             }
         }
-        lastHitKind = HitKind.Point
-        return point
+        lastHitKind = if (depth != null) HitKind.Depth else HitKind.Point
+        return depth ?: point ?: loosePoint
     }
 
     /** True if the camera is on the side a plane hit's normal (its pose's +y) points to. */

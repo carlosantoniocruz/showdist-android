@@ -377,8 +377,8 @@ private fun MeasureArea(
         ) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
-                // Low-power setup (SPEC.md §2.1): 30 fps camera, plane finding only. Depth is
-                // off: on phones without a depth sensor it would run costly software depth.
+                // Low-power setup (SPEC.md §2.1): 30 fps camera, planes both ways. Depth is turned on
+                // below where the phone supports it: plain walls give no plane to hit without it.
                 sessionCameraConfig = ::modestCameraConfig,
                 planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL,
                 depthMode = Config.DepthMode.DISABLED,
@@ -390,9 +390,10 @@ private fun MeasureArea(
                 semanticMode = Config.SemanticMode.DISABLED,
                 updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE,
                 focusMode = Config.FocusMode.AUTO,
-                sessionConfiguration = { _, config ->
+                sessionConfiguration = { session, config ->
                     // Augmented images stay off: the config's image database is left empty.
                     config.lightEstimationMode = Config.LightEstimationMode.DISABLED
+                    if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) config.depthMode = Config.DepthMode.AUTOMATIC
                 },
                 // The spec draws no plane visualisation, only the camera feed and the overlay.
                 planeRenderer = false,
