@@ -243,6 +243,18 @@ The ARCore install prompt is shown only on the first attempt. Later attempts don
 - When the Measure screen is closed, stop and **close** the session. This discards all anchors and ARCore's map.
 - When the app returns to the foreground, restart the orientation listener. Retry the start routine only if the current problem is flagged to retry on resume.
 
+### 2.1a Pausing: covered, background, idle (v1.5, `measure/IdlePause.kt`)
+
+The session is **paused in place** (ARCore's `Session.pause()`, which stops tracking and closes the camera; the session object and its map are kept, so points survive) whenever Measure isn't in use, and resumed when it is again:
+
+- **Another page covers it** (the Leveler, History, Settings and everything under them): paused at once; resumed on return.
+- **The app goes to the background:** paused at once; resumed on return.
+- **Idle:** after **60 s** with no touch and no meaningful movement, checked every 5 s (nothing per frame). A touch is any pointer event on Measure. Movement is the camera travelling more than 3 cm while tracking, or the phone tilting more than 3° (the accelerometer's gravity, low-pass filtered at 0.1 per sample so a knock or a vibrating desk doesn't count). An open sheet or dialog (Saved, group name, line label) counts as use, and only foreground time counts.
+- **While idle-paused** the whole screen, bottom row included, is covered by black at 80% over the frozen camera view (a dim, not a blur: the AR view takes no blur effects) with one centred line, **"Tap to continue"** (20 sp, weight 300, textMuted), fading in over 600 ms. A tap anywhere resumes and does nothing else; it never reaches a control underneath. Leaving for another page clears the idle pause, so returning resumes directly.
+- The bar-orientation sensor (§2.9) stops with the session.
+
+Measured on a Pixel 10a (release build): camera clients `[]` and about 3.5% of one core while paused, against about 96% while tracking; memory level across ten cover-and-return cycles and three background cycles (459 → 457 → 452 MB PSS), same process throughout.
+
 ### 2.2 AR layout
 
 The screen is a vertical column:

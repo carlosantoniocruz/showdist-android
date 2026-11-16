@@ -74,6 +74,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
@@ -308,9 +310,31 @@ private fun MeasureArea(
     DisposableEffect(clearOnExit) { onDispose { if (clearOnExit) tracker.clear() } }
     // Each "View in AR" bumps the serial, so picking the same recording again restarts it.
     LaunchedEffect(projectionSerial) { projection?.let { tracker.startProjection(it.points, it.scale) } }
-    val sessionLifecycle = rememberCappedLifecycle(capped = covered)
-    val barRotation = rememberBarRotation(sessionLifecycle)
+    // The idle pause (SPEC.md §2.1a): about a minute with no touch and no meaningful movement
+    // pauses the session exactly as covering Measure does, which stops ARCore and hands the
+    // camera back; a tap resumes it. Leaving for another page clears it, so coming back resumes.
+    val idle = remember { IdleClock() }
+    var idlePaused by remember { mutableStateOf(false) }
+    if (covered && idlePaused) idlePaused = false
+    val sessionLifecycle = rememberCappedLifecycle(capped = covered || idlePaused)
+    val barRotation = rememberBarRotation(sessionLifecycle, onMotion = idle::touch)
     var saved by remember { mutableStateOf<Recording?>(null) }
+    // Reading a sheet or typing a name is using the app, though no touch reaches Measure.
+    val occupied by rememberUpdatedState(saved != null || group.naming || group.editingLine != null)
+    val appLifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(covered, idlePaused) {
+        if (covered || idlePaused) return@LaunchedEffect
+        idle.touch()
+        while (true) {
+            delay(IDLE_CHECK_MS)
+            // Only time spent in the foreground counts; the background pauses on its own.
+            if (occupied || !appLifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) idle.touch()
+            if (idle.idleMs(tracker.lastMotionNanos) >= IDLE_PAUSE_MS) {
+                idlePaused = true
+                break
+            }
+        }
+    }
     val holdToSave = rememberHoldToSave(
         tracker,
         enabled = !calibrating && !warmUpOpen,
@@ -337,7 +361,7 @@ private fun MeasureArea(
     val cornerRadiusPx = rememberScreenCornerRadius()
     // The top info column's bottom edge, so the SAVING pill can sit below it.
     var infoBottomPx by remember { mutableIntStateOf(0) }
-    Column(Modifier.fillMaxSize().then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx)) {
+    Column(Modifier.fillMaxSize().notesTouches(idle).then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx)) {
         Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { tracker.setViewSize(it.width, it.height) }) {
             ARSceneView(
                 modifier = Modifier.fillMaxSize(),
@@ -455,6 +479,8 @@ private fun MeasureArea(
             onBack = onBack,
         )
     }
+
+    IdlePauseOverlay(idlePaused && !covered, onResume = { idlePaused = false })
 
     saved?.let { MeasurementSheet("SAVED", it, units, onDismiss = { saved = null }) }
     if (grouping) GroupDialogs(group)

@@ -14,6 +14,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -25,6 +26,12 @@ import kotlin.math.sqrt
 private const val SAMPLE_PERIOD_US = 200_000 // ~5 Hz
 private const val FLAT_THRESHOLD = 3.0f // m/s²
 private const val RAD_TO_DEG = (180.0 / Math.PI).toFloat()
+
+/** A tilt of more than 3° counts as the phone being moved: cos 3°. */
+private const val MOTION_COS = 0.99863f
+
+/** Each sample moves the gravity estimate this far toward the reading. */
+private const val GRAVITY_SMOOTHING = 0.1f
 
 /**
  * Quarter-turns that keep the bar's small controls upright (SPEC.md §2.9): 0 upright,
@@ -42,9 +49,37 @@ private class BarOrientation(private val sensorManager: SensorManager) : SensorE
 
     fun stop() = sensorManager.unregisterListener(this)
 
+    /** Called when the phone has tilted more than [MOTION_DEG] from where it last counted (SPEC.md §2.1a). */
+    var onMotion: () -> Unit = {}
+    private var refX = 0f
+    private var refY = 0f
+    private var refZ = 0f
+    private var gX = 0f
+    private var gY = 0f
+    private var gZ = 0f
+
     override fun onSensorChanged(event: SensorEvent) {
         val x = event.values[0]
         val y = event.values[1]
+        // Gravity, low-pass filtered: a knock or a vibrating desk shakes the raw reading
+        // without the phone having been moved.
+        if (gX == 0f && gY == 0f && gZ == 0f) {
+            gX = x
+            gY = y
+            gZ = event.values[2]
+        } else {
+            gX += GRAVITY_SMOOTHING * (x - gX)
+            gY += GRAVITY_SMOOTHING * (y - gY)
+            gZ += GRAVITY_SMOOTHING * (event.values[2] - gZ)
+        }
+        val dot = gX * refX + gY * refY + gZ * refZ
+        val norms = sqrt((gX * gX + gY * gY + gZ * gZ) * (refX * refX + refY * refY + refZ * refZ))
+        if (norms == 0f || dot / norms < MOTION_COS) {
+            refX = gX
+            refY = gY
+            refZ = gZ
+            onMotion()
+        }
         if (sqrt(x * x + y * y) < FLAT_THRESHOLD) return
         val deg = atan2(x, y) * RAD_TO_DEG
         when {
@@ -60,13 +95,17 @@ private class BarOrientation(private val sensorManager: SensorManager) : SensorE
 /**
  * The bar controls' rotation in degrees (clockwise), animated over 250 ms ease-out.
  * The sensor listens only while [lifecycle] is resumed: not in the background, and not
- * while History covers Measure.
+ * while Measure is covered or paused. [onMotion] reports the phone being tilted, for the
+ * idle pause (SPEC.md §2.1a).
  */
 @Composable
-fun rememberBarRotation(lifecycle: Lifecycle): State<Float> {
+fun rememberBarRotation(lifecycle: Lifecycle, onMotion: () -> Unit = {}): State<Float> {
     val context = LocalContext.current
+    val currentOnMotion by rememberUpdatedState(onMotion)
     val orientation = remember {
-        BarOrientation(context.getSystemService(Context.SENSOR_SERVICE) as SensorManager)
+        BarOrientation(context.getSystemService(Context.SENSOR_SERVICE) as SensorManager).apply {
+            this.onMotion = { currentOnMotion() }
+        }
     }
     DisposableEffect(lifecycle, orientation) {
         val observer = LifecycleEventObserver { _, event ->

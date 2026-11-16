@@ -29,6 +29,8 @@ const val RETICLE_PERIOD_S = 11f
 /** Max points per measurement (SPEC.md §2.5). */
 const val MAX_POINTS = 24
 
+/** Camera travel that counts as the phone being moved: more than tracking jitter at rest. */
+private const val MOTION_M = 0.03f
 private const val NEAR_M = 0.05f
 private const val FAR_M = 100f
 
@@ -457,6 +459,7 @@ class MeasureTracker {
 
         if (tracking) {
             cameraPosition()
+            noteMotion()
             updateWarmUp()
         }
         updateWarmQuality(tracking, timestamp)
@@ -641,6 +644,25 @@ class MeasureTracker {
             }
         }
         return best
+    }
+
+    /**
+     * When the camera last moved meaningfully while tracking (System.nanoTime), for the idle
+     * pause (SPEC.md §2.1a): it has to leave a [MOTION_M] sphere round where it last counted.
+     */
+    var lastMotionNanos = System.nanoTime()
+        private set
+    private val motionRef = FloatArray(3)
+
+    private fun noteMotion() {
+        val dx = camPos[0] - motionRef[0]
+        val dy = camPos[1] - motionRef[1]
+        val dz = camPos[2] - motionRef[2]
+        if (dx * dx + dy * dy + dz * dz < MOTION_M * MOTION_M) return
+        motionRef[0] = camPos[0]
+        motionRef[1] = camPos[1]
+        motionRef[2] = camPos[2]
+        lastMotionNanos = System.nanoTime()
     }
 
     /** The camera's world position from the view matrix (−Rᵀt), so nothing is allocated. */
