@@ -133,7 +133,7 @@ private fun MeasureKindOption() {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
             for (k in MeasureKind.entries) {
                 DropdownMenuItem(
-                    text = { Text(label(k), style = Type.Label.copy(color = if (k == current) Palette.Sandstone else Palette.Text)) },
+                    text = { Text(label(k), style = Type.Label.copy(color = if (k == current) Palette.Accent else Palette.Text)) },
                     onClick = {
                         MeasureKindSetting.set(context, k)
                         open = false
@@ -144,7 +144,7 @@ private fun MeasureKindOption() {
     }
 }
 
-/** Which thumb the bottom rows are laid out for (SPEC.md §1.5); the selected radio is sandstone. */
+/** Which thumb the bottom rows are laid out for (SPEC.md §1.5); the selected radio is accent. */
 @Composable
 private fun HandOption(label: String, left: Boolean) {
     val context = LocalContext.current
@@ -153,7 +153,7 @@ private fun HandOption(label: String, left: Boolean) {
         Icon(
             if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Palette.Sandstone else Palette.TextMuted,
+            tint = if (selected) Palette.Accent else Palette.TextMuted,
         )
     }
 }
@@ -174,7 +174,7 @@ private fun VibrationOption() {
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Palette.Black,
-                checkedTrackColor = Palette.Sandstone,
+                checkedTrackColor = Palette.Accent,
                 uncheckedThumbColor = Palette.TextMuted,
                 uncheckedTrackColor = Palette.SurfaceHigh,
                 uncheckedBorderColor = Palette.TextMuted,
@@ -195,7 +195,7 @@ internal fun SectionTitle(title: String) {
     )
 }
 
-/** The selected radio is sandstone (SPEC.md §5). */
+/** The selected radio is accent (SPEC.md §5). */
 @Composable
 private fun UnitOption(label: String, value: UnitSystem, unitSettings: UnitSettings) {
     val selected = unitSettings.units == value
@@ -203,7 +203,7 @@ private fun UnitOption(label: String, value: UnitSystem, unitSettings: UnitSetti
         Icon(
             if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Palette.Sandstone else Palette.TextMuted,
+            tint = if (selected) Palette.Accent else Palette.TextMuted,
         )
     }
 }
@@ -239,7 +239,7 @@ internal fun SettingsRow(
     }
 }
 
-/** 1 dp sandstone divider (SPEC.md §1.5, §1.7). */
+/** 1 dp accent divider (SPEC.md §1.5, §1.7). */
 @Composable
 internal fun SettingsDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(modifier, thickness = 1.dp, color = Palette.Divider)

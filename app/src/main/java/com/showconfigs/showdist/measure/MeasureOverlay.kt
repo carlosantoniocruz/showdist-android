@@ -124,7 +124,7 @@ private class PointsPainter(private val density: Float) {
         strokeWidth = lineWidth
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        color = Palette.Cyan.toArgb()
+        color = Palette.Accent.toArgb()
     }
     private val lineBacking = Paint(line).apply {
         strokeWidth = lineWidth + backing
@@ -237,7 +237,7 @@ private class LabelPainter(context: Context, private val density: Float, fontSca
         strokeWidth = LABEL_BORDER_DP * density
     }
     // Border colours: cyan on the traced line's labels, neutral on the live and projected ones.
-    val segment = Palette.Cyan.toArgb()
+    val segment = Palette.Accent.toArgb()
     val live = Palette.LiveLine.toArgb()
     val projection = Palette.ProjectionLine.toArgb()
     private val metrics = text.fontMetrics

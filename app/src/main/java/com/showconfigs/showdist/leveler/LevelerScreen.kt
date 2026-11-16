@@ -115,7 +115,7 @@ fun LevelerScreen(mode: LevelerMode, onMode: (LevelerMode) -> Unit, onMeasure: (
                         "Zero: null against an uneven surface",
                         size = BottomRowCentre,
                         iconSize = 32.dp,
-                        tint = Palette.Sandstone,
+                        tint = Palette.Accent,
                     ) {
                         offset = sensor.readoutRoll
                         offsetX = sensor.readoutTiltX
@@ -224,7 +224,7 @@ private fun TickOnLevel(level: Boolean) {
 }
 
 /**
- * `|value|` to one decimal place and "°" (SPEC.md §4.2): bold, tabular, white, sandstone
+ * `|value|` to one decimal place and "°" (SPEC.md §4.2): bold, tabular, white, accent
  * when level; 96 sp for the tube, 72 sp for each of the bullseye's pair, readable from a
  * foot away.
  */
@@ -234,7 +234,7 @@ private fun Readout(tenths: Int, level: Boolean, modifier: Modifier = Modifier, 
         text = "${tenths / 10}.${tenths % 10}°",
         modifier = modifier,
         maxLines = 1,
-        style = Type.Readout.copy(color = if (level) Palette.Sandstone else Palette.Text, fontSize = size),
+        style = Type.Readout.copy(color = if (level) Palette.Accent else Palette.Text, fontSize = size),
     )
 }
 
@@ -244,6 +244,6 @@ private fun AxisLabel(axis: String) {
     Text(
         text = axis,
         modifier = Modifier.padding(end = 12.dp, bottom = 22.dp),
-        style = Type.Caption.copy(color = Palette.Sandstone, fontSize = 22.sp, letterSpacing = 0.sp),
+        style = Type.Caption.copy(color = Palette.Accent, fontSize = 22.sp, letterSpacing = 0.sp),
     )
 }

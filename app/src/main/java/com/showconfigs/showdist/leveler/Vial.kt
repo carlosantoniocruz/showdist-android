@@ -47,7 +47,7 @@ private val LabelGap = 14.dp
 /**
  * The bubble vial (SPEC.md §4.2), flat on black: a thin stadium outline along the long
  * axis of the space it's given, two centre marks, and a ruled scale down each side, a tick
- * per degree, with 5°, 10° and 15° labelled. The marks turn sandstone and the white bubble
+ * per degree, with 5°, 10° and 15° labelled. The marks turn accent and the white bubble
  * green when level.
  * [displayed] feeds the bubble's spring (SPEC.md §4.4), stepped once per display frame; the
  * vial redraws as it moves, without recomposing.
@@ -77,7 +77,7 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val d = displayed()
         val level = abs(d) <= LEVEL_THRESHOLD_DEG
-        val accent = if (level) Palette.Sandstone else Palette.White
+        val accent = if (level) Palette.Accent else Palette.White
         val vertical = size.height >= size.width
         val thickness = Thickness.toPx()
         val length = (if (vertical) size.height else size.width) - 2 * EndMargin.toPx()
@@ -128,7 +128,7 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
             }
         }
 
-        val markColor = if (level) Palette.Sandstone else Palette.Text.copy(alpha = 0.7f)
+        val markColor = if (level) Palette.Accent else Palette.Text.copy(alpha = 0.7f)
         val markWidth = (if (level) 3.dp else 1.5.dp).toPx()
         val mark = MarkOffset.toPx()
         val span = MarkHalfSpan.toPx()
@@ -145,6 +145,6 @@ fun Vial(displayed: () -> Float, modifier: Modifier = Modifier) {
         bubbleOutline.ellipse(bx, by, bubbleR, ux, uy, abs(physics.vx) * travel)
         bubbleOutline.keepInsideStadium(cx, cy, halfLength, halfThickness, vertical)
         val bubble = bubbleOutline.toPath()
-        drawPath(bubble, if (level) Palette.Level else Palette.White)
+        drawPath(bubble, if (level) Palette.Accent else Palette.White)
     }
 }

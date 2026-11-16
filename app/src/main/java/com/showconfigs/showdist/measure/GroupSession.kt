@@ -209,12 +209,12 @@ fun GroupBar(lines: Int, onDone: () -> Unit) {
                 .heightIn(min = 48.dp)
                 .clip(shape)
                 .background(Palette.Scrim, shape)
-                .border(BorderStroke(1.5.dp, Palette.Sandstone), shape)
+                .border(BorderStroke(1.5.dp, Palette.Accent), shape)
                 .clickable(role = Role.Button, onClick = onDone)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center,
         ) {
-            BasicText("Done", style = BaseText.copy(color = Palette.Sandstone, fontSize = 15.sp, fontWeight = FontWeight.Bold))
+            BasicText("Done", style = BaseText.copy(color = Palette.Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold))
         }
     }
 }
@@ -247,7 +247,7 @@ fun LineCard(group: GroupSession, units: UnitSystem, length: Double, modifier: M
             )
             BasicText(
                 if (label == null) "   Add label" else "   Edit",
-                style = BaseText.copy(color = Palette.Sandstone, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                style = BaseText.copy(color = Palette.Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -258,7 +258,7 @@ fun LineCard(group: GroupSession, units: UnitSystem, length: Double, modifier: M
     }
 }
 
-/** A tag choice: a 48 dp target around a small pill, sandstone when selected. */
+/** A tag choice: a 48 dp target around a small pill, accent when selected. */
 @Composable
 fun TagChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
@@ -274,12 +274,12 @@ fun TagChip(text: String, selected: Boolean, onClick: () -> Unit) {
             text,
             Modifier
                 .then(
-                    if (selected) Modifier.background(Palette.Sandstone, shape)
-                    else Modifier.border(BorderStroke(1.dp, Palette.Sandstone.copy(alpha = 0.6f)), shape),
+                    if (selected) Modifier.background(Palette.Accent, shape)
+                    else Modifier.border(BorderStroke(1.dp, Palette.Accent.copy(alpha = 0.6f)), shape),
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             style = BaseText.copy(
-                color = if (selected) Palette.Black else Palette.Sandstone,
+                color = if (selected) Palette.Black else Palette.Accent,
                 fontSize = 13.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             ),
@@ -342,8 +342,8 @@ fun NameDialog(
             textStyle = DialogText.Body,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Palette.Sandstone,
-                cursorColor = Palette.Sandstone,
+                focusedBorderColor = Palette.Accent,
+                cursorColor = Palette.Accent,
             ),
         )
     }

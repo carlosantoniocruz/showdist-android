@@ -62,7 +62,7 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Column(Modifier.readingColumn().padding(vertical = 8.dp)) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    Text("SHOWDIST", style = Type.Title.copy(color = Palette.Sandstone, letterSpacing = 3.sp))
+                    Text("SHOWDIST", style = Type.Title.copy(color = Palette.Accent, letterSpacing = 3.sp))
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "An AR tape measure and two levels: measure distances with the camera, " +
@@ -108,7 +108,7 @@ fun AboutScreen(onLicenses: () -> Unit, onBack: () -> Unit) {
 }
 
 /**
- * The developer's only contact (SPEC.md §1.6): the X logo in sandstone and the handle beside
+ * The developer's only contact (SPEC.md §1.6): the X logo in accent and the handle beside
  * it in JetBrains Mono, one tappable row (at least 48 dp tall, with a ripple when pressed)
  * that opens the profile in the X app or the browser.
  */
@@ -127,8 +127,8 @@ private fun XContactRow(onClick: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(ShowdistIcons.XLogo, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(18.dp))
+        Icon(ShowdistIcons.XLogo, contentDescription = null, tint = Palette.Accent, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
-        Text(X_HANDLE, style = Type.Label.copy(color = Palette.Sandstone))
+        Text(X_HANDLE, style = Type.Label.copy(color = Palette.Accent))
     }
 }

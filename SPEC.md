@@ -66,7 +66,7 @@ There is **no main menu** (v1.5; the orbital menu, its backdrop, guide paragraph
 
 ### 1.2a Dialogs (v1.4, `ui/ShowdistDialog.kt`)
 
-Every pop-up uses one compact style, with no wasted space: a card on Surface with 20 dp corners, at most 360 dp wide (24 dp kept clear at the screen's sides), padding 18 dp at the sides and 16 dp on top, an optional title with 10 dp under it, then the content, then the buttons right-aligned close beneath (text buttons: "Cancel"-style in grey, the confirming one in bold sandstone; 4 dp bottom padding). **Text follows the main menu's sizes** (the guide's 0.86 scale, §1.4): titles like a tool's name (Title × 0.86, about 18 sp, regular), everything else like its paragraph (Body × 0.86, about 14 sp): messages in grey, text fields, button labels, and the prompt's descriptions. The prompt's option names are bold sandstone at the title size, in buttons ≥56 dp tall. No icon slot. Used by the Chained/Group prompt ("How will you measure?"; its two buttons ≥64 dp, 8 dp apart), the group-name and line-label dialogs, and the delete confirmations in History and on a group's screen.
+Every pop-up is a **compact tray at the bottom of the screen** (v1.5), in the thumb zone: on Surface with a 1 dp hairline edge and **4 dp corners**, at most 360 dp wide, 16 dp from the sides and 24 dp above the bottom inset (it rises with the keyboard). Padding 16 dp at the sides and 14 dp on top, an optional title with 8 dp under it, the content, then the buttons along its bottom edge on the thumb side (right; left when left-handed): "Cancel"-style in grey, the confirming one in bold cyan. Text is a step below the screens' own (× 0.86): the title about 18 sp regular, everything else about 14 sp. Tapping outside dismisses. Used by the group-name and line-label dialogs and the delete confirmations. The snackbar is in the same colours (SurfaceHigh, white text, cyan action, 4 dp corners), and drop-down menus are Surface with 2 dp corners.
 
 ### 1.3 Launch screen
 
@@ -169,7 +169,7 @@ The same material is in the fun facts pool (§1.4) as ten short tips, shuffled w
   - Leading: a 44×44 **shape thumbnail** (§2.8), drawn in text, or sandstone when the row is selected.
   - Title: the total length (§2.5), 20 sp, weight 300, text.
   - Subtitle: "N points", 12 sp, textMuted. No date is shown anywhere.
-  - Trailing (normal mode): a share-menu button (§2.7).
+  - Trailing (normal mode): nothing (v1.5). Every action is at the bottom: long-press a row to select it, and the bottom bar offers Select all, Export PDF, Copy, Share and Delete (§1.2). Rows are compact: at least 64 dp tall, total at 22 sp.
   - Trailing (selection mode): `check_circle_rounded` in sandstone if selected, `circle_outlined` in textMuted if not, with 12 dp right padding.
   - A selected row is filled surfaceHigh.
 - **Normal mode:**
@@ -404,7 +404,7 @@ Laid out as the shared bottom row (§1.1a, v1.5): 8 dp, the 68 dp slot, then the
 | 6 | Clear | `close_rounded`, "Clear all points". Also removes a projection. Disabled like Undo. |
 | 7 | Settings | `settings_outlined`, 20 dp in a 48 dp target; the smallest icon, at the edge. Opens Settings (pausing the session). Hidden in a task. |
 
-- The icon buttons are bare 24 dp icons in 48 dp round hit areas, text at alpha 0.9 enabled and 0.3 disabled. Held sideways the whole row moves to the long edge (§2.9); controls never turn individually.
+- The icon buttons are bare 24 dp icons in 48 dp round hit areas, text at alpha 0.9 enabled and 0.3 disabled. Held sideways each small control turns in its slot (§2.9); the row itself never moves.
 - In a **task** (§1.1) the navigation side holds only a sandstone Back arrow at the edge.
 - The unit toggle is no longer in the bar: it sits just above it, by the live readout (§2.2).
 - While the camera is waking or a Problem view shows, the row is still there (capture, Undo and Clear disabled), so the Leveler, History and Settings stay one tap away.
@@ -446,6 +446,9 @@ Laid out as the shared bottom row (§1.1a, v1.5): 8 dp, the 68 dp slot, then the
 **Leaving the screen** discards any unsaved points without warning.
 
 ### 2.7 Recordings, persistence, sheets, sharing
+
+**The measurement tray (v1.5).** The sheet shown after a save ("SAVED") and from History ("MEASUREMENT") is a compact tray: Surface, 4 dp top corners, no drag handle, at most 80% of the screen. Caption, the total (34 sp at most, one line), the counts line, then the segments in tight rows (they scroll if they must). Its actions are pinned along its bottom edge under a hairline, spread evenly, least to most important toward the thumb (mirrored when left-handed): **Done** (grey), **Copy**, **Share**, and from History **View in AR** (bold cyan); each an optional 18 dp icon and a 14 sp label in a 48 dp tall target. Where the older text below describes stacked full-width buttons, this replaces it.
+
 
 **Recording** fields:
 - `id`: the creation time in microseconds since the epoch, as a string.
@@ -531,12 +534,12 @@ The activity stays portrait, always; the system never rotates the app. One handl
 - a seen orientation must **hold for 400 ms** before the value changes, once. The first reading after the screen appears is taken at once.
 It listens only while its screen is resumed and not covered or idle-paused. The same filtered gravity reports movement for the idle pause (§2.1a).
 
-**Measure, held sideways.** Everything moves once, with no animation and no per-control turning:
-- the **bottom row** (§2.6) moves whole to the long edge now at the bottom (the screen's left side at +1, right side at −1), laid out along the screen's height and turned to read upright, 16 dp clear of the edge, opted out of the back swipe there; the camera area takes the rest of the screen (the AR view is resized, not recreated);
-- the **foot stack** (§2.2: prompts, the live readout or summary pill, unit toggle, group Done) turns as one and sits at the **bottom centre of the view as held**, beside the row; the readout fits the long side (less 48 dp, at most 340 dp);
-- the **top column** (tracking pill, hint, SAVING) turns as one and sits at the top centre of the view as held, the edge opposite the row;
-- distance labels turn about their own centres over 250 ms to the settled orientation (§3.3); "Tap to continue" turns too.
-The readout is one element in one place per orientation, so it can't sputter between two positions part-way through a turn.
+**Measure, held sideways.** The bottom row **never moves**: it stays along the screen's bottom edge, and the camera area keeps its size.
+- Each small control in the row turns in its own slot to read upright, once, over 250 ms, when the orientation settles; the round capture button needs no turning.
+- The **foot stack** (§2.2: prompts, the live readout or summary pill, unit toggle, group Done) turns as one and sits at the **bottom centre of the view as held** (the middle of the long edge now lowest), not in a leftover portrait position; the readout fits the long side (less 48 dp, at most 340 dp).
+- The **top column** (tracking pill, hint, SAVING) turns as one and sits at the top centre of the view as held, the opposite long edge.
+- Distance labels turn about their own centres over 250 ms (§3.3); "Tap to continue" turns too.
+The readout is one element in one place per orientation, so it can't sputter between two positions part-way through a turn. (Moving the whole row to the long edge was tried and rejected by the user on 15 Nov 2026.)
 
 **Tube level.** The whole screen is laid out with width and height swapped and turned, inside the system's safe-drawing insets, with its title bar dropped (§4.1). The bullseye lies flat and never turns.
 
@@ -772,7 +775,7 @@ Both levelers share this.
 
 ## 5. Colour palette
 
-The palette is fixed and app-wide: black, white and light-grey text, and a single warm accent, **sandstone**. Readability is the goal; every text/background pair meets WCAG AA (4.5:1 body, 3:1 large). There is one theme only; no light/dark modes. `ui/Theme.kt` sets every Material 3 colour role from this palette, so dialogs, menus, snackbars and tooltips inherit it and no default Material colour appears anywhere. The PDF report (§2.12) is monochrome and doesn't use it.
+The palette is fixed and app-wide (v1.5): **true black**, white as the neutral for text, numbers and the reticle dot, and **one accent, cyan**, defined once (`Palette.Accent`) and used everywhere an accent is wanted. Peach red is the capture button's alone. Hairline dividers, minimal rounding (2 dp menus, 4 dp trays and dialogs), no gradients, no shadows, no blur. `ui/Theme.kt` sets every Material 3 colour role and shape from it, so no default Material look appears anywhere. The PDF report (§2.12) is monochrome and doesn't use it. Where older sections below still say "sandstone", read cyan: sandstone (#C8A97E) was the accent until v1.5.
 
 | Token | Hex | Used for |
 |---|---|---|
@@ -782,11 +785,9 @@ The palette is fixed and app-wide: black, white and light-grey text, and a singl
 | **text** | `#FFFFFF` | Primary text, titles, bar icons, the Leveler readout, centre marks (alpha 0.7) and bubble. |
 | **textMuted** | `#B8B8B8` | Secondary text: descriptions, captions, subtitles, guide steps, empty states, dialog bodies, cancel buttons; chevrons, unselected radios and moon rings. |
 | **white** | `#FFFFFF` | Over the camera: the reticle centre dot, live line, label text, hint, running total, charge arc. Leveler ticks (alpha variants). |
-| **sandstone** | `#C8A97E` | The only accent (the Material primary, secondary, tertiary and error): the sun and its shell, the focused moon's ring and every moon picture, the menu's History and Settings buttons, the guide's tool name and bullets, the main button, "View in AR", selection in History, "Delete", radios, "level" on the Leveler (marks, ring, readout, axis letters; not the bubble), headings in About and License detail, the Licenses spinner, the Problem view, the app-icon rule. |
-| **divider** | sandstone at 35% (`#59C8A97E`) | Dividers in Settings (including About), Licenses and History. |
+| **accent (cyan)** | `#00E5FF` | The only accent (the Material primary, secondary, tertiary and error): the traced line, its labels' border and the reticle's lock (§3); selected states and the mode switcher; confirming buttons, "View in AR", radios and switches; back arrows; the Leveler's level cue; headings in About and License detail. 13.7:1 on black. |
+| **divider** | white at 16% (`#29FFFFFF`) | Hairline dividers everywhere: Settings, Licenses, History, trays. |
 | **line** | white at 30% (`#4DFFFFFF`) | Outlines that should read but stay quiet: the Leveler vial, dish, rings, crosshairs and scale lines, the orbit, the control bar's top rule, outlined-button borders. |
-| **level green** | `#3DDC84` | The Leveler bubble when level, and nothing else (11.8:1 on black). |
-| **cyan** | `#00E5FF` | **The one accent over the camera (v1.5):** the traced measurement line, its labels' border, and the reticle's locked ring, whatever the unit system (§3). Never used elsewhere. |
 | **capture** | `#FB5628` | The capture button in Measure's bottom row, and nothing else (§2.6). |
 
 **AR marks** (v1.5): white points and reticle dot, the cyan traced line, a white dashed live line, and a grey (`#B8B8B8`) projected recording. Crimson and the unit-coloured schemes (Supernova, Comet) are gone: the unit system is never shown by colour.

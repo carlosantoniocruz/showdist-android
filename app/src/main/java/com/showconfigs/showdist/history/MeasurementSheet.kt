@@ -1,5 +1,16 @@
 package com.showconfigs.showdist.history
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.LayoutDirection
+import com.showconfigs.showdist.settings.HandSetting
+import com.showconfigs.showdist.ui.Corner
+import com.showconfigs.showdist.ui.DialogText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,62 +116,70 @@ fun MeasurementSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Palette.Surface,
+        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
+        dragHandle = null,
     ) {
-        Column(
-            Modifier
-                .heightIn(max = maxHeight)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 20.dp),
-        ) {
-            Text(title, style = Type.Caption.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Start))
-            Spacer(Modifier.height(10.dp))
-            Text(
-                DistanceFormat.format(recording.total, units),
-                style = Type.ValueLarge,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(recording.countsLine(), style = Type.Secondary)
-            Spacer(Modifier.height(18.dp))
-            recording.segments.forEachIndexed { i, length ->
-                Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", Modifier.width(40.dp), style = Type.Secondary.copy(fontFeatureSettings = FEATURES_TABULAR))
-                    Text(
-                        DistanceFormat.format(length, units),
-                        style = Type.Label.copy(fontFeatureSettings = FEATURES_TABULAR),
-                    )
+        // A compact tray (SPEC.md §2.7): the figures scroll if they must; the actions stay
+        // pinned along its bottom edge, in the thumb zone.
+        Column(Modifier.heightIn(max = maxHeight)) {
+            Column(
+                Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
+            ) {
+                Text(title, style = Type.Caption.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Start))
+                Spacer(Modifier.height(6.dp))
+                Text(DistanceFormat.format(recording.total, units), style = Type.ValueLarge, maxLines = 1)
+                Text(recording.countsLine(), style = Type.Secondary)
+                Spacer(Modifier.height(10.dp))
+                recording.segments.forEachIndexed { i, length ->
+                    Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}", Modifier.width(36.dp), style = Type.Secondary.copy(fontFeatureSettings = FEATURES_TABULAR))
+                        Text(DistanceFormat.format(length, units), style = Type.Label.copy(fontFeatureSettings = FEATURES_TABULAR))
+                    }
                 }
             }
-            Spacer(Modifier.height(18.dp))
-            if (onViewInAr != null && recording.points.size >= 2) {
-                Button(
-                    onClick = { closeThen(onViewInAr) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Sandstone, contentColor = Palette.Black),
-                ) { Text("View in AR", style = Type.Label.copy(color = Palette.Black, fontWeight = FontWeight.Bold)) }
-                Spacer(Modifier.height(8.dp))
-            }
-            OutlinedButton(
-                onClick = { closeThen { export.share(listOf(recording)) } },
-                modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.dp, Palette.Line),
-            ) { IconLabel(ShowdistIcons.IosShare, "Share", Palette.Text) }
-            Spacer(Modifier.height(4.dp))
-            TextButton(onClick = { closeThen { export.copy(listOf(recording)) } }, modifier = Modifier.fillMaxWidth()) {
-                IconLabel(ShowdistIcons.ContentCopy, "Copy text", Palette.Text)
-            }
-            TextButton(onClick = { closeThen {} }, modifier = Modifier.fillMaxWidth()) {
-                Text("Done", style = Type.Label.copy(color = Palette.TextMuted))
+            HorizontalDivider(thickness = 1.dp, color = Palette.Divider)
+            // Written least to most important; the last sits under the thumb (mirrored when left-handed).
+            CompositionLocalProvider(
+                LocalLayoutDirection provides if (HandSetting.leftHanded) LayoutDirection.Rtl else LayoutDirection.Ltr,
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SheetAction("Done", null, Palette.TextMuted) { closeThen {} }
+                    SheetAction("Copy", ShowdistIcons.ContentCopy, Palette.Text) { closeThen { export.copy(listOf(recording)) } }
+                    SheetAction("Share", ShowdistIcons.IosShare, Palette.Text) { closeThen { export.share(listOf(recording)) } }
+                    if (onViewInAr != null && recording.points.size >= 2) {
+                        SheetAction("View in AR", null, Palette.Accent, bold = true) { closeThen(onViewInAr) }
+                    }
+                }
             }
         }
     }
 }
 
+/** One action along a tray's bottom edge: an optional icon and a label in a 48 dp tall target. */
 @Composable
-private fun IconLabel(icon: ImageVector, label: String, color: androidx.compose.ui.graphics.Color) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, style = Type.Label.copy(color = color))
+private fun SheetAction(label: String, icon: ImageVector?, color: androidx.compose.ui.graphics.Color, bold: Boolean = false, onClick: () -> Unit) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            Modifier
+                .heightIn(min = 48.dp)
+                .clip(Corner)
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(label, style = DialogText.Button.copy(color = color, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal))
+        }
     }
 }
 
@@ -174,7 +193,7 @@ fun ShareMenuButton(enabled: Boolean, onShare: () -> Unit, onCopy: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
             tooltip = { PlainTooltip { Text("Share or copy") } },
             state = rememberTooltipState(),
         ) {
@@ -201,7 +220,7 @@ private fun MenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(label, style = Type.Label) },
         leadingIcon = {
-            Icon(icon, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = Palette.Accent, modifier = Modifier.size(20.dp))
         },
         onClick = onClick,
     )

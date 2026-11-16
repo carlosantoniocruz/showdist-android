@@ -82,7 +82,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
                 val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
                 drawArc(Palette.White.copy(alpha = 0.2f), 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
                 drawArc(
-                    if (full) Palette.Level else Palette.Sandstone,
+                    if (full) Palette.Accent else Palette.Accent,
                     -90f,
                     360f * (if (full) 1f else fill),
                     false,
@@ -98,7 +98,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
             Modifier
                 .heightIn(min = 48.dp)
                 .clip(shape)
-                .border(BorderStroke(1.5.dp, if (full) Palette.Sandstone else Palette.Sandstone.copy(alpha = 0.35f)), shape)
+                .border(BorderStroke(1.5.dp, if (full) Palette.Accent else Palette.Accent.copy(alpha = 0.35f)), shape)
                 .clickable(enabled = full, role = Role.Button, onClick = onDone)
                 .padding(horizontal = 32.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center,
@@ -106,7 +106,7 @@ fun WarmUpOverlay(quality: () -> Float, onDone: () -> Unit, modifier: Modifier =
             BasicText(
                 "Done",
                 style = Type.Label.copy(
-                    color = if (full) Palette.Sandstone else Palette.Sandstone.copy(alpha = 0.35f),
+                    color = if (full) Palette.Accent else Palette.Accent.copy(alpha = 0.35f),
                     fontWeight = FontWeight.Bold,
                 ),
             )
@@ -123,12 +123,12 @@ fun WarmUpPrompt(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .heightIn(min = 48.dp)
             .clip(shape)
             .background(Palette.Scrim, shape)
-            .border(BorderStroke(1.dp, Palette.Sandstone), shape)
+            .border(BorderStroke(1.dp, Palette.Accent), shape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "Tracking is struggling. Warm up tracking" }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText("Warm up tracking", style = BaseText.copy(color = Palette.Sandstone, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+        BasicText("Warm up tracking", style = BaseText.copy(color = Palette.Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold))
     }
 }

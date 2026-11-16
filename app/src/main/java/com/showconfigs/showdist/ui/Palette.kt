@@ -3,9 +3,10 @@ package com.showconfigs.showdist.ui
 import androidx.compose.ui.graphics.Color
 
 /**
- * Fixed app palette (SPEC.md §5): black screens, white and light-grey text, and one accent,
- * sandstone. Every text/background pair clears WCAG AA. Over the camera there is one accent
- * too, cyan; the unit system is shown only in words.
+ * The fixed app palette (SPEC.md §5): true black screens, white as the neutral for text,
+ * numbers and the reticle dot, and ONE accent, cyan, defined once as [Accent] and used
+ * everywhere an accent is wanted. Peach red is the capture button's alone. No gradients, no
+ * Material baseline colours; every text/background pair clears WCAG AA.
  */
 object Palette {
     val Black = Color(0xFF000000)
@@ -13,8 +14,8 @@ object Palette {
     /** Dialogs, sheets and menus: a hair off black, so they read as raised. */
     val Surface = Color(0xFF121212)
 
-    /** Filled controls and the selected-row tint on black, slightly warm. */
-    val SurfaceHigh = Color(0xFF1E1C19)
+    /** Filled controls and the selected-row tint on black. */
+    val SurfaceHigh = Color(0xFF1C1C1C)
 
     /** Quiet instructions, a step below [TextMuted]: 5.8:1 on black. */
     val Hint = Color(0xFF8A8A8A)
@@ -26,31 +27,23 @@ object Palette {
     val TextMuted = Color(0xFFB8B8B8)
     val White = Color(0xFFFFFFFF)
 
-    /** The accent: selected states, highlights, icons. 9.4:1 on black; black text on it is 9.4:1 too. */
-    val Sandstone = Color(0xFFC8A97E)
+    /**
+     * The one accent, cyan: the traced measurement line and the reticle's lock, selected
+     * states, the confirming button, switches, the Leveler's level cue. 13.7:1 on black;
+     * black text on it reads the same. Bright enough to hold up in sunlight.
+     */
+    val Accent = Color(0xFF00E5FF)
 
-    /** Dividers and quiet sandstone rules. */
-    val Divider = Color(0x59C8A97E)
+    /** Hairline dividers: white at 16%. */
+    val Divider = Color(0x29FFFFFF)
 
     /** Neutral outlines that should read, but stay quiet (vial, bullseye, buttons). */
     val Line = Color(0x4DFFFFFF)
 
-    /** The Leveler's bubble once level, and nothing else: 11.8:1 on black. */
-    val Level = Color(0xFF3DDC84)
-
-    /** The tracking pill's dot while tracking is lost or too dark: soft coral, apart from [Crimson]. */
-    val Attention = Color(0xFFFF8A65)
-
     /** The capture button in Measure's bottom row, and nothing else: peach red. */
     val Capture = Color(0xFFFB5628)
 
-    /**
-     * The one accent over the camera (SPEC.md §3): the traced measurement line and the
-     * reticle's locked ring, whatever the unit system.
-     */
-    val Cyan = Color(0xFF00E5FF)
-
-    /** The live (dashed) line and its label's border: neutral, so cyan stays the only accent. */
+    /** The live (dashed) line and its label's border: neutral, so the accent stays the only colour. */
     val LiveLine = Color(0xFFFFFFFF)
 
     /** A saved measurement projected into the view (SPEC.md §2.11): neutral grey, apart from the user's own line. */
@@ -62,6 +55,6 @@ object Palette {
     /** Behind every piece of live text over the camera feed (SPEC.md §3.3). */
     val Scrim = Color(0xB8000000)
 
-    /** The dark halo behind the reticle and other marks over the camera (SPEC.md §3.1). */
+    /** The dark edge under the hold-to-save band (SPEC.md §2.6). */
     val Halo = Color(0x99000000)
 }

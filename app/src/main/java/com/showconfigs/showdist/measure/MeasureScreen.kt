@@ -326,7 +326,7 @@ private fun MeasureArea(
     // How the phone is held (SPEC.md §2.9): the one shared handler, settled and free of flicker.
     val orientation = rememberDeviceOrientation(sessionLifecycle, onMotion = idle::touch)
     val turns = orientation.quarterTurns
-    // The overlay's labels turn smoothly to the settled orientation; nothing else animates.
+    // Labels and bar buttons turn once, smoothly, to the settled orientation.
     val barRotation = animateFloatAsState(turns * 90f, tween(250), label = "labelRotation")
     var saved by remember { mutableStateOf<Recording?>(null) }
     // Reading a sheet or typing a name is using the app, though no touch reaches Measure.
@@ -362,29 +362,19 @@ private fun MeasureArea(
     )
 
     val cornerRadiusPx = rememberScreenCornerRadius()
-    // Camera area and bottom row (SPEC.md §2.2, §2.9). Upright, the row is along the bottom;
-    // held sideways it moves, whole, to the long edge that is now at the bottom, and the
-    // camera area takes the rest. One layout places both, so the AR view is never recreated.
+    // Camera area above, bottom row below (SPEC.md §2.2), whichever way the phone is held: the
+    // row never moves. Held sideways only its buttons, and the text over the camera, turn
+    // to read upright (SPEC.md §2.9).
     Layout(
         modifier = Modifier.fillMaxSize().notesTouches(idle).then(holdToSave.modifier).edgeProgress(holdToSave::charge, cornerRadiusPx),
         measurePolicy = { measurables, constraints ->
-            val loose = constraints.copy(minWidth = 0, minHeight = 0)
             val w = constraints.maxWidth
             val h = constraints.maxHeight
-            val bar = measurables[1].measure(loose)
-            if (turns == 0) {
-                val area = measurables[0].measure(Constraints.fixed(w, (h - bar.height).coerceAtLeast(0)))
-                layout(w, h) {
-                    area.place(0, 0)
-                    bar.place(0, h - bar.height)
-                }
-            } else {
-                val area = measurables[0].measure(Constraints.fixed((w - bar.width).coerceAtLeast(0), h))
-                // Resting on its left edge (+1), the bottom is the screen's left side.
-                layout(w, h) {
-                    area.place(if (turns > 0) bar.width else 0, 0)
-                    bar.place(if (turns > 0) 0 else w - bar.width, 0)
-                }
+            val bar = measurables[1].measure(constraints.copy(minWidth = 0, minHeight = 0))
+            val area = measurables[0].measure(Constraints.fixed(w, (h - bar.height).coerceAtLeast(0)))
+            layout(w, h) {
+                area.place(0, 0)
+                bar.place(0, h - bar.height)
             }
         },
         content = {
@@ -466,7 +456,8 @@ private fun MeasureArea(
             // Everything tappable in the camera area sits at its foot, just above the bottom
             // row (SPEC.md §2.2): prompts, the live readout (the summary pill), then the unit
             // toggle and, in a group, its line count and Done. Held sideways the whole stack
-            // turns as one and sits at the bottom centre of the view as it is then held.
+            // turns as one and sits at the bottom centre of the view as it is then held (the
+            // long edge now lowest), not in a leftover portrait position.
             Column(
                 Modifier
                     .align(viewBottom(turns))
@@ -498,7 +489,7 @@ private fun MeasureArea(
             onHistory = onHistory,
             onSettings = onSettings,
             onBack = onBack,
-            turns = turns,
+            rotation = { barRotation.value },
         )
         },
     )
@@ -592,7 +583,7 @@ private val EDGE_WIDTH = 6.dp
 private val EDGE_HALO = 3.dp
 
 /**
- * The hold-to-save progress (SPEC.md §2.6): while [charge] is above 0, a sandstone band runs clockwise round the screen's edge from top centre, following
+ * The hold-to-save progress (SPEC.md §2.6): while [charge] is above 0, a accent band runs clockwise round the screen's edge from top centre, following
  * the display's rounded corners ([cornerRadiusPx]), over a dim track and a dark halo.
  * The paths are built once per size; [charge] is read only while drawing.
  */
@@ -630,7 +621,7 @@ private fun Modifier.edgeProgress(charge: () -> Float, cornerRadiusPx: Float) = 
         measure.getSegment(0f, length * c, done, true)
         drawPath(outline, track, style = bandStroke)
         drawPath(done, Palette.Halo, style = haloStroke)
-        drawPath(done, Palette.Sandstone, style = bandStroke)
+        drawPath(done, Palette.Accent, style = bandStroke)
     }
 }
 
@@ -708,7 +699,7 @@ private fun ProblemView(problem: StartState.Problem, onAction: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(ShowdistIcons.ErrorOutline, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(48.dp))
+        Icon(ShowdistIcons.ErrorOutline, contentDescription = null, tint = Palette.Accent, modifier = Modifier.size(48.dp))
         Spacer(Modifier.height(24.dp))
         BasicText(
             text = problem.title,
@@ -741,10 +732,10 @@ private fun OutlinedTextButton(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .border(BorderStroke(1.dp, Palette.Sandstone), shape)
+            .border(BorderStroke(1.dp, Palette.Accent), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 10.dp),
     ) {
-        BasicText(label, style = Type.Label.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
+        BasicText(label, style = Type.Label.copy(color = Palette.Accent, fontWeight = FontWeight.Bold))
     }
 }

@@ -155,7 +155,7 @@ fun ActionBar(actions: @Composable RowScope.() -> Unit) {
     }
 }
 
-/** The back control itself: a bare sandstone arrow in a 56 dp round touch target. */
+/** The back control itself: a bare accent arrow in a 56 dp round touch target. */
 @Composable
 fun BackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     Box(
@@ -166,6 +166,6 @@ fun BackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
             .semantics { contentDescription = "Back" },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(ShowdistIcons.ArrowBack, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(30.dp))
+        Icon(ShowdistIcons.ArrowBack, contentDescription = null, tint = Palette.Accent, modifier = Modifier.size(30.dp))
     }
 }

@@ -87,7 +87,7 @@ fun CalibrateScaleScreen(units: UnitSystem, onMeasure: () -> Unit, onBack: () ->
                 Icon(
                     if (selected) ShowdistIcons.RadioButtonChecked else ShowdistIcons.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (selected) Palette.Sandstone else Palette.TextMuted,
+                    tint = if (selected) Palette.Accent else Palette.TextMuted,
                 )
             }
         }
@@ -105,9 +105,9 @@ fun CalibrateScaleScreen(units: UnitSystem, onMeasure: () -> Unit, onBack: () ->
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 textStyle = Type.Label,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Palette.Sandstone,
-                    focusedLabelColor = Palette.Sandstone,
-                    cursorColor = Palette.Sandstone,
+                    focusedBorderColor = Palette.Accent,
+                    focusedLabelColor = Palette.Accent,
+                    cursorColor = Palette.Accent,
                 ),
             )
         }
@@ -232,14 +232,14 @@ private fun Result(text: String, ok: Boolean) {
     Text(
         text,
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        style = Type.Label.copy(color = if (ok) Palette.Sandstone else Palette.Attention, fontWeight = FontWeight.Bold),
+        style = Type.Label.copy(color = if (ok) Palette.Accent else Palette.Text, fontWeight = FontWeight.Bold),
     )
 }
 
 @Composable
 private fun PrimaryButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
-    val color = if (enabled) Palette.Sandstone else Palette.Sandstone.copy(alpha = 0.35f)
+    val color = if (enabled) Palette.Accent else Palette.Accent.copy(alpha = 0.35f)
     Box(
         Modifier
             .heightIn(min = 48.dp)

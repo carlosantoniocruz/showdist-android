@@ -165,7 +165,7 @@ private fun FormulaRow(f: Formula, measurer: TextMeasurer) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(f.name, style = Type.Label.copy(fontWeight = FontWeight.Bold))
-            Text(f.formula, style = Type.Label.copy(color = Palette.Sandstone))
+            Text(f.formula, style = Type.Label.copy(color = Palette.Accent))
             Spacer(Modifier.height(2.dp))
             Text(f.example, style = Type.Secondary)
         }

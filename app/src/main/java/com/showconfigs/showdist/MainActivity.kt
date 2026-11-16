@@ -19,7 +19,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
+import com.showconfigs.showdist.ui.Corner
+import com.showconfigs.showdist.ui.Palette
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -230,7 +233,16 @@ private fun ShowdistApp() {
                 Screen.Licenses -> LicensesScreen(onOpen = { push(Screen.LicenseDetail, it) }, onBack = ::pop)
                 Screen.LicenseDetail -> LicenseDetailScreen(top.arg, onBack = ::pop)
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+            // The snackbar in the app's own colours, not Material's inverse surface.
+            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { data ->
+                Snackbar(
+                    data,
+                    shape = Corner,
+                    containerColor = Palette.SurfaceHigh,
+                    contentColor = Palette.Text,
+                    actionColor = Palette.Accent,
+                )
+            }
         }
     }
 }

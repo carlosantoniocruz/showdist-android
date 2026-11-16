@@ -42,9 +42,10 @@ private const val FADE_IN_MS = 250
 private const val FADE_OUT_MS = 600
 
 private fun TrackingStatus.dot(): Color = when (this) {
-    TrackingStatus.Ready -> Palette.Level
-    TrackingStatus.Lost, TrackingStatus.TooDark, TrackingStatus.CameraUnavailable -> Palette.Attention
-    else -> Palette.Sandstone
+    // One accent only: cyan when ready, white when tracking has failed, grey while it settles.
+    TrackingStatus.Ready -> Palette.Accent
+    TrackingStatus.Lost, TrackingStatus.TooDark, TrackingStatus.CameraUnavailable -> Palette.White
+    else -> Palette.Hint
 }
 
 /**

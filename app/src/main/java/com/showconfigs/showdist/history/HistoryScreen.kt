@@ -165,8 +165,6 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGrou
                         isSelected = entry.id in selected,
                         onClick = { if (selecting) toggle(entry.id) else onOpenGroup(entry.id) },
                         onLongClick = ::longPress,
-                        onShare = { export.shareEntries(listOf(entry)) },
-                        onCopy = { export.copyEntries(listOf(entry)) },
                     )
                     return@itemsIndexed
                 }
@@ -185,8 +183,6 @@ fun HistoryScreen(units: UnitSystem, onViewInAr: (Recording) -> Unit, onOpenGrou
                             selected = setOf(recording.id)
                         }
                     },
-                    onShare = { export.share(listOf(recording)) },
-                    onCopy = { export.copy(listOf(recording)) },
                 )
             }
         }
@@ -230,22 +226,20 @@ private fun HistoryRow(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onShare: () -> Unit,
-    onCopy: () -> Unit,
 ) {
-    val accent = if (isSelected) Palette.Sandstone else Palette.Text
+    val accent = if (isSelected) Palette.Accent else Palette.Text
     Row(
         Modifier
             .fillMaxWidth()
             .background(if (isSelected) Palette.SurfaceHigh else Palette.Black)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .heightIn(min = 80.dp)
+            .heightIn(min = 64.dp)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ShapeThumbnail(recording, accent)
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+        Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
             Text(
                 DistanceFormat.format(recording.total, units),
                 style = Type.Value,
@@ -256,11 +250,9 @@ private fun HistoryRow(
             Icon(
                 if (isSelected) ShowdistIcons.CheckCircle else ShowdistIcons.CircleOutlined,
                 contentDescription = if (isSelected) "Selected" else "Not selected",
-                tint = if (isSelected) Palette.Sandstone else Palette.TextMuted,
+                tint = if (isSelected) Palette.Accent else Palette.TextMuted,
                 modifier = Modifier.padding(end = 12.dp),
             )
-        } else {
-            ShareMenuButton(enabled = true, onShare = onShare, onCopy = onCopy)
         }
     }
 }
@@ -277,22 +269,20 @@ private fun GroupRow(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onShare: () -> Unit,
-    onCopy: () -> Unit,
 ) {
-    val accent = if (isSelected) Palette.Sandstone else Palette.Text
+    val accent = if (isSelected) Palette.Accent else Palette.Text
     Row(
         Modifier
             .fillMaxWidth()
             .background(if (isSelected) Palette.SurfaceHigh else Palette.Black)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .heightIn(min = 80.dp)
+            .heightIn(min = 64.dp)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GroupThumbnail(group, accent)
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+        Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
             Text(group.name, style = Type.Value.copy(fontSize = Type.Value.fontSize * 0.85f), maxLines = 1)
             Text(
                 "${group.lines.size} line${if (group.lines.size == 1) "" else "s"} · ${group.shortDate}",
@@ -303,11 +293,9 @@ private fun GroupRow(
             Icon(
                 if (isSelected) ShowdistIcons.CheckCircle else ShowdistIcons.CircleOutlined,
                 contentDescription = if (isSelected) "Selected" else "Not selected",
-                tint = if (isSelected) Palette.Sandstone else Palette.TextMuted,
+                tint = if (isSelected) Palette.Accent else Palette.TextMuted,
                 modifier = Modifier.padding(end = 12.dp),
             )
-        } else {
-            ShareMenuButton(enabled = true, onShare = onShare, onCopy = onCopy)
         }
     }
 }
@@ -329,7 +317,7 @@ private fun SelectionBar(
         AppBarAction(ShowdistIcons.PictureAsPdf, "Export PDF", enabled = count > 0, onClick = onExportPdf)
         AppBarAction(ShowdistIcons.ContentCopy, "Copy", enabled = count > 0, onClick = onCopy)
         AppBarAction(ShowdistIcons.IosShare, "Share", enabled = count > 0, onClick = onShare)
-        AppBarAction(ShowdistIcons.DeleteOutline, "Delete selected", enabled = count > 0, tint = Palette.Sandstone, onClick = onDelete)
+        AppBarAction(ShowdistIcons.DeleteOutline, "Delete selected", enabled = count > 0, tint = Palette.Accent, onClick = onDelete)
     }
 }
 

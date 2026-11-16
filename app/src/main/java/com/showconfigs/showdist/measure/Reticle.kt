@@ -35,7 +35,7 @@ fun Reticle(tracker: MeasureTracker, modifier: Modifier = Modifier) {
             val dot = DOT_RADIUS.toPx()
             val rim = RIM.toPx() * k
             drawCircle(Palette.Backing, dot + rim + BACKING.toPx())
-            if (k > 0f) drawCircle(Palette.Cyan, dot + rim)
+            if (k > 0f) drawCircle(Palette.Accent, dot + rim)
             drawCircle(Palette.White, dot)
         },
     )

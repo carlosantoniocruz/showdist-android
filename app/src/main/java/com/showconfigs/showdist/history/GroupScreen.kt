@@ -102,7 +102,7 @@ fun GroupScreen(groupId: String?, units: UnitSystem, onAddLines: (String) -> Uni
                             .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(group.name, Modifier.weight(1f), style = Type.Title.copy(color = Palette.Sandstone, fontSize = 24.sp))
+                        Text(group.name, Modifier.weight(1f), style = Type.Title.copy(color = Palette.Accent, fontSize = 24.sp))
                         Icon(ShowdistIcons.Edit, contentDescription = null, tint = Palette.TextMuted, modifier = Modifier.padding(12.dp).size(20.dp))
                     }
                     Text(
@@ -209,7 +209,7 @@ private fun LineRow(
             .padding(start = 20.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("$number", Modifier.width(36.dp), style = Type.Secondary.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
+        Text("$number", Modifier.width(36.dp), style = Type.Secondary.copy(color = Palette.Accent, fontWeight = FontWeight.Bold))
         Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
             Text(name, style = Type.Label.copy(color = if (labelled) Palette.Text else Palette.TextMuted))
             Text(length, style = Type.Value.copy(fontSize = 20.sp, fontFeatureSettings = FEATURES_TABULAR))
@@ -237,7 +237,7 @@ private fun TagButton(tag: LineTag?, onTag: (LineTag?) -> Unit) {
             Text(
                 tag?.label?.uppercase() ?: "TAG",
                 style = Type.Caption.copy(
-                    color = if (tag != null) Palette.Sandstone else Palette.Hint,
+                    color = if (tag != null) Palette.Accent else Palette.Hint,
                     fontSize = 12.sp,
                     letterSpacing = 1.5.sp,
                 ),
@@ -246,7 +246,7 @@ private fun TagButton(tag: LineTag?, onTag: (LineTag?) -> Unit) {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Palette.Surface) {
             for (t in listOf(LineTag.Length, LineTag.Width, LineTag.Height, null)) {
                 DropdownMenuItem(
-                    text = { Text(t?.label ?: "None", style = Type.Label.copy(color = if (t == tag) Palette.Sandstone else Palette.Text)) },
+                    text = { Text(t?.label ?: "None", style = Type.Label.copy(color = if (t == tag) Palette.Accent else Palette.Text)) },
                     onClick = {
                         open = false
                         onTag(t)
@@ -264,13 +264,13 @@ private fun AddLinesButton(onClick: () -> Unit) {
         Modifier
             .heightIn(min = 48.dp)
             .clip(shape)
-            .border(BorderStroke(1.5.dp, Palette.Sandstone), shape)
+            .border(BorderStroke(1.5.dp, Palette.Accent), shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(ShowdistIcons.Add, contentDescription = null, tint = Palette.Sandstone, modifier = Modifier.size(20.dp))
+        Icon(ShowdistIcons.Add, contentDescription = null, tint = Palette.Accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Add lines", style = Type.Label.copy(color = Palette.Sandstone, fontWeight = FontWeight.Bold))
+        Text("Add lines", style = Type.Label.copy(color = Palette.Accent, fontWeight = FontWeight.Bold))
     }
 }

@@ -25,7 +25,7 @@ private val Directions = arrayOf(Offset(1f, 0f), Offset(-1f, 0f), Offset(0f, 1f)
 /**
  * The bullseye (SPEC.md §4.3), flat on black: a thin outer circle, rings at 5° and 10° of
  * tilt, crosshairs with a tick at the rim, and a centre ring. The white bubble moves toward
- * the higher side, both axes at once; it turns green and the ring sandstone when level.
+ * the higher side, both axes at once; it turns green and the ring accent when level.
  * [x] and [y] are the displayed tilts in degrees (see
  * [LevelSensor.tiltX], [LevelSensor.tiltY]); they feed the bubble's spring (SPEC.md §4.4),
  * stepped once per display frame.
@@ -83,7 +83,7 @@ fun Bullseye(x: () -> Float, y: () -> Float, modifier: Modifier = Modifier) {
             drawLine(Palette.White.copy(alpha = 0.85f), c + u * radius - across, c + u * radius + across, 2.dp.toPx())
         }
 
-        val ringColor = if (level) Palette.Sandstone else Palette.Text.copy(alpha = 0.7f)
+        val ringColor = if (level) Palette.Accent else Palette.Text.copy(alpha = 0.7f)
         drawCircle(ringColor, ringR, c, style = if (level) ringLevel else ring)
 
         // The bubble floats to the high side: right for +x, up the screen for +y. It travels
@@ -98,6 +98,6 @@ fun Bullseye(x: () -> Float, y: () -> Float, modifier: Modifier = Modifier) {
         bubbleOutline.ellipse(c.x + physics.x * travel, c.y + physics.y * travel, bubbleR, ux, uy, speed * travel)
         bubbleOutline.keepInsideCircle(c.x, c.y, inner)
         val bubble = bubbleOutline.toPath()
-        drawPath(bubble, if (level) Palette.Level else Palette.White)
+        drawPath(bubble, if (level) Palette.Accent else Palette.White)
     }
 }

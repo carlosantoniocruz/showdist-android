@@ -71,31 +71,31 @@ object Type {
     val Secondary = BaseText.copy(color = Palette.TextMuted, fontSize = 15.sp, lineHeight = 1.45.em)
 
     /** A saved measurement's total in a list. */
-    val Value = BaseText.copy(fontSize = 24.sp, fontWeight = FontWeight.Light, fontFeatureSettings = FEATURES_TABULAR)
+    val Value = BaseText.copy(fontSize = 22.sp, fontWeight = FontWeight.Light, fontFeatureSettings = FEATURES_TABULAR)
 
     /** A measurement's total on its sheet. */
-    val ValueLarge = BaseText.copy(fontSize = 52.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR)
+    val ValueLarge = BaseText.copy(fontSize = 34.sp, fontWeight = FontWeight.ExtraLight, fontFeatureSettings = FEATURES_TABULAR)
 
     /** Leveler readouts, readable from a foot away; the bullseye's pair is set smaller. */
     val Readout = BaseText.copy(fontSize = 96.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = FEATURES_TABULAR)
 }
 
 /**
- * One fixed scheme (SPEC.md §0, §5): black screens, near-black raised surfaces, sandstone
+ * One fixed scheme (SPEC.md §0, §5): black screens, near-black raised surfaces, accent
  * as the only accent, with no tint. Every role is set so no Material baseline colour can
- * appear. Errors use sandstone too, beside an icon.
+ * appear. Errors use accent too, beside an icon.
  */
 private val ShowdistColors = darkColorScheme(
-    primary = Palette.Sandstone,
+    primary = Palette.Accent,
     onPrimary = Palette.Black,
     primaryContainer = Palette.SurfaceHigh,
     onPrimaryContainer = Palette.Text,
-    inversePrimary = Palette.Sandstone,
-    secondary = Palette.Sandstone,
+    inversePrimary = Palette.Accent,
+    secondary = Palette.Accent,
     onSecondary = Palette.Black,
     secondaryContainer = Palette.SurfaceHigh,
     onSecondaryContainer = Palette.Text,
-    tertiary = Palette.Sandstone,
+    tertiary = Palette.Accent,
     onTertiary = Palette.Black,
     tertiaryContainer = Palette.SurfaceHigh,
     onTertiaryContainer = Palette.Text,
@@ -118,19 +118,21 @@ private val ShowdistColors = darkColorScheme(
     outline = Palette.Line,
     outlineVariant = Palette.Divider,
     scrim = Palette.Scrim,
-    error = Palette.Sandstone,
+    error = Palette.Accent,
     onError = Palette.Black,
     errorContainer = Palette.SurfaceHigh,
     onErrorContainer = Palette.Text,
 )
 
-/** Material 3 Expressive's rounder corners: pills for small parts, 28 dp for sheets and dialogs. */
+/** Minimal rounding (SPEC.md §5): just enough to soften a corner, on menus, sheets and dialogs alike. */
+val CornerSmall = RoundedCornerShape(2.dp)
+val Corner = RoundedCornerShape(4.dp)
 private val ShowdistShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(36.dp),
+    extraSmall = CornerSmall,
+    small = CornerSmall,
+    medium = Corner,
+    large = Corner,
+    extraLarge = Corner,
 )
 
 /**
