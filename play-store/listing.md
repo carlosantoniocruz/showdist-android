@@ -83,15 +83,15 @@ Optional extras once the AR shot is done: "View in AR" projecting a saved shape,
 ## Privacy policy (published)
 
 > **Showdist Privacy Policy**
-> Effective date: 24 September 2026
+> Effective date: 16 November 2026
 >
 > Showdist ("the app") is developed by Carlos Cruz. This policy explains what the app does with your information.
 >
-> **Information the app uses.** The app uses your device's camera to show the augmented-reality view and to measure distances, and its motion sensors for the level. Camera images and sensor readings are processed on your device in real time. The app does not record, save or transmit photos, video or sensor data.
+> **Information the app uses.** The app uses your device's camera to show the augmented-reality view and to measure distances (on phones that support it, ARCore also estimates depth from the camera so points can lock on plain walls), and its motion sensors for the levels and to pause the camera when the phone sits idle. Camera images, depth and sensor readings are processed on your device in real time. The app does not record, save or transmit photos, video, depth or sensor data.
 >
-> **Measurements you save.** Measurements you choose to save (their points, lengths, date and unit) are stored only in the app's private storage on your device. They are never uploaded by the app. They are deleted when you delete them in the app, clear the app's data or uninstall it. If you export a PDF or share a measurement as text, it goes only to the app or person you choose in Android's share sheet.
+> **Measurements you save.** Measurements you choose to save (their points, lengths, date and unit, and any names, labels or Length, Width and Height tags you give them) are stored only in the app's private storage on your device, as are your settings and calibration values. They are never uploaded by the app. They are deleted when you delete them in the app, clear the app's data or uninstall it. If you export a PDF or share a measurement as text, it goes only to the app or person you choose in Android's share sheet.
 >
-> **No accounts, ads or analytics.** The app has no sign-in, shows no ads, and contains no analytics or tracking code. The developer does not collect, sell or share any personal information.
+> **No accounts, ads or analytics.** The app has no sign-in, shows no ads, and contains no analytics or tracking code. It has no network code of its own: the internet permission Android lists for it comes from the ARCore libraries. The developer does not collect, sell or share any personal information.
 >
 > **Google Play Services for AR.** This application runs on Google Play Services for AR (ARCore), which is provided by Google LLC and governed by the Google Privacy Policy (https://policies.google.com/privacy).
 >
