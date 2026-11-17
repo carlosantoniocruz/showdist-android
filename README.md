@@ -2,6 +2,11 @@
 
 Measure distances with your camera in AR, plus a bubble level. No ads, offline.
 
+[![Support Showdist on Ko-fi](https://img.shields.io/badge/Support_Showdist-Ko--fi-00E5FF?style=for-the-badge&logo=kofi&logoColor=00E5FF&labelColor=000000)](https://ko-fi.com/carlosdev)
+
+Showdist is free, with no ads. If it saved you a trip for a tape measure, a tip on
+[Ko-fi](https://ko-fi.com/carlosdev) keeps it going.
+
 Showdist is a tape measure and a bubble level for Android, built with Kotlin and
 Jetpack Compose. Point your camera at a floor, wall or table, tap to drop points,
 and read the distance as you go. Switch to the tube or bullseye level when you
