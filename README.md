@@ -7,7 +7,7 @@ Jetpack Compose. Point your camera at a floor, wall or table, tap to drop points
 and read the distance as you go. Switch to the tube or bullseye level when you
 need to hang something straight.
 
-<img src="play-store/graphics/screenshot-1-measure.png" width="200"> <img src="play-store/graphics/screenshot-2-menu.png" width="200"> <img src="play-store/graphics/screenshot-3-tube-level.png" width="200">
+<img src="play-store/graphics/screenshot-1-measure.png" width="200"> <img src="play-store/graphics/screenshot-3-group.png" width="200"> <img src="play-store/graphics/screenshot-4-tube-level.png" width="200">
 
 ## Features
 

@@ -17,13 +17,14 @@ Measure distances with your camera in AR, plus a bubble level. No ads, offline.
 **Full description** (4000 max):
 
 ```
-Showdist is a tape measure and a bubble level in your pocket. Point your camera at a floor, wall or table, tap to drop points, and read the distance as you go. When you need to hang a shelf straight, switch to the level.
+Showdist is a tape measure and a bubble level in your pocket. It opens straight into the camera: aim at a floor, wall or table, tap to drop points, and read the distance as you go. When you need to hang a shelf straight, switch to the level.
 
 MEASURE IN AR
-• Aim the reticle and tap to place points. Each segment shows its length, and a running total adds them up.
-• Measure a single span or chain up to 24 points to trace a room, a counter or a garden bed.
-• Undo the last point or clear them all with one tap.
-• Metres and centimetres, or feet and inches to the nearest half inch. Switch any time, even mid-measurement.
+• Aim the dot and tap the capture button to place points. Each segment shows its length, and a running total adds them up.
+• Chain up to 24 points to trace a room, a counter or a garden bed, or switch to Group to measure separate lines, such as a room's length, width and height.
+• Tag a group's lines as length, width and height to get floor area and volume.
+• Points lock on plain walls as well as floors and tables.
+• Feet and inches to the nearest half inch, or metres and centimetres. Switch any time, even mid-measurement.
 
 SAVE, REVISIT, SHARE
 • Hold anywhere on the screen to save a measurement to History.
@@ -32,16 +33,17 @@ SAVE, REVISIT, SHARE
 • Export a clean PDF report of one or many measurements, with a scaled diagram of each shape, or copy and share them as text.
 
 LEVEL
-• Tube level: hold the phone against a wall, frame or shelf. Works in portrait and both landscape orientations.
+• Tube level: hold the phone against a wall, frame or shelf. Works upright and on either side.
 • Bullseye level: lay the phone flat to check a surface on two axes at once.
-• A readout to a tenth of a degree, a bubble that moves like the real thing, and a zero button to calibrate against a surface you trust.
+• A readout to a tenth of a degree, and a zero button to calibrate against a surface you trust.
 
-BUILT FOR THE JOB
-• High-contrast colours tuned to stay readable in direct sunlight.
-• The screen stays on while you work.
+BUILT FOR ONE HAND
+• Every control sits in one row at the bottom, within reach of your thumb, with a left-handed option.
+• High-contrast black, white and cyan, readable in direct sunlight.
+• AR pauses itself after a minute idle to save battery. Tap to continue.
 • No account, no ads, no tracking. Your measurements stay on your phone.
 
-Showdist needs a phone that supports Google Play Services for AR (ARCore). AR measurements are estimates: for the best results, use good light, move the phone slowly to let it map the room, and aim at textured surfaces rather than blank white walls or glass. For work where fractions of an inch matter, confirm with a physical tape.
+Showdist needs a phone that supports Google Play Services for AR (ARCore). AR measurements are estimates: for the best results, use good light, move the phone slowly, and calibrate the scale against something you know in Settings. For work where fractions of an inch matter, confirm with a physical tape.
 ```
 
 **App category:** Tools
@@ -60,20 +62,19 @@ Showdist needs a phone that supports Google Play Services for AR (ARCore). AR me
 
 | Asset | Requirement | File |
 |---|---|---|
-| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (black background, sandstone dimension line, white end points) |
-| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: the main menu's orbital selector (sandstone sun with SHOWDIST, orbit, the three tool moons) and the tagline |
+| App icon | 512 × 512 PNG, 32-bit, ≤ 1 MB | `graphics/icon-512.png`: the adaptive icon (black background, cyan dimension line, white end points on the ticks) |
+| Feature graphic | 1024 × 500 JPG or 24-bit PNG, no transparency | `graphics/feature-graphic-1024x500.png`: the app mark large beside the SHOWDIST wordmark, the tagline beneath, on black |
 | Phone screenshots | 2–8, each side 320–3840 px, **long side ≤ 2 × short side** | `graphics/screenshot-*.png`: captured on the Pixel (1080 × 2424, 2.24:1), fitted to 1080 × 2160: system-bar strips painted over where they sit on a flat background, flat top/bottom bands cropped (keeping a 48 px margin), and any remaining height scaled with the edge colours extended to fill the sides. The AR shot first has 170 px of camera image cropped off the top (`screenshot-1-measure.png:170`). |
 
 The graphics are rendered by `Render.java` (run with `java Render.java <out-dir> [in.png out.png[:crop-top]]…`), so they can be regenerated after a palette change.
 
-Screenshot order for the listing (numbers match the file names):
-1. A measurement in progress: several placed points, segment labels, running total.
-2. Main menu.
-3. Tube level, upright against a wall.
-4. Bullseye level.
-5. About (usage guides).
-6. History with thumbnails.
-7. A saved measurement's detail sheet.
+Screenshot order for the listing (v1.5; numbers match the file names). Raw captures are in `raw/`; camera shots are framed by cropping (`:216`), never scaled, so their edges don't smear:
+1. A chained measurement in progress on a tiled floor: segment labels, the live line, the running total, the five-control row.
+2. Group measuring live on a desk: three lines and the Length / Width / Height chips.
+3. The group's screen: three tagged lines with floor area and volume.
+4. Tube level, upright.
+5. Bullseye level.
+6. History.
 
 Optional extras once the AR shot is done: "View in AR" projecting a saved shape, and a PDF report page (the report isn't an app screen, so show it open in a PDF viewer on the phone).
 
@@ -137,15 +138,9 @@ Expected result: Everyone / PEGI 3.
 
 ---
 
-## Stale since the v1.5 interface (fix before the next release)
+## Graphics refreshed for v1.5 (16 Nov 2026)
 
-The app's look changed after these assets were made (see SPEC.md §0a). Nothing here has been regenerated yet, because no release is planned:
-
-- **Icon** (`graphics/icon-512.png`): the line is now cyan `#00E5FF`, 3 wide, not sandstone.
-- **Feature graphic**: shows the main menu's orbital selector, which no longer exists. Needs a new subject (the mark, or a measurement in progress).
-- **Screenshots**: number 2 is the main menu, which is gone; the others show the sandstone accent, the old tall control bar and the orbiting reticle. Retake all of them. `Render.java` still paints with the old palette.
-- **Description text**: check it for the menu, Handy formulas and fun facts, none of which the app has now (the facts live behind a hold on the About page).
-- The README shows the same old screenshots.
+Icon, feature graphic, all screenshots and the full description were redone for the v1.5 interface. Not yet captured: a saved measurement's tray and Settings (add them as 7 and 8 if wanted).
 
 ## Before you submit
 

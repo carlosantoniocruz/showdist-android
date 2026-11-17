@@ -3,8 +3,7 @@ import javax.imageio.*; import java.io.*; import java.util.*;
 
 public class Render {
   // The app palette (SPEC.md §5).
-  static final Color BLACK=Color.BLACK, SAND=new Color(0xC8A97E), SURFACE=new Color(0x121212),
-    MUTED=new Color(0xB8B8B8), WHITE=Color.WHITE, LINE=new Color(255,255,255,77), SHELL=new Color(0xC8,0xA9,0x7E,115);
+  static final Color BLACK=Color.BLACK, ACCENT=new Color(0x00E5FF), MUTED=new Color(0xB8B8B8), WHITE=Color.WHITE;
   static final String FONTS="/home/carlos/development/showdist-android/app/src/main/res/font/";
 
   static Graphics2D g(BufferedImage im){ Graphics2D g=im.createGraphics();
@@ -17,7 +16,7 @@ public class Render {
 
   /** The adaptive icon's dimension line (ic_launcher_foreground.xml), viewport units mapped by s + offset. */
   static void dimensionLine(Graphics2D g, double s, double ox, double oy){
-    g.setColor(SAND); g.setStroke(new BasicStroke((float)(3.5*s),BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+    g.setColor(ACCENT); g.setStroke(new BasicStroke((float)(3*s),BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
     g.draw(new Line2D.Double(ox+34*s,oy+54*s,ox+74*s,oy+54*s));
     g.draw(new Line2D.Double(ox+34*s,oy+43*s,ox+34*s,oy+65*s));
     g.draw(new Line2D.Double(ox+74*s,oy+43*s,ox+74*s,oy+65*s));
@@ -40,53 +39,24 @@ public class Render {
   }
 
   /**
-   * The main menu's orbital selector (SPEC.md §1.4) as the feature graphic: the sandstone sun
-   * with its shell ring and the wordmark, the orbit, and the three tool moons with AR Measure
-   * at the front; the tagline beneath.
+   * The feature graphic: the app mark (the icon's dimension line) large on black, the
+   * wordmark beside it and the tagline beneath; nothing else (SPEC.md §0a).
    */
   static void feature(File out) throws Exception {
     int W=1024,H=500; BufferedImage im=new BufferedImage(W,H,BufferedImage.TYPE_INT_RGB); Graphics2D g=g(im);
     g.setColor(BLACK); g.fillRect(0,0,W,H);
-    double cx=W/2.0, cy=222, R=148, rx=330, ry=0.8*R, moonR=0.4*R;
-    // Far half of the orbit and the shell, then the back moons, the sun, the near half, the front moon.
-    g.setColor(SHELL); g.setStroke(new BasicStroke(2.4f)); circle(g,cx,cy,1.22*R,false);
-    g.setColor(LINE); g.setStroke(new BasicStroke(1.6f));
-    g.draw(new Arc2D.Double(cx-rx,cy-ry,2*rx,2*ry,0,180,Arc2D.OPEN));
-    double[] angles={0,2*Math.PI/3,4*Math.PI/3};
-    for(int i=1;i<3;i++) moon(g,i,cx+rx*Math.sin(angles[i]),cy+ry*Math.cos(angles[i]),moonR,Math.cos(angles[i]),false);
-    g.setColor(SAND); circle(g,cx,cy,R,true);
-    Font word=font("jetbrains_mono_bold.ttf",(float)(R*1.5/5.64),0.12f); g.setFont(word);
     FontRenderContext frc=g.getFontRenderContext();
+    Font word=font("jetbrains_mono_bold.ttf",92f,0.08f), tag=font("jetbrains_mono_bold.ttf",22f,0.2f);
     Rectangle2D wb=new TextLayout("SHOWDIST",word,frc).getBounds();
-    g.setColor(BLACK); g.drawString("SHOWDIST",(float)(cx-wb.getWidth()/2-wb.getX()),(float)(cy-0.12*R-wb.getY()-wb.getHeight()/2));
-    g.setColor(LINE); g.setStroke(new BasicStroke(1.6f));
-    g.draw(new Arc2D.Double(cx-rx,cy-ry,2*rx,2*ry,180,180,Arc2D.OPEN));
-    moon(g,0,cx,cy+ry,moonR,1,true);
-    Font tag=font("jetbrains_mono_bold.ttf",22f,0.25f); g.setFont(tag); g.setColor(MUTED);
-    String t="AR TAPE MEASURE  ·  TUBE & BULLSEYE LEVELS"; Rectangle2D tb=new TextLayout(t,tag,frc).getBounds();
-    g.drawString(t,(float)((W-tb.getWidth())/2-tb.getX()),462f);
+    String t="AR TAPE MEASURE  ·  BUBBLE LEVEL"; Rectangle2D tb=new TextLayout(t,tag,frc).getBounds();
+    // Mark: viewport x 28-80 (52 units) at scale s; then a gap, then the wordmark; the pair centred.
+    double s=4.2, markW=52*s, gap=56, total=markW+gap+wb.getWidth(), x0=(W-total)/2, cy=214;
+    dimensionLine(g,s,x0-28*s,cy-54*s);
+    g.setFont(word); g.setColor(WHITE);
+    g.drawString("SHOWDIST",(float)(x0+markW+gap-wb.getX()),(float)(cy-wb.getY()-wb.getHeight()/2));
+    g.setFont(tag); g.setColor(MUTED);
+    g.drawString(t,(float)((W-tb.getWidth())/2-tb.getX()),400f);
     ImageIO.write(im,"png",out);
-  }
-
-  static void circle(Graphics2D g,double x,double y,double r,boolean fill){
-    Ellipse2D e=new Ellipse2D.Double(x-r,y-r,2*r,2*r); if(fill) g.fill(e); else g.draw(e); }
-
-  /** A moon as Orbit.kt draws it, scaled and dimmed by its depth d (1 front, −1 back). */
-  static void moon(Graphics2D g,int tool,double x,double y,double r0,double d,boolean focused){
-    double n=(d+1)/2, r=r0*(0.6+0.4*n); float a=(float)(0.5+0.5*n);
-    Composite old=g.getComposite(); g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,a));
-    double gap=4, ring=focused?3.4:2;
-    g.setColor(BLACK); circle(g,x,y,r,true); g.setColor(SURFACE); circle(g,x,y,r-gap,true);
-    g.setColor(focused?SAND:MUTED); g.setStroke(new BasicStroke((float)ring)); circle(g,x,y,r-gap-ring/2,false);
-    double p=r*0.5, st=2.8*(r/r0); g.setColor(SAND);
-    g.setStroke(new BasicStroke((float)st,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
-    if(tool==0){ double cap=p*0.45;
-      g.draw(new Line2D.Double(x-p,y,x+p,y));
-      for(double xx: new double[]{x-p,x+p}){ g.draw(new Line2D.Double(xx,y-cap,xx,y+cap)); circle(g,xx,y,p*0.16,true); } }
-    else if(tool==1){ double h=p*0.42;
-      g.draw(new RoundRectangle2D.Double(x-p,y-h,2*p,2*h,2*h,2*h)); circle(g,x,y,h*0.6,true); }
-    else { circle(g,x,y,p,false); g.setStroke(new BasicStroke((float)(st*0.75))); circle(g,x,y,p*0.5,false); circle(g,x,y,p*0.2,true); }
-    g.setComposite(old);
   }
 
   /**
